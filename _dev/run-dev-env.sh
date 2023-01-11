@@ -23,6 +23,15 @@ if [ ! -d node_modules ]; then
     npm ci
 fi
 
+# Web
+cd "${REPO_DIR}/feedwatcher-web"
+if [ ! -f package-lock.json ]; then
+    rm -fr node_modules
+    npm install
+fi
+if [ ! -d node_modules ]; then
+    npm ci
+fi
 
 # Start
 cd "${REPO_DIR}"
