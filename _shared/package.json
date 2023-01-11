@@ -1,0 +1,12 @@
+{
+  "name": "shared",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "cd ../telepathy-agent && npm run dependencies && cd ../telepathy-server && npm run dependencies"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

@@ -1,0 +1,12 @@
+{
+  "CORS_POLICY_ORIGIN": "*",
+  "DATA_DIR": "../_dev/data",
+  "AGENT_KEY": "TO_CHANGE",
+  "JWT_KEY": "TO_CHANGE",
+  "TASK_HISTORY_MAX_COUNT": "3",
+  "TASK_HISTORY_MAX_AGE_DAYS": "2",
+  "LOG_LEVEL": "debug",
+  "FILE_REDUNDANCY": "3",
+  "OPENTELEMETRY_COLLECTOR_HTTP": "http://localhost:4318/v1/traces",
+  "OPENTELEMETRY_COLLECTOR_AWS": false
+}
