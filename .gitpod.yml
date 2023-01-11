@@ -1,0 +1,9 @@
+tasks:
+  - name: Dev Server
+    init: npm install -g pm2
+    command: ./_dev/run-dev-env.sh
+ports:
+  - name: Web Proxy
+    description: Application Proxy
+    port: 9999
+    onOpen: open-browser

@@ -5,3 +5,4 @@
 /*/docker-packaging-config/files
 /builds
 node_modules/
+coverage

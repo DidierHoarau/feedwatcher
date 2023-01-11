@@ -7,20 +7,15 @@ const logger = new Logger("config");
 
 export class Config implements ConfigInterface {
   //
-  public readonly CONFIG_FILE: string = process.env.TELEPATHY_CONFIG || "";
-  public readonly SERVICE_ID = "telepathy-server";
+  public readonly CONFIG_FILE: string = "config.json";
+  public readonly SERVICE_ID = "feedwatcher-server";
   public VERSION = 1;
   public readonly API_PORT: number = 8080;
-  public AGENT_REGISTRATION_DURATION: number = 30 * 60;
   public JWT_VALIDITY_DURATION: number = 7 * 24 * 3600;
   public CORS_POLICY_ORIGIN: string;
-  public DATA_DIR = ".";
-  public AGENT_KEY: string = uuidv4();
+  public DATA_DIR = process.env.DATA_DIR || "/data";
   public JWT_KEY: string = uuidv4();
   public LOG_LEVEL = "info";
-  public TASK_HISTORY_MAX_COUNT = 100;
-  public TASK_HISTORY_MAX_AGE_DAYS = 30;
-  public TASK_ALIVE_TIMEOUT = 100;
   public FILE_REDUNDANCY = 2;
   public OPENTELEMETRY_COLLECTOR_HTTP: string;
   public OPENTELEMETRY_COLLECTOR_AWS = false;
@@ -39,15 +34,10 @@ export class Config implements ConfigInterface {
     };
     logger.info(`Configuration Value: CONFIG_FILE: ${this.CONFIG_FILE}`);
     logger.info(`Configuration Value: VERSION: ${this.VERSION}`);
-    setIfSet("AGENT_REGISTRATION_DURATION");
     setIfSet("JWT_VALIDITY_DURATION");
     setIfSet("CORS_POLICY_ORIGIN");
     setIfSet("DATA_DIR");
-    setIfSet("TASK_HISTORY_MAX_COUNT");
-    setIfSet("TASK_HISTORY_MAX_AGE_DAYS");
-    setIfSet("AGENT_KEY", false);
     setIfSet("JWT_KEY", false);
-    setIfSet("TASK_ALIVE_TIMEOUT");
     setIfSet("LOG_LEVEL");
     setIfSet("FILE_REDUNDANCY");
     setIfSet("OPENTELEMETRY_COLLECTOR_HTTP");

@@ -1,6 +1,6 @@
 {
-  "name": "telepathy-server",
-  "version": "1.5.2",
+  "name": "feedwatcher-server",
+  "version": "0.1.0",
   "author": "",
   "license": "MIT",
   "scripts": {
@@ -9,15 +9,9 @@
     "build": "npm run dependencies && tsc",
     "lint": "eslint src",
     "test": "jest --coverage || true",
-    "test:dev": "jest --watch --coverage",
     "////": "-----------------------------------------------------------------",
-    "dev": "ts-node ./src/app.ts",
-    "dev:docker": "docker-packaging-config/start-dev-docker.sh || true",
-    "dev:test": "NODE_ENV=dev jest --watch --config='jest.config.js'",
-    "binary:alpine:x64": "npm run build && pkg dist/app.js --target node16-alpine-x64 --output ./dist/telepathy-server-linux-alpine",
-    "binary:linux:x64": "npm run build && pkg dist/app.js --target node16-linux-x64 --output ./dist/telepathy-server-linux-x64",
-    "binary:linux:armv6": "npm run build && pkg dist/app.js --target node14-linux-armv6 --output ./dist/telepathy-server-linux-armv6",
-    "binary:linux:arm64": "npm run build && pkg dist/app.js --target arm64 --output ./dist/telepathy-server-linux-armv7"
+    "dev": "ts-node-dev ./src/app.ts",
+    "dev:test": "NODE_ENV=dev jest --watch --config='jest.config.js'"
   },
   "dependencies": {
     "@fastify/cors": "^8.0.0",
@@ -39,6 +33,7 @@
     "md5-file": "^4.0.0",
     "node-cron": "^2.0.0",
     "pino-pretty": "^8.1.0",
+    "ts-node-dev": "^2.0.0",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
