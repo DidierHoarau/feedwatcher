@@ -1,0 +1,7 @@
+/tmp
+/*/node_modules
+/*/docker-packaging
+/*/dist
+/*/docker-packaging-config/files
+/builds
+node_modules/
