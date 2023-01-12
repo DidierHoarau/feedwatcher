@@ -8,8 +8,10 @@ if [ ! -d bin ]; then
     cd bin
     wget https://github.com/traefik/traefik/releases/download/v2.9.6/traefik_v2.9.6_linux_amd64.tar.gz
     tar -xzf *.tar.gz
+    cd ..
 fi
 
+cd ${SERVICE_DIR}
 ./bin/traefik \
     --entryPoints.web.address=:9999 \
     --entryPoints.websecure.address=:9998 \

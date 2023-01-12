@@ -4,9 +4,8 @@
   "author": "",
   "license": "MIT",
   "scripts": {
-    "dependencies": "rm -fr src/common-model && cp -R ../_shared/common-model src/common-model && rm -fr src/utils-std-ts && cp -R ../_shared/utils-std-ts src/utils-std-ts",
     "//": "-------------------------------------------------------------------",
-    "build": "npm run dependencies && tsc",
+    "build": "tsc",
     "lint": "eslint src",
     "test": "jest --coverage || true",
     "////": "-----------------------------------------------------------------",
