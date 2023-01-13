@@ -1,6 +1,6 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import * as _ from "lodash";
-import { User } from "../common-model/User";
+import { User } from "../model/User";
 import { FileDBUtils } from "./FileDbUtils";
 
 export class UsersData {
@@ -36,7 +36,11 @@ export class UsersData {
     await this.save(context);
   }
 
-  public async update(context: Span, id: string, userUpdate: User): Promise<void> {
+  public async update(
+    context: Span,
+    id: string,
+    userUpdate: User
+  ): Promise<void> {
     const user = _.find(this.users, {
       id,
     }) as User;

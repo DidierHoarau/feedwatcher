@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR(50) NOT NULL,
+    username VARCHAR(500) NOT NULL,
+    password_hash VARCHAR(500) NOT NULL
+)

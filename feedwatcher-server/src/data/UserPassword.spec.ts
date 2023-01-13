@@ -1,4 +1,4 @@
-import { User } from "../common-model/User";
+import { User } from "../model/User";
 import { UserPassword } from "./UserPassword";
 
 test("Password should be successfully verified if it's the same", async () => {
@@ -13,5 +13,7 @@ test("Password should be faile to be verified if it's not the same", async () =>
   const passwordWrong = "testPassword12345";
   const user = new User();
   await UserPassword.setPassword(null, user, password);
-  expect(await UserPassword.checkPassword(null, user, passwordWrong)).toBeFalsy();
+  expect(
+    await UserPassword.checkPassword(null, user, passwordWrong)
+  ).toBeFalsy();
 });

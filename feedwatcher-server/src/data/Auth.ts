@@ -1,7 +1,7 @@
 import * as jwt from "jsonwebtoken";
 import * as path from "path";
-import { User } from "../common-model/User";
-import { UserSession } from "../common-model/UserSession";
+import { User } from "../model/User";
+import { UserSession } from "../model/UserSession";
 import { Config } from "../Config";
 import { Logger } from "../utils-std-ts/Logger";
 
@@ -56,7 +56,9 @@ export class Auth {
     const userSession: UserSession = { isAuthenticated: false };
     if (req.headers.authorization) {
       try {
-        userSession.userId = await Auth.checkToken(req.headers.authorization.split(" ")[1]);
+        userSession.userId = await Auth.checkToken(
+          req.headers.authorization.split(" ")[1]
+        );
         userSession.isAuthenticated = true;
       } catch (err) {
         logger.error(err);

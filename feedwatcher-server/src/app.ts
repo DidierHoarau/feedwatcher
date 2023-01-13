@@ -1,28 +1,15 @@
 import Fastify from "fastify";
 import { watchFile } from "fs-extra";
-import { Agent } from "./common-model/Agent";
 import { Config } from "./Config";
-import { AgentsData } from "./data/AgentsData";
-import { Scheduler } from "./process/Scheduler";
-import { TaskCleanup } from "./process/TaskCleanup";
-import { TaskExecutionsData } from "./data/TaskExecutionsData";
-import { TasksData } from "./data/TasksData";
 import { UsersData } from "./data/UsersData";
 import { Logger } from "./utils-std-ts/Logger";
 import { StandardTracer } from "./utils-std-ts/StandardTracer";
-import { TasksRoutes } from "./routes/TasksRoutes";
-import { AgentsRoutes } from "./routes/SourceRoutes";
 import { UserRoutes } from "./routes/UsersRoutes";
-import { TaskIdRoutes } from "./routes/TaskIdRoutes";
-import { AgentIdRoutes } from "./routes/AgentIdRoutes";
-import { TasksExecutuionsRoutes } from "./routes/TasksExecutionsRoutes";
-import { TasksExecutionsForAgentsRoutes } from "./routes/TasksExecutionsForAgentsRoutes";
 import { UserIdRoutes } from "./routes/UserIdRoutes";
-import { TasksWebhooksRoutes } from "./routes/TasksWebhooksRoutes";
-import { TasksExecutionIdRoutes } from "./routes/TasksExecutionIdRoutes";
 import { FileDBUtils } from "./data/FileDbUtils";
 import { Auth } from "./data/Auth";
 import { StandardTracerApi } from "./StandardTracerApi";
+import { SqlDbutils } from "./data/SqlDbUtils";
 
 const logger = new Logger("app");
 
@@ -41,28 +28,12 @@ Promise.resolve().then(async () => {
 
   const span = StandardTracer.startSpan("init");
 
+  SqlDbutils.init(config);
   FileDBUtils.init(config);
   Auth.init(config);
 
   const usersData = new UsersData();
   await usersData.load(span);
-
-  const tasksData = new TasksData();
-  await tasksData.load(span);
-
-  const taskExecutionsData = new TaskExecutionsData(config, tasksData);
-  await taskExecutionsData.load(span);
-
-  const registeredAgents: Agent[] = [];
-  const agentsData = new AgentsData(config, registeredAgents);
-  agentsData.waitRegistrations();
-
-  const scheduler = new Scheduler(tasksData, taskExecutionsData);
-  scheduler.calculate(span);
-
-  const taskCleanup = new TaskCleanup(config, tasksData, taskExecutionsData);
-  taskCleanup.startMaintenance();
-  taskCleanup.monitorTimeouts();
 
   span.end();
 
@@ -83,8 +54,12 @@ Promise.resolve().then(async () => {
 
   StandardTracerApi.registerHooks(fastify, config);
 
-  fastify.register(new UserRoutes(usersData).getRoutes, { prefix: "/users" });
-  fastify.register(new UserIdRoutes(usersData).getRoutes, { prefix: "/users/:userId" });
+  fastify.register(new UserRoutes(usersData).getRoutes, {
+    prefix: "/api/users",
+  });
+  fastify.register(new UserIdRoutes(usersData).getRoutes, {
+    prefix: "/api/users/:userId",
+  });
 
   fastify.listen({ port: config.API_PORT, host: "0.0.0.0" }, (err) => {
     if (err) {

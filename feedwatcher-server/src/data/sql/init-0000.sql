@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS metadata (
+    type VARCHAR(100) NOT NULL,
+    value INTEGER  NOT NULL
+)

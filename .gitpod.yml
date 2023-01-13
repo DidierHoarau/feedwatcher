@@ -7,3 +7,7 @@ ports:
     description: Application Proxy
     port: 9999
     onOpen: open-browser
+  - port: 3000-9998
+    onOpen: ignore
+  - port: 24678
+    onOpen: ignore
