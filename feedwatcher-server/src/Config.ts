@@ -42,5 +42,6 @@ export class Config implements ConfigInterface {
     setIfSet("FILE_REDUNDANCY");
     setIfSet("OPENTELEMETRY_COLLECTOR_HTTP");
     setIfSet("OPENTELEMETRY_COLLECTOR_AWS");
+    // hello
   }
 }

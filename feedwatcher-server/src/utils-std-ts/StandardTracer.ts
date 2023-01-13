@@ -25,7 +25,7 @@ export class StandardTracer {
       resource: new Resource({
         [SemanticResourceAttributes.SERVICE_NAME]: `${config.SERVICE_ID}`,
         [SemanticResourceAttributes.SERVICE_VERSION]: `${config.VERSION}`,
-        [SemanticResourceAttributes.SERVICE_NAMESPACE]: "telepathy",
+        [SemanticResourceAttributes.SERVICE_NAMESPACE]: "feedwatcher",
         [SemanticResourceAttributes.HOST_NAME]: os.hostname(),
       }),
     });

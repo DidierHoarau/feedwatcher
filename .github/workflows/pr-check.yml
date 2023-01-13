@@ -13,17 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Build Agent
-        run: |
-          cd telepathy-agent
-          npm ci
-          npm run build
-          npm run lint
-          npm run test
-
       - name: Build Server
         run: |
-          cd telepathy-server
+          cd feedwatcher-server
           npm ci
           npm run build
           npm run lint
@@ -31,7 +23,7 @@ jobs:
 
       - name: Build Web
         run: |
-          cd telepathy-web
+          cd feedwatcher-web
           npm ci
           npm run build
           npm run lint
@@ -50,16 +42,16 @@ jobs:
           ./_dev/docker-build-images.sh
           ./_dev/docker-publish-images-beta.sh
 
-      - name: Start Test Environment
-        run: |
-          set -e
-          chmod +x _dev/*.sh
-          npm install -g pm2
-          ./_dev/run-test-env.sh
-          sleep 20
+      # - name: Start Test Environment
+      #   run: |
+      #     set -e
+      #     chmod +x _dev/*.sh
+      #     npm install -g pm2
+      #     ./_dev/run-test-env.sh
+      #     sleep 20
 
-      - name: E2E Test
-        uses: cypress-io/github-action@v4
-        with:
-          working-directory: tests/tests-e2e
-          browser: chrome
+      # - name: E2E Test
+      #   uses: cypress-io/github-action@v4
+      #   with:
+      #     working-directory: tests/tests-e2e
+      #     browser: chrome

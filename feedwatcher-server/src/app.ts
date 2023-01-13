@@ -28,7 +28,7 @@ Promise.resolve().then(async () => {
 
   const span = StandardTracer.startSpan("init");
 
-  SqlDbutils.init(config);
+  SqlDbutils.init(span, config);
   FileDBUtils.init(config);
   Auth.init(config);
 
