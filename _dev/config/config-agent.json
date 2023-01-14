@@ -1,7 +1,0 @@
-{
-  "SERVER": "http://localhost:8080",
-  "HEARTBEAT_CYCLE": 10,
-  "AGENT_KEY": "TO_CHANGE",
-  "TAGS": ["linux_x86", "cloud"],
-  "OPENTELEMETRY_COLLECTOR_HTTP": "http://localhost:4318/v1/traces"
-}
