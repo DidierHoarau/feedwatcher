@@ -5,7 +5,9 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "lint": "echo TODO",
+    "test": "echo TODO"
   },
   "devDependencies": {
     "nuxt": "3.0.0"
