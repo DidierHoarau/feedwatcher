@@ -33,9 +33,6 @@ Promise.resolve().then(async () => {
   FileDBUtils.init(config);
   Auth.init(config);
 
-  const usersData = new UsersData();
-  await usersData.load(span);
-
   span.end();
 
   // API
@@ -55,12 +52,12 @@ Promise.resolve().then(async () => {
 
   StandardTracerApi.registerHooks(fastify, config);
 
-  fastify.register(new UserRoutes(usersData).getRoutes, {
+  fastify.register(new UserRoutes().getRoutes, {
     prefix: "/api/users",
   });
-  fastify.register(new UserIdRoutes(usersData).getRoutes, {
-    prefix: "/api/users/:userId",
-  });
+  // fastify.register(new UserIdRoutes().getRoutes, {
+  //   prefix: "/api/users/:userId",
+  // });
 
   /* eslint-disable-next-line */
   fastify.register(require("@fastify/static"), {

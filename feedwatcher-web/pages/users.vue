@@ -31,6 +31,7 @@ import axios from "axios";
 import Config from "../services/Config.ts";
 import { AuthService } from "../services/AuthService";
 import { handleError, EventBus, EventTypes } from "../services/EventBus";
+import { UserService } from "../services/UserService";
 
 export default {
   name: "UserEdit",
@@ -41,9 +42,12 @@ export default {
     return {
       user: {},
       passwordEnabled: false,
+      isInitialized: true,
     };
   },
   async created() {
+    this.isInitialized = await UserService.isInitialized();
+
     if (this.userId) {
       this.passwordEnabled = false;
       axios
