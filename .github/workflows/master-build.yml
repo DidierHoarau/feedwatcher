@@ -1,8 +1,8 @@
-name: Master Build
+name: Main Build
 
 on:
   push:
-    branches: ["master"]
+    branches: ["main"]
 
   workflow_dispatch:
 
