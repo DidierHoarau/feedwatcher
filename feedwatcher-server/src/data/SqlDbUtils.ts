@@ -6,15 +6,18 @@ import { Span } from "@opentelemetry/sdk-trace-base";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 
 const logger = new Logger("SqlDbutils");
+const SQL_DIR = `${__dirname}/../../sql`;
+
 let database;
 
 export class SqlDbutils {
   //
   public static async init(context: Span, config: Config): Promise<void> {
     const span = StandardTracer.startSpan("SqlDbutils_init", context);
+    await fs.ensureDir(config.DATA_DIR);
     database = new Database(`${config.DATA_DIR}/database.db`);
-    await SqlDbutils.execSQL(span, (await fs.readFile(`${__dirname}/sql/init-0000.sql`)).toString());
-    const initFiles = (await await fs.readdir(`${__dirname}/sql`)).sort();
+    await SqlDbutils.execSQL(span, (await fs.readFile(`${SQL_DIR}/init-0000.sql`)).toString());
+    const initFiles = (await await fs.readdir(`${SQL_DIR}`)).sort();
     let dbVersionApplied = 0;
     const dbVersionQuery = await SqlDbutils.querySQL(
       span,
@@ -31,7 +34,7 @@ export class SqlDbutils {
         const dbVersionInitFile = Number(match[1]);
         if (dbVersionInitFile > dbVersionApplied) {
           logger.info(`Loading init file: ${initFile}`);
-          SqlDbutils.execSQL(span, (await fs.readFile(`${__dirname}/sql/${initFile}`)).toString());
+          SqlDbutils.execSQL(span, (await fs.readFile(`${SQL_DIR}/${initFile}`)).toString());
           await SqlDbutils.querySQL(
             span,
             `INSERT INTO metadata (type, value) VALUES ('db_version', '${dbVersionInitFile}');`

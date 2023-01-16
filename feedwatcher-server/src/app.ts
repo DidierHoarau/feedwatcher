@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import * as path from "path";
 import { watchFile } from "fs-extra";
 import { Config } from "./Config";
 import { UsersData } from "./data/UsersData";
@@ -59,6 +60,12 @@ Promise.resolve().then(async () => {
   });
   fastify.register(new UserIdRoutes(usersData).getRoutes, {
     prefix: "/api/users/:userId",
+  });
+
+  /* eslint-disable-next-line */
+  fastify.register(require("@fastify/static"), {
+    root: path.join(__dirname, "../web"),
+    prefix: "/",
   });
 
   fastify.listen({ port: config.API_PORT, host: "0.0.0.0" }, (err) => {
