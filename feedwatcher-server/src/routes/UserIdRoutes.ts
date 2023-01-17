@@ -12,7 +12,6 @@ export class UserIdRoutes {
   // constructor(usersDataIn: UsersData) {
   //   usersData = usersDataIn;
   // }
-
   // public async getRoutes(fastify: FastifyInstance): Promise<void> {
   //   //
   //   interface GetUserRequest extends RequestGenericInterface {
@@ -32,7 +31,6 @@ export class UserIdRoutes {
   //     delete user.passwordEncrypted;
   //     res.status(201).send(user);
   //   });
-
   //   interface PutUserRequest extends RequestGenericInterface {
   //     Params: {
   //       userId: string;
@@ -70,7 +68,6 @@ export class UserIdRoutes {
   //     );
   //     res.status(201).send({});
   //   });
-
   //   interface DeleteUserRequest extends RequestGenericInterface {
   //     Params: {
   //       userId: string;
@@ -88,5 +85,5 @@ export class UserIdRoutes {
   //     await usersData.delete(StandardTracer.getSpanFromRequest(req), user.id);
   //     res.status(201).send({});
   //   });
-  }
+  // }
 }
