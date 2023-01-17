@@ -18,24 +18,14 @@ export class Auth {
     return jwt.sign(
       {
         exp: Math.floor(Date.now() / 1000) + config.JWT_VALIDITY_DURATION,
-        user_id: user.id,
-        user_name: user.name,
+        userId: user.id,
+        userName: user.name,
       },
       config.JWT_KEY
     );
   }
 
-  public static async checkToken(token: string): Promise<any> {
-    try {
-      const info = jwt.verify(token, config.JWT_KEY);
-      return { authenticated: true, info };
-    } catch (err) {
-      return {
-        authenticated: false,
-      };
-    }
-  }
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static async mustBeAuthenticated(req: any, res: any): Promise<void> {
     let authenticated = false;
     if (req.headers.authorization) {
@@ -52,13 +42,13 @@ export class Auth {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static async getUserSession(req: any): Promise<UserSession> {
     const userSession: UserSession = { isAuthenticated: false };
     if (req.headers.authorization) {
       try {
-        userSession.userId = await Auth.checkToken(
-          req.headers.authorization.split(" ")[1]
-        );
+        const info = jwt.verify(req.headers.authorization.split(" ")[1], config.JWT_KEY);
+        userSession.userId = info.userId;
         userSession.isAuthenticated = true;
       } catch (err) {
         logger.error(err);

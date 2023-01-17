@@ -11,6 +11,7 @@ import { FileDBUtils } from "./data/FileDbUtils";
 import { Auth } from "./data/Auth";
 import { StandardTracerApi } from "./StandardTracerApi";
 import { SqlDbutils } from "./data/SqlDbUtils";
+import { SourceRoutes } from "./routes/SourcesRoutes";
 
 const logger = new Logger("app");
 
@@ -58,6 +59,10 @@ Promise.resolve().then(async () => {
   // fastify.register(new UserIdRoutes().getRoutes, {
   //   prefix: "/api/users/:userId",
   // });
+
+  fastify.register(new SourceRoutes().getRoutes, {
+    prefix: "/api/sources",
+  });
 
   /* eslint-disable-next-line */
   fastify.register(require("@fastify/static"), {
