@@ -15,17 +15,11 @@ export class FileDBUtils {
   }
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  public static async load(
-    context: Span,
-    collection: string,
-    defaultData: any
-  ): Promise<any> {
+  public static async load(context: Span, collection: string, defaultData: any): Promise<any> {
     const span = StandardTracer.startSpan("FileDBUtils_load", context);
     let data = defaultData;
     for (let i = 0; i < Math.max(config.FILE_REDUNDANCY, 1); i++) {
-      const filename = `${config.DATA_DIR}/${collection}${
-        i > 0 ? `.${i}` : ""
-      }.json`;
+      const filename = `${config.DATA_DIR}/${collection}${i > 0 ? `.${i}` : ""}.json`;
       if (fs.existsSync(filename)) {
         try {
           data = await fs.readJSON(filename);
@@ -41,19 +35,12 @@ export class FileDBUtils {
   }
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  public static async save(
-    context: Span,
-    collection: string,
-    content: any
-  ): Promise<void> {
+  public static async save(context: Span, collection: string, content: any): Promise<void> {
     for (let i = 0; i < Math.max(config.FILE_REDUNDANCY, 1); i++) {
       if (i > 0) {
         await Timeout.wait(200);
       }
-      await fs.writeJSON(
-        `${config.DATA_DIR}/${collection}${i > 0 ? `.${i}` : ""}.json`,
-        content
-      );
+      await fs.writeJSON(`${config.DATA_DIR}/${collection}${i > 0 ? `.${i}` : ""}.json`, content);
     }
   }
 }
