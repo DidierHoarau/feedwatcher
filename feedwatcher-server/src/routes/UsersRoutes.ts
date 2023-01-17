@@ -18,28 +18,28 @@ export class UserRoutes {
       }
     });
 
-    // interface PostSession extends RequestGenericInterface {
-    //   Body: {
-    //     name: string;
-    //     password: string;
-    //   };
-    // }
-    // fastify.post<PostSession>("/session", async (req, res) => {
-    //   if (!req.body.name) {
-    //     return res.status(400).send({ error: "Missing: Name" });
-    //   }
-    //   if (!req.body.password) {
-    //     return res.status(400).send({ error: "Missing: Password" });
-    //   }
-    //   const user = await UsersData.getByName(StandardTracer.getSpanFromRequest(req), req.body.name);
-    //   if (!user) {
-    //     return res.status(403).send({ error: "Authentication Failed" });
-    //   } else if (await UserPassword.checkPassword(StandardTracer.getSpanFromRequest(req), user, req.body.password)) {
-    //     res.status(201).send({ success: true, token: await Auth.generateJWT(user) });
-    //   } else {
-    //     return res.status(403).send({ error: "Authentication Failed" });
-    //   }
-    // });
+    interface PostSession extends RequestGenericInterface {
+      Body: {
+        name: string;
+        password: string;
+      };
+    }
+    fastify.post<PostSession>("/session", async (req, res) => {
+      if (!req.body.name) {
+        return res.status(400).send({ error: "Missing: Name" });
+      }
+      if (!req.body.password) {
+        return res.status(400).send({ error: "Missing: Password" });
+      }
+      const user = await UsersData.getByName(StandardTracer.getSpanFromRequest(req), req.body.name);
+      if (!user) {
+        return res.status(403).send({ error: "Authentication Failed" });
+      } else if (await UserPassword.checkPassword(StandardTracer.getSpanFromRequest(req), user, req.body.password)) {
+        res.status(201).send({ success: true, token: await Auth.generateJWT(user) });
+      } else {
+        return res.status(403).send({ error: "Authentication Failed" });
+      }
+    });
 
     // fastify.get("/", async (req, res) => {
     //   const span = StandardTracer.startSpan(StandardTracer.getSpanFromRequest(req)

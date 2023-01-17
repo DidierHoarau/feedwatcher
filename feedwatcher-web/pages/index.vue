@@ -1,5 +1,5 @@
 <template>
-<div>
-    <h1>Welcome to the homepage</h1>
-</div>
+  <div>
+    <p>FeedReader: Follow your favorite online resources.</p>
+  </div>
 </template>

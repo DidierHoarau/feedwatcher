@@ -13,43 +13,44 @@ export class UsersData {
   //     })
   //   );
   // }
-  // public static async getByName(context: Span, name: string): Promise<User> {
-  //   return User.fromJson(
-  //     _.find(this.users, {
-  //       name,
-  //     })
-  //   );
-  // }
+
+  public static async getByName(context: Span, name: string): Promise<User> {
+    const span = StandardTracer.startSpan("UsersData_getByName", context);
+    const usersRaw = await SqlDbutils.querySQL(span, `SELECT * FROM users WHERE username='${name}'`);
+    let user: User = null;
+    if (usersRaw.length > 0) {
+      user = UsersData.fromRaw(usersRaw[0]);
+    }
+    span.end();
+    return user;
+  }
 
   public static async list(context: Span): Promise<User[]> {
     const span = StandardTracer.startSpan("UsersData_list", context);
-    const users = await SqlDbutils.querySQL(span, "SELECT * FROM users");
+    const usersRaw = await SqlDbutils.querySQL(span, "SELECT * FROM users");
+    const users = [];
+    for (const userRaw of usersRaw) {
+      users.push(UsersData.fromRaw(userRaw));
+    }
     span.end();
-    return _.cloneDeep(users);
+    return users;
   }
 
-  // public async add(context: Span, user: User): Promise<void> {
-  //   this.users.push(user);
-  //   await this.save(context);
-  // }
-  // public async update(context: Span, id: string, userUpdate: User): Promise<void> {
-  //   const user = _.find(this.users, {
-  //     id,
-  //   }) as User;
-  //   user.name = userUpdate.name;
-  //   user.passwordEncrypted = userUpdate.passwordEncrypted;
-  //   await this.save(context);
-  // }
-  // public async save(context: Span): Promise<void> {
-  //   await FileDBUtils.save(context, "users", this.users);
-  // }
-  // public async delete(context: Span, id: string): Promise<void> {
-  //   const position = _.findIndex(this.users, {
-  //     id,
-  //   });
-  //   if (position >= 0) {
-  //     this.users.splice(position, 1);
-  //   }
-  //   await this.save(context);
-  // }
+  public static async add(context: Span, user: User): Promise<void> {
+    const span = StandardTracer.startSpan("UsersData_add", context);
+    await SqlDbutils.querySQL(
+      span,
+      `INSERT INTO users (id,username,password_hash) VALUES ('${user.id}','${user.name}','${user.passwordEncrypted}')`
+    );
+    span.end();
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private static fromRaw(userRaw: any): User {
+    const user = new User();
+    user.id = userRaw.id;
+    user.name = userRaw.username;
+    user.passwordEncrypted = userRaw.password_hash;
+    return user;
+  }
 }
