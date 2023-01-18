@@ -7,39 +7,34 @@ import { SqlDbutils } from "./SqlDbUtils";
 
 export class SourcesData {
   //
-  public static async list(context: Span): Promise<User[]> {
+  public static async list(context: Span, userId: string): Promise<User[]> {
     const span = StandardTracer.startSpan("SourcesData_list", context);
-    const usersRaw = await SqlDbutils.querySQL(span, "SELECT * FROM users");
-    const users = [];
-    for (const userRaw of usersRaw) {
-      users.push(SourcesData.fromRaw(userRaw));
+    const sourcesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM sources WHERE user_id = '${userId}'`);
+    const sources = [];
+    for (const sourceRaw of sourcesRaw) {
+      sources.push(SourcesData.fromRaw(sourceRaw));
     }
     span.end();
-    return users;
+    return sources;
   }
 
   public static async add(context: Span, source: Source): Promise<void> {
     const span = StandardTracer.startSpan("SourcesData_add", context);
-    // await SqlDbutils.querySQL(
-    //   span,
-    //   `INSERT INTO users (id,name,info) VALUES ('${source.id}','${user.name}','${user.passwordEncrypted}')`
-    // );
-
-    // id VARCHAR(50) NOT NULL,
-    // user_id VARCHAR(50) NOT NULL,
-    // name VARCHAR(100) NOT NULL,
-    // created_date TEXT NOT NULL,
-    // status VARCHAR(20) NOT NULL,
-    // info TEXT NOT NULL
+    await SqlDbutils.querySQL(
+      span,
+      "INSERT INTO sources (id,user_id,name,info)" +
+        `VALUES ('${source.id}','${source.userId}','${source.name}','${JSON.stringify(source.info)}')`
+    );
     span.end();
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private static fromRaw(userRaw: any): User {
-    const user = new User();
-    user.id = userRaw.id;
-    user.name = userRaw.username;
-    user.passwordEncrypted = userRaw.password_hash;
-    return user;
+  private static fromRaw(sourceRaw: any): Source {
+    const source = new Source();
+    source.id = sourceRaw.id;
+    source.userId = sourceRaw.user_id;
+    source.name = sourceRaw.name;
+    source.info = JSON.parse(sourceRaw.info);
+    return source;
   }
 }

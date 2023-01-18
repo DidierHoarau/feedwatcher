@@ -38,7 +38,6 @@ export default {
         await axios
           .post(`${(await Config.get()).SERVER_URL}/sources`, this.source, await AuthService.getAuthHeader())
           .then((res) => {
-            console.log(res.data);
             EventBus.emit(EventTypes.ALERT_MESSAGE, {
               type: "info",
               text: "Source added",

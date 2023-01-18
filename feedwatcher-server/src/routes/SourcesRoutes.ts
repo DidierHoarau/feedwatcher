@@ -9,6 +9,15 @@ export class SourceRoutes {
 
   public async getRoutes(fastify: FastifyInstance): Promise<void> {
     //
+    fastify.get("/", async (req, res) => {
+      const userSession = await Auth.getUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      const sources = await SourcesData.list(StandardTracer.getSpanFromRequest(req), userSession.userId);
+      return res.status(201).send({ sources });
+    });
+
     interface PostSource extends RequestGenericInterface {
       Body: {
         url: string;
