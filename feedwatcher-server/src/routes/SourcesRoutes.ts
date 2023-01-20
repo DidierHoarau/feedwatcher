@@ -14,7 +14,7 @@ export class SourceRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const sources = await SourcesData.list(StandardTracer.getSpanFromRequest(req), userSession.userId);
+      const sources = await SourcesData.listForUser(StandardTracer.getSpanFromRequest(req), userSession.userId);
       return res.status(201).send({ sources });
     });
 

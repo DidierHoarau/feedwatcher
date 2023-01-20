@@ -1,17 +1,33 @@
 import * as jwt from "jsonwebtoken";
 import * as path from "path";
+import { v4 as uuidv4 } from "uuid";
 import { User } from "../model/User";
 import { UserSession } from "../model/UserSession";
 import { Config } from "../Config";
 import { Logger } from "../utils-std-ts/Logger";
+import { SqlDbutils } from "./SqlDbUtils";
+import { StandardTracer } from "../utils-std-ts/StandardTracer";
+import { Span } from "@opentelemetry/sdk-trace-base";
 
 const logger = new Logger(path.basename(__filename));
 let config: Config;
 
 export class Auth {
   //
-  public static init(configIn: Config) {
+  public static async init(context: Span, configIn: Config) {
     config = configIn;
+    const span = StandardTracer.startSpan("Auth_init", context);
+    const authKeyRaw = await SqlDbutils.querySQL(span, 'SELECT * FROM metadata WHERE type="auth_token"');
+    if (authKeyRaw.length == 0) {
+      configIn.JWT_KEY = uuidv4();
+      await SqlDbutils.querySQL(
+        span,
+        `INSERT INTO metadata (type, value) VALUES ('auth_token', '${configIn.JWT_KEY}');`
+      );
+    } else {
+      configIn.JWT_KEY = authKeyRaw[0].value;
+    }
+    span.end();
   }
 
   public static async generateJWT(user: User): Promise<string> {

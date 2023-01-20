@@ -2,16 +2,14 @@ import Fastify from "fastify";
 import * as path from "path";
 import { watchFile } from "fs-extra";
 import { Config } from "./Config";
-import { UsersData } from "./data/UsersData";
 import { Logger } from "./utils-std-ts/Logger";
 import { StandardTracer } from "./utils-std-ts/StandardTracer";
 import { UserRoutes } from "./routes/UsersRoutes";
-import { UserIdRoutes } from "./routes/UserIdRoutes";
-import { FileDBUtils } from "./data/FileDbUtils";
 import { Auth } from "./data/Auth";
 import { StandardTracerApi } from "./StandardTracerApi";
 import { SqlDbutils } from "./data/SqlDbUtils";
 import { SourceRoutes } from "./routes/SourcesRoutes";
+import { Scheduler } from "./processors/scheduler";
 
 const logger = new Logger("app");
 
@@ -30,9 +28,9 @@ Promise.resolve().then(async () => {
 
   const span = StandardTracer.startSpan("init");
 
-  SqlDbutils.init(span, config);
-  FileDBUtils.init(config);
-  Auth.init(config);
+  await SqlDbutils.init(span, config);
+  await Auth.init(span, config);
+  await Scheduler.start();
 
   span.end();
 

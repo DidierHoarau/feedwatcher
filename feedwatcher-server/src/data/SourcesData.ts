@@ -1,15 +1,25 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import * as _ from "lodash";
 import { Source } from "../model/Source";
-import { User } from "../model/User";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "./SqlDbUtils";
 
 export class SourcesData {
   //
-  public static async list(context: Span, userId: string): Promise<User[]> {
+  public static async listForUser(context: Span, userId: string): Promise<Source[]> {
     const span = StandardTracer.startSpan("SourcesData_list", context);
     const sourcesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM sources WHERE user_id = '${userId}'`);
+    const sources = [];
+    for (const sourceRaw of sourcesRaw) {
+      sources.push(SourcesData.fromRaw(sourceRaw));
+    }
+    span.end();
+    return sources;
+  }
+
+  public static async listAll(context: Span): Promise<Source[]> {
+    const span = StandardTracer.startSpan("SourcesData_list", context);
+    const sourcesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM sources`);
     const sources = [];
     for (const sourceRaw of sourcesRaw) {
       sources.push(SourcesData.fromRaw(sourceRaw));
