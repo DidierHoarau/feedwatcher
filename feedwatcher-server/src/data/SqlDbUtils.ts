@@ -16,7 +16,7 @@ export class SqlDbutils {
     const span = StandardTracer.startSpan("SqlDbutils_init", context);
     await fs.ensureDir(config.DATA_DIR);
     database = new Database(`${config.DATA_DIR}/database.db`);
-    await SqlDbutils.execSQL(span, (await fs.readFile(`${SQL_DIR}/init-0000.sql`)).toString());
+    await SqlDbutils.execSQLFile(span, `${SQL_DIR}/init-0000.sql`);
     const initFiles = (await await fs.readdir(`${SQL_DIR}`)).sort();
     let dbVersionApplied = 0;
     const dbVersionQuery = await SqlDbutils.querySQL(
@@ -34,7 +34,7 @@ export class SqlDbutils {
         const dbVersionInitFile = Number(match[1]);
         if (dbVersionInitFile > dbVersionApplied) {
           logger.info(`Loading init file: ${initFile}`);
-          SqlDbutils.execSQL(span, (await fs.readFile(`${SQL_DIR}/${initFile}`)).toString());
+          await SqlDbutils.execSQLFile(span, `${SQL_DIR}/${initFile}`);
           await SqlDbutils.querySQL(span, 'INSERT INTO metadata (type, value, dateCreated) VALUES ("db_version",?,?)', [
             dbVersionInitFile,
             new Date().toISOString(),
@@ -45,14 +45,37 @@ export class SqlDbutils {
     span.end();
   }
 
-  public static async execSQL(context: Span, sql: string, params = []): Promise<void> {
+  public static execSQL(context: Span, sql: string, params = []): Promise<void> {
     const span = StandardTracer.startSpan("SqlDbutils_execSQL", context);
-    await database.run(sql, params);
-    span.end();
+    return new Promise((resolve, reject) => {
+      database.run(sql, params, (error, res) => {
+        span.end();
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  public static async execSQLFile(context: Span, filename: string): Promise<void> {
+    const span = StandardTracer.startSpan("SqlDbutils_execSQLFile", context);
+    const sql = (await fs.readFile(filename)).toString();
+    return new Promise((resolve, reject) => {
+      database.exec(sql, (error, res) => {
+        span.end();
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+    });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public static async querySQL(context: Span, sql: string, params = []): Promise<any[]> {
+  public static querySQL(context: Span, sql: string, params = []): Promise<any[]> {
     const span = StandardTracer.startSpan("SqlDbutils_querySQL", context);
     return new Promise((resolve, reject) => {
       database.all(sql, params, (error, rows) => {
