@@ -1,41 +1,47 @@
 import * as jwt from "jsonwebtoken";
 import * as path from "path";
+import { v4 as uuidv4 } from "uuid";
 import { User } from "../model/User";
 import { UserSession } from "../model/UserSession";
 import { Config } from "../Config";
 import { Logger } from "../utils-std-ts/Logger";
+import { SqlDbutils } from "./SqlDbUtils";
+import { StandardTracer } from "../utils-std-ts/StandardTracer";
+import { Span } from "@opentelemetry/sdk-trace-base";
 
 const logger = new Logger(path.basename(__filename));
 let config: Config;
 
 export class Auth {
   //
-  public static init(configIn: Config) {
+  public static async init(context: Span, configIn: Config) {
     config = configIn;
+    const span = StandardTracer.startSpan("Auth_init", context);
+    const authKeyRaw = await SqlDbutils.querySQL(span, 'SELECT * FROM metadata WHERE type="auth_token"');
+    if (authKeyRaw.length == 0) {
+      configIn.JWT_KEY = uuidv4();
+      await SqlDbutils.querySQL(span, 'INSERT INTO metadata (type, value, dateCreated) VALUES ("auth_token", ?, ?)', [
+        configIn.JWT_KEY,
+        new Date().toISOString(),
+      ]);
+    } else {
+      configIn.JWT_KEY = authKeyRaw[0].value;
+    }
+    span.end();
   }
 
   public static async generateJWT(user: User): Promise<string> {
     return jwt.sign(
       {
         exp: Math.floor(Date.now() / 1000) + config.JWT_VALIDITY_DURATION,
-        user_id: user.id,
-        user_name: user.name,
+        userId: user.id,
+        userName: user.name,
       },
       config.JWT_KEY
     );
   }
 
-  public static async checkToken(token: string): Promise<any> {
-    try {
-      const info = jwt.verify(token, config.JWT_KEY);
-      return { authenticated: true, info };
-    } catch (err) {
-      return {
-        authenticated: false,
-      };
-    }
-  }
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static async mustBeAuthenticated(req: any, res: any): Promise<void> {
     let authenticated = false;
     if (req.headers.authorization) {
@@ -52,13 +58,13 @@ export class Auth {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static async getUserSession(req: any): Promise<UserSession> {
     const userSession: UserSession = { isAuthenticated: false };
     if (req.headers.authorization) {
       try {
-        userSession.userId = await Auth.checkToken(
-          req.headers.authorization.split(" ")[1]
-        );
+        const info = jwt.verify(req.headers.authorization.split(" ")[1], config.JWT_KEY);
+        userSession.userId = info.userId;
         userSession.isAuthenticated = true;
       } catch (err) {
         logger.error(err);

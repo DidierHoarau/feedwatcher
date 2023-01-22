@@ -1,3 +1,5 @@
 {
-    "CORS_POLICY_ORIGIN": "*"
+  "CORS_POLICY_ORIGIN": "*",
+  "JWT_KEY": "dev",
+  "SOURCE_FETCH_FREQUENCY": 1800000
 }

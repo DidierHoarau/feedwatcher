@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div id="page-layout">
     <header>
       <Navigation />
     </header>

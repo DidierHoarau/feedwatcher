@@ -6,17 +6,9 @@ import { SqlDbutils } from "./SqlDbUtils";
 
 export class UsersData {
   //
-  // public static async get(context: Span, id: string): Promise<User> {
-  //   return User.fromJson(
-  //     _.find(this.users, {
-  //       id,
-  //     })
-  //   );
-  // }
-
   public static async getByName(context: Span, name: string): Promise<User> {
     const span = StandardTracer.startSpan("UsersData_getByName", context);
-    const usersRaw = await SqlDbutils.querySQL(span, `SELECT * FROM users WHERE username='${name}'`);
+    const usersRaw = await SqlDbutils.querySQL(span, `SELECT * FROM users WHERE name='${name}'`);
     let user: User = null;
     if (usersRaw.length > 0) {
       user = UsersData.fromRaw(usersRaw[0]);
@@ -40,7 +32,7 @@ export class UsersData {
     const span = StandardTracer.startSpan("UsersData_add", context);
     await SqlDbutils.querySQL(
       span,
-      `INSERT INTO users (id,username,password_hash) VALUES ('${user.id}','${user.name}','${user.passwordEncrypted}')`
+      `INSERT INTO users (id,name,passwordEncrypted) VALUES ('${user.id}','${user.name}','${user.passwordEncrypted}')`
     );
     span.end();
   }
@@ -49,8 +41,8 @@ export class UsersData {
   private static fromRaw(userRaw: any): User {
     const user = new User();
     user.id = userRaw.id;
-    user.name = userRaw.username;
-    user.passwordEncrypted = userRaw.password_hash;
+    user.name = userRaw.name;
+    user.passwordEncrypted = userRaw.passwordEncrypted;
     return user;
   }
 }
