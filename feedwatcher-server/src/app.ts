@@ -4,12 +4,13 @@ import { watchFile } from "fs-extra";
 import { Config } from "./Config";
 import { Logger } from "./utils-std-ts/Logger";
 import { StandardTracer } from "./utils-std-ts/StandardTracer";
-import { UserRoutes } from "./routes/UsersRoutes";
+import { UsersRoutes } from "./routes/UsersRoutes";
 import { Auth } from "./data/Auth";
 import { StandardTracerApi } from "./StandardTracerApi";
 import { SqlDbutils } from "./data/SqlDbUtils";
-import { SourceRoutes } from "./routes/SourcesRoutes";
+import { SourcesRoutes } from "./routes/SourcesRoutes";
 import { Scheduler } from "./processors/scheduler";
+import { SourceIditemsRoutes } from "./routes/SourceIdItemsRoutes";
 
 const logger = new Logger("app");
 
@@ -51,15 +52,18 @@ Promise.resolve().then(async () => {
 
   StandardTracerApi.registerHooks(fastify, config);
 
-  fastify.register(new UserRoutes().getRoutes, {
+  fastify.register(new UsersRoutes().getRoutes, {
     prefix: "/api/users",
   });
   // fastify.register(new UserIdRoutes().getRoutes, {
   //   prefix: "/api/users/:userId",
   // });
 
-  fastify.register(new SourceRoutes().getRoutes, {
+  fastify.register(new SourcesRoutes().getRoutes, {
     prefix: "/api/sources",
+  });
+  fastify.register(new SourceIditemsRoutes().getRoutes, {
+    prefix: "/api/sources/:sourceId/items",
   });
 
   /* eslint-disable-next-line */

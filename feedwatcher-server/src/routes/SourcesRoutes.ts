@@ -4,7 +4,7 @@ import { SourcesData } from "../data/SourcesData";
 import { Source } from "../model/Source";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 
-export class SourceRoutes {
+export class SourcesRoutes {
   //
 
   public async getRoutes(fastify: FastifyInstance): Promise<void> {

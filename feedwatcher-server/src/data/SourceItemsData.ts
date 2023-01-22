@@ -31,27 +31,30 @@ export class SourceItemsData {
   public static async getLastForSource(context: Span, sourceId: string): Promise<SourceItem> {
     const span = StandardTracer.startSpan("SourceItemsData_getLastForSource", context);
     let sourceItem: SourceItem = null;
-    const sourcesItemRaw = await SqlDbutils.querySQL(
+    const sourceItemRaw = await SqlDbutils.querySQL(
       span,
       "SELECT * FROM sources_items " + `WHERE sourceId = '${sourceId}'` + "ORDER BY datePublished DESC LIMIT 1"
     );
-    if (sourcesItemRaw.length > 0) {
-      sourceItem = SourceItemsData.fromRaw(sourcesItemRaw[0]);
+    if (sourceItemRaw.length > 0) {
+      sourceItem = SourceItemsData.fromRaw(sourceItemRaw[0]);
     }
     span.end();
     return sourceItem;
   }
 
   //
-  public static async listForSource(context: Span, sourceId: string): Promise<Source[]> {
-    // const span = StandardTracer.startSpan("SourceItemsData_list", context);
-    // const sourcesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM sources WHERE userId = '${userId}'`);
-    const sources = [];
-    // for (const sourceRaw of sourcesRaw) {
-    //   sources.push(SourceItemsData.fromRaw(sourceRaw));
-    // }
-    // span.end();
-    return sources;
+  public static async listForSource(context: Span, sourceId: string): Promise<SourceItem[]> {
+    const span = StandardTracer.startSpan("SourceItemsData_getLastForSource", context);
+    const sourceItems: SourceItem[] = [];
+    const sourceItemRaw = await SqlDbutils.querySQL(
+      span,
+      "SELECT * FROM sources_items " + `WHERE sourceId = '${sourceId}'` + "ORDER BY datePublished DESC"
+    );
+    for (const sourceItem of sourceItemRaw) {
+      sourceItems.push(SourceItemsData.fromRaw(sourceItem));
+    }
+    span.end();
+    return sourceItems;
   }
 
   private static fromRaw(sourceItemRaw: any): SourceItem {

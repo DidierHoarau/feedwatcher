@@ -6,6 +6,17 @@ import { SqlDbutils } from "./SqlDbUtils";
 
 export class SourcesData {
   //
+  public static async get(context: Span, sourceId: string): Promise<Source> {
+    const span = StandardTracer.startSpan("SourcesData_list", context);
+    const sourceRaw = await SqlDbutils.querySQL(span, "SELECT * FROM sources WHERE id = ?", [sourceId]);
+    let source: Source = null;
+    if (sourceRaw.length > 0) {
+      source = SourcesData.fromRaw(sourceRaw[0]);
+    }
+    span.end();
+    return source;
+  }
+
   public static async listForUser(context: Span, userId: string): Promise<Source[]> {
     const span = StandardTracer.startSpan("SourcesData_list", context);
     const sourcesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM sources WHERE userId = '${userId}'`);
