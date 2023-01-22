@@ -35,27 +35,27 @@ export class SqlDbutils {
         if (dbVersionInitFile > dbVersionApplied) {
           logger.info(`Loading init file: ${initFile}`);
           SqlDbutils.execSQL(span, (await fs.readFile(`${SQL_DIR}/${initFile}`)).toString());
-          await SqlDbutils.querySQL(
-            span,
-            `INSERT INTO metadata (type, value) VALUES ('db_version', '${dbVersionInitFile}');`
-          );
+          await SqlDbutils.querySQL(span, 'INSERT INTO metadata (type, value, dateCreated) VALUES ("db_version",?,?)', [
+            dbVersionInitFile,
+            new Date().toISOString(),
+          ]);
         }
       }
     }
     span.end();
   }
 
-  public static async execSQL(context: Span, sql: string): Promise<void> {
+  public static async execSQL(context: Span, sql: string, params = []): Promise<void> {
     const span = StandardTracer.startSpan("SqlDbutils_execSQL", context);
-    await database.exec(sql);
+    await database.run(sql, params);
     span.end();
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public static async querySQL(context: Span, sql: string): Promise<any[]> {
+  public static async querySQL(context: Span, sql: string, params = []): Promise<any[]> {
     const span = StandardTracer.startSpan("SqlDbutils_querySQL", context);
     return new Promise((resolve, reject) => {
-      database.all(sql, function (error, rows) {
+      database.all(sql, params, (error, rows) => {
         span.end();
         if (error) {
           reject(error);

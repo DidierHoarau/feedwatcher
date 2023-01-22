@@ -30,7 +30,7 @@ Promise.resolve().then(async () => {
 
   await SqlDbutils.init(span, config);
   await Auth.init(span, config);
-  await Scheduler.start();
+  await Scheduler.init(span, config);
 
   span.end();
 

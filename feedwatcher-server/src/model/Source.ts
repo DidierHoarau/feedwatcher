@@ -4,9 +4,9 @@ export class Source {
   //
   public id: string;
   public name: string;
+  public userId: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public info: any;
-  public userId: string;
 
   constructor() {
     this.id = uuidv4();

@@ -5,13 +5,13 @@ export class SourceItem {
   //
   public id: string;
   public sourceId: string;
-  public idExternal: string;
   public title: string;
-  public date: Date;
+  public datePublished: Date;
   public contemt: string;
-  public userId: string;
   public url: string;
   public status: SourceItemStatus;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public info: any;
 
   constructor() {
     this.id = uuidv4();

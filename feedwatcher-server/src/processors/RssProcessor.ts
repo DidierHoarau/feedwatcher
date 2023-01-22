@@ -18,21 +18,21 @@ export class RssProcessor {
     return valid;
   }
 
-  public static async fetchLatest(context: Span, source: Source): Promise<SourceItem[]> {
+  public static async fetchLatest(
+    context: Span,
+    source: Source,
+    lastSourceItemSaved: SourceItem
+  ): Promise<SourceItem[]> {
     const span = StandardTracer.startSpan("RssProcessor_fetchLatest", context);
     const parser = new Parser();
     const feed = await parser.parseURL(source.info.url);
-    let valid = false;
-    if (feed.title) {
-      valid = true;
-    }
     const sourceItems: SourceItem[] = [];
     feed.items.forEach((item) => {
       const sourceItem = new SourceItem();
       sourceItem.url = item.link;
       sourceItem.title = item.title;
       sourceItem.contemt = item.content;
-      sourceItem.date = new Date(item.pubDate);
+      sourceItem.datePublished = new Date(item.pubDate);
       sourceItems.push(sourceItem);
     });
     span.end();

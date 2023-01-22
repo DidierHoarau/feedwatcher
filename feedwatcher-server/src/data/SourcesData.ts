@@ -8,7 +8,7 @@ export class SourcesData {
   //
   public static async listForUser(context: Span, userId: string): Promise<Source[]> {
     const span = StandardTracer.startSpan("SourcesData_list", context);
-    const sourcesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM sources WHERE user_id = '${userId}'`);
+    const sourcesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM sources WHERE userId = '${userId}'`);
     const sources = [];
     for (const sourceRaw of sourcesRaw) {
       sources.push(SourcesData.fromRaw(sourceRaw));
@@ -32,7 +32,7 @@ export class SourcesData {
     const span = StandardTracer.startSpan("SourcesData_add", context);
     await SqlDbutils.querySQL(
       span,
-      "INSERT INTO sources (id,user_id,name,info)" +
+      "INSERT INTO sources (id,userId,name,info)" +
         `VALUES ('${source.id}','${source.userId}','${source.name}','${JSON.stringify(source.info)}')`
     );
     span.end();
@@ -42,7 +42,7 @@ export class SourcesData {
   private static fromRaw(sourceRaw: any): Source {
     const source = new Source();
     source.id = sourceRaw.id;
-    source.userId = sourceRaw.user_id;
+    source.userId = sourceRaw.userId;
     source.name = sourceRaw.name;
     source.info = JSON.parse(sourceRaw.info);
     return source;

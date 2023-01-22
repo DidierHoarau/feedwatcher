@@ -20,10 +20,10 @@ export class Auth {
     const authKeyRaw = await SqlDbutils.querySQL(span, 'SELECT * FROM metadata WHERE type="auth_token"');
     if (authKeyRaw.length == 0) {
       configIn.JWT_KEY = uuidv4();
-      await SqlDbutils.querySQL(
-        span,
-        `INSERT INTO metadata (type, value) VALUES ('auth_token', '${configIn.JWT_KEY}');`
-      );
+      await SqlDbutils.querySQL(span, 'INSERT INTO metadata (type, value, dateCreated) VALUES ("auth_token", ?, ?)', [
+        configIn.JWT_KEY,
+        new Date().toISOString(),
+      ]);
     } else {
       configIn.JWT_KEY = authKeyRaw[0].value;
     }
