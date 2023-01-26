@@ -1,7 +1,9 @@
 <template>
   <div id="sources-layout">
-    <h1>Sources</h1>
     <div id="sources-header">
+      <h1>Sources</h1>
+    </div>
+    <div id="sources-actions">
       <NuxtLink to="/sources/edit">Add Source</NuxtLink>
     </div>
     <div id="sources-list">
@@ -11,7 +13,7 @@
     </div>
     <div id="sources-items-list">
       <div v-for="sourceItem in sourceItems" v-bind:key="sourceItem.id">
-        {{ sourceItem }}
+        <SourceItem :item="sourceItem" />
       </div>
     </div>
   </div>
@@ -62,11 +64,28 @@ export default {
 <style scoped>
 #sources-layout {
   display: grid;
-  grid-template-row: 3em 1fr;
-  grid-template-columns: 10em 1fr;
+  grid-template-rows: 4em 1fr;
+  grid-template-columns: 10em 1fr 1fr;
+  height: calc(100vh - 5em);
+}
+#sources-layout > * {
+  min-height: 0px;
+}
+#sources-header {
+  grid-row: 1;
+  grid-column-start: 1;
+  grid-column-end: span 2;
+}
+#sources-list {
+  overflow: auto;
+  height: auto;
+  grid-row: 2;
+  grid-column: 1;
 }
 #sources-items-list {
-  overflow: scroll;
-  height: auto;
+  overflow: auto;
+  grid-row: 2;
+  grid-column-start: 2;
+  grid-column-end: span 2;
 }
 </style>

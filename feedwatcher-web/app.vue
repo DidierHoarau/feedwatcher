@@ -8,3 +8,18 @@
     </main>
   </div>
 </template>
+
+<style scoped>
+#page-layout {
+  width: auto;
+  height: 100vh;
+  display: grid;
+  overflow: hidden;
+  grid-template-rows: 4em 1fr;
+}
+
+header,
+main {
+  padding: 0.5em;
+}
+</style>
