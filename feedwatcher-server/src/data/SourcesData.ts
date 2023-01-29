@@ -41,11 +41,25 @@ export class SourcesData {
 
   public static async add(context: Span, source: Source): Promise<void> {
     const span = StandardTracer.startSpan("SourcesData_add", context);
-    await SqlDbutils.querySQL(
-      span,
-      "INSERT INTO sources (id,userId,name,info)" +
-        `VALUES ('${source.id}','${source.userId}','${source.name}','${JSON.stringify(source.info)}')`
-    );
+    await SqlDbutils.querySQL(span, "INSERT INTO sources (id,userId,name,info) VALUES (?,?,?,?)", [
+      source.id,
+      source.userId,
+      source.name,
+      JSON.stringify(source.info),
+    ]);
+    span.end();
+  }
+
+  public static async update(context: Span, source: Source): Promise<void> {
+    const span = StandardTracer.startSpan("SourcesData_add", context);
+    await SqlDbutils.execSQL(span, "UPDATE sources SET name = ? WHERE id = ?", [source.name, source.id]);
+    span.end();
+  }
+
+  public static async delete(context: Span, sourceId: string): Promise<void> {
+    const span = StandardTracer.startSpan("SourcesData_add", context);
+    await SqlDbutils.execSQL(span, "DELETE FROM sources WHERE id = ?", [sourceId]);
+    await SqlDbutils.execSQL(span, "DELETE FROM sources_items WHERE sourceId = ?", [sourceId]);
     span.end();
   }
 

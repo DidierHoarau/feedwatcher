@@ -11,6 +11,7 @@ import { SqlDbutils } from "./data/SqlDbUtils";
 import { SourcesRoutes } from "./routes/SourcesRoutes";
 import { Scheduler } from "./processors/scheduler";
 import { SourceIditemsRoutes } from "./routes/SourceIdItemsRoutes";
+import { SourcesIdRoutes } from "./routes/SourcesIdRoutes";
 
 const logger = new Logger("app");
 
@@ -55,12 +56,11 @@ Promise.resolve().then(async () => {
   fastify.register(new UsersRoutes().getRoutes, {
     prefix: "/api/users",
   });
-  // fastify.register(new UserIdRoutes().getRoutes, {
-  //   prefix: "/api/users/:userId",
-  // });
-
   fastify.register(new SourcesRoutes().getRoutes, {
     prefix: "/api/sources",
+  });
+  fastify.register(new SourcesIdRoutes().getRoutes, {
+    prefix: "/api/sources/:sourceId",
   });
   fastify.register(new SourceIditemsRoutes().getRoutes, {
     prefix: "/api/sources/:sourceId/items",

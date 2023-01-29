@@ -1,6 +1,6 @@
 <template>
   <div class="sourceitom-layout">
-    <div class="sourceitom-layout-date">{{ displayDate() }}</div>
+    <div class="sourceitom-layout-date">{{ $dayjs(item.datePublished).fromNow() }}</div>
     <div class="sourceitom-layout-title">{{ item.title }}</div>
     <div class="sourceitom-layout-link"><a :href="item.url">GO</a></div>
     <div class="sourceitom-layout-content">
@@ -10,19 +10,11 @@
 </template>
 
 <script>
-import * as relativeTime from "dayjs/plugin/relativeTime";
-import * as dayjs from "dayjs";
-
 export default {
   props: {
     item: {},
   },
-  methods: {
-    displayDate() {
-      dayjs.extend(relativeTime);
-      return dayjs(this.item.datePublished).fromNow();
-    },
-  },
+  methods: {},
 };
 </script>
 
