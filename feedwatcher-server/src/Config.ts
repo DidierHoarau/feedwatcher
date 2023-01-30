@@ -19,6 +19,8 @@ export class Config implements ConfigInterface {
   public SOURCE_FETCH_FREQUENCY = 30 * 60 * 1000;
   public OPENTELEMETRY_COLLECTOR_HTTP: string;
   public OPENTELEMETRY_COLLECTOR_AWS = false;
+  public PROCESSORS_SYSTEM = "processors-system";
+  public PROCESSORS_USER = "processors-user";
 
   public async reload(): Promise<void> {
     const content = await fse.readJson(this.CONFIG_FILE);

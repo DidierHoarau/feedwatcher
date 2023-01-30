@@ -25,6 +25,8 @@ COPY --from=builder /opt/src/feedwatcher-server/dist /opt/app/feedwatcher/dist
 COPY --from=builder /opt/src/feedwatcher-web/.output/public /opt/app/feedwatcher/web
 COPY feedwatcher-server/config.json /opt/app/feedwatcher/config.json
 COPY feedwatcher-server/sql /opt/app/feedwatcher/sql
+COPY feedwatcher-server/processors-system /opt/app/feedwatcher/processors-system
+COPY feedwatcher-server/processors-user /opt/app/feedwatcher/processors-user
 
 WORKDIR /opt/app/feedwatcher
 
