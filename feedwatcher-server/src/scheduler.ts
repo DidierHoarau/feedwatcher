@@ -63,7 +63,7 @@ export class Scheduler {
         }
       };
       for (const processorFile of await fs.readdir(config.PROCESSORS_USER)) {
-        await useProcessor(`${path.resolve(config.PROCESSORS_SYSTEM)}/${processorFile}`);
+        await useProcessor(`${path.resolve(config.PROCESSORS_USER)}/${processorFile}`);
       }
       for (const processorFile of await fs.readdir(config.PROCESSORS_SYSTEM)) {
         await useProcessor(`${path.resolve(config.PROCESSORS_SYSTEM)}/${processorFile}`);
