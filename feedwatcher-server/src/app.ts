@@ -9,7 +9,7 @@ import { Auth } from "./data/Auth";
 import { StandardTracerApi } from "./StandardTracerApi";
 import { SqlDbutils } from "./data/SqlDbUtils";
 import { SourcesRoutes } from "./routes/SourcesRoutes";
-import { Scheduler } from "./processors/scheduler";
+import { Scheduler } from "./scheduler";
 import { SourceIditemsRoutes } from "./routes/SourceIdItemsRoutes";
 import { SourcesIdRoutes } from "./routes/SourcesIdRoutes";
 

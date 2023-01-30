@@ -52,6 +52,7 @@ export default {
               type: "info",
               text: "User created",
             });
+            const router = useRouter();
             router.push({ path: "/" });
             this.isInitialized = true;
           })
@@ -74,7 +75,8 @@ export default {
               type: "info",
               text: "User Logged In",
             });
-            router.push({ path: "/" });
+            const router = useRouter();
+            router.push({ path: "/sources" });
           })
           .catch(handleError);
       } else {

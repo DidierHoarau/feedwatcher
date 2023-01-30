@@ -5,7 +5,6 @@
     <input v-model="source.name" type="text" />
     <button v-on:click="updateSource()">Update</button>
     <button v-on:click="deleteSource()">Delete</button>
-    <h1>{{ $route.params.sourceId }}</h1>
   </div>
 </template>
 
@@ -50,7 +49,8 @@ export default {
               type: "info",
               text: "Source added",
             });
-            router.push({ path: "/" });
+            const router = useRouter();
+            router.push({ path: "/sources" });
           })
           .catch(handleError);
       } else {
@@ -69,7 +69,8 @@ export default {
               type: "info",
               text: "Source deleted",
             });
-            router.push({ path: "/" });
+            const router = useRouter();
+            router.push({ path: "/sources" });
           })
           .catch(handleError);
       }
