@@ -34,7 +34,8 @@ export default {
               type: "info",
               text: "Source added",
             });
-            router.push({ path: "/" });
+            const router = useRouter();
+            router.push({ path: "/sources" });
           })
           .catch(handleError);
       } else {

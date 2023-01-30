@@ -8,6 +8,9 @@ import { StandardTracer } from "./utils-std-ts/StandardTracer";
 import { Timeout } from "./utils-std-ts/Timeout";
 import * as fs from "fs-extra";
 import * as path from "path";
+import { Source } from "./model/Source";
+import { SourceItem } from "./model/SourceItem";
+import { v4 as uuidv4 } from "uuid";
 
 const logger = new Logger("Scheduler");
 let config: Config;
@@ -38,37 +41,62 @@ export class Scheduler {
       const lastSourceItemSaved = await SourceItemsData.getLastForSource(span, source.id);
 
       let processed = false;
-      const useProcessor = async (processorPath: string) => {
-        if (processed || path.extname(processorPath) !== ".js") {
-          return;
-        }
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const processor = require(processorPath);
-        if (processor.test(source)) {
-          processed = true;
-          let nbNewItem = 0;
-          const newSourceItems = await processor.fetchLatest(source, lastSourceItemSaved);
-          for (const newSourceItem of newSourceItems) {
-            if (!lastSourceItemSaved || newSourceItem.datePublished > lastSourceItemSaved.datePublished) {
-              nbNewItem++;
-              newSourceItem.sourceId = source.id;
-              newSourceItem.status = SourceItemStatus.unread;
-              if (!newSourceItem.info) {
-                newSourceItem.info = {};
-              }
-              await SourceItemsData.add(span, newSourceItem);
-            }
-          }
-          logger.info(`Source ${source.id} has ${nbNewItem} new items`);
-        }
-      };
       for (const processorFile of await fs.readdir(config.PROCESSORS_USER)) {
-        await useProcessor(`${path.resolve(config.PROCESSORS_USER)}/${processorFile}`);
+        if (!processed) {
+          processed = await Scheduler.useProcessor(
+            span,
+            `${path.resolve(config.PROCESSORS_USER)}/${processorFile}`,
+            source,
+            lastSourceItemSaved
+          );
+        }
       }
       for (const processorFile of await fs.readdir(config.PROCESSORS_SYSTEM)) {
-        await useProcessor(`${path.resolve(config.PROCESSORS_SYSTEM)}/${processorFile}`);
+        if (!processed) {
+          processed = await Scheduler.useProcessor(
+            span,
+            `${path.resolve(config.PROCESSORS_SYSTEM)}/${processorFile}`,
+            source,
+            lastSourceItemSaved
+          );
+        }
       }
     }
     span.end();
+  }
+
+  private static async useProcessor(
+    context: Span,
+    processorPath: string,
+    source: Source,
+    lastSourceItemSaved: SourceItem
+  ): Promise<boolean> {
+    const span = StandardTracer.startSpan("Scheduler_useProcessor", context);
+    if (path.extname(processorPath) !== ".js") {
+      return false;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const processor = require(processorPath);
+    if (processor.test(source)) {
+      let nbNewItem = 0;
+      const newSourceItems = await processor.fetchLatest(source, lastSourceItemSaved);
+      for (const newSourceItem of newSourceItems) {
+        if (!lastSourceItemSaved || newSourceItem.datePublished > lastSourceItemSaved.datePublished) {
+          nbNewItem++;
+          newSourceItem.sourceId = source.id;
+          newSourceItem.status = SourceItemStatus.unread;
+          if (!newSourceItem.info) {
+            newSourceItem.info = {};
+          }
+          if (!newSourceItem.id) {
+            newSourceItem.id = uuidv4();
+          }
+          await SourceItemsData.add(span, newSourceItem);
+        }
+      }
+      logger.info(`Source ${source.id} has ${nbNewItem} new items`);
+      return true;
+    }
+    return false;
   }
 }
