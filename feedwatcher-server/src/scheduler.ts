@@ -72,7 +72,7 @@ export class Scheduler {
     lastSourceItemSaved: SourceItem
   ): Promise<boolean> {
     const span = StandardTracer.startSpan("Scheduler_useProcessor", context);
-    if (path.extname(processorPath) !== ".js") {
+    if (path.extname(processorPath) !== ".mjs") {
       return false;
     }
     // eslint-disable-next-line @typescript-eslint/no-var-requires
