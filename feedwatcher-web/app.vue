@@ -9,7 +9,7 @@
   </div>
 </template>
 
-<style scoped>
+<style>
 #page-layout {
   width: auto;
   height: 100vh;
@@ -21,5 +21,12 @@
 header,
 main {
   padding: 0.5em;
+}
+
+.actions i {
+  font-size: 1.5em;
+  cursor: pointer;
+  margin-left: 0.5em;
+  margin-right: 0.5em;
 }
 </style>

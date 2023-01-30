@@ -31,7 +31,7 @@ export class RssProcessor {
       const sourceItem = new SourceItem();
       sourceItem.url = item.link;
       sourceItem.title = item.title;
-      sourceItem.contemt = item.content;
+      sourceItem.content = item.content;
       sourceItem.datePublished = new Date(item.pubDate);
       sourceItems.push(sourceItem);
     });

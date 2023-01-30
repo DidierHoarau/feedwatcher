@@ -1,6 +1,5 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import * as _ from "lodash";
-import { Source } from "../model/Source";
 import { SourceItem } from "../model/SourceItem";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "./SqlDbUtils";
@@ -18,7 +17,7 @@ export class SourceItemsData {
         sourceItem.id,
         sourceItem.sourceId,
         sourceItem.title,
-        sourceItem.contemt,
+        sourceItem.content,
         sourceItem.url,
         sourceItem.status,
         sourceItem.datePublished.toISOString(),
@@ -33,7 +32,8 @@ export class SourceItemsData {
     let sourceItem: SourceItem = null;
     const sourceItemRaw = await SqlDbutils.querySQL(
       span,
-      "SELECT * FROM sources_items " + `WHERE sourceId = '${sourceId}'` + "ORDER BY datePublished DESC LIMIT 1"
+      "SELECT * FROM sources_items WHERE sourceId = ? ORDER BY datePublished DESC LIMIT 1",
+      [sourceId]
     );
     if (sourceItemRaw.length > 0) {
       sourceItem = SourceItemsData.fromRaw(sourceItemRaw[0]);
@@ -48,7 +48,8 @@ export class SourceItemsData {
     const sourceItems: SourceItem[] = [];
     const sourceItemRaw = await SqlDbutils.querySQL(
       span,
-      "SELECT * FROM sources_items " + `WHERE sourceId = '${sourceId}'` + "ORDER BY datePublished DESC"
+      "SELECT * FROM sources_items WHERE sourceId = ? ORDER BY datePublished DESC",
+      [sourceId]
     );
     for (const sourceItem of sourceItemRaw) {
       sourceItems.push(SourceItemsData.fromRaw(sourceItem));
@@ -57,16 +58,17 @@ export class SourceItemsData {
     return sourceItems;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private static fromRaw(sourceItemRaw: any): SourceItem {
     const sourceItem = new SourceItem();
     sourceItem.id = sourceItemRaw.id;
     sourceItem.sourceId = sourceItemRaw.sourceId;
     sourceItem.title = sourceItemRaw.title;
-    sourceItem.contemt = sourceItemRaw.contemt;
+    sourceItem.content = sourceItemRaw.content;
     sourceItem.url = sourceItemRaw.url;
     sourceItem.status = sourceItemRaw.status;
     sourceItem.datePublished = new Date(sourceItemRaw.datePublished);
-    sourceItem.contemt = JSON.parse(sourceItemRaw.info);
+    sourceItem.info = JSON.parse(sourceItemRaw.info);
     return sourceItem;
   }
 }

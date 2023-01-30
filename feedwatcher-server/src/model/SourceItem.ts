@@ -7,7 +7,7 @@ export class SourceItem {
   public sourceId: string;
   public title: string;
   public datePublished: Date;
-  public contemt: string;
+  public content: string;
   public url: string;
   public status: SourceItemStatus;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
