@@ -1,4 +1,5 @@
-import * as Parser from "rss-parser";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const Parser = require("rss-parser");
 
 // eslint-disable-next-line no-undef
 module.exports = {

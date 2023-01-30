@@ -38,28 +38,33 @@ export class Scheduler {
     const span = StandardTracer.startSpan("Scheduler_fetchAll", context);
     const sources = await SourcesData.listAll(span);
     for (const source of sources) {
-      const lastSourceItemSaved = await SourceItemsData.getLastForSource(span, source.id);
+      await Scheduler.fetchSource(span, source);
+    }
+    span.end();
+  }
 
-      let processed = false;
-      for (const processorFile of await fs.readdir(config.PROCESSORS_USER)) {
-        if (!processed) {
-          processed = await Scheduler.useProcessor(
-            span,
-            `${path.resolve(config.PROCESSORS_USER)}/${processorFile}`,
-            source,
-            lastSourceItemSaved
-          );
-        }
+  public static async fetchSource(context: Span, source: Source) {
+    const span = StandardTracer.startSpan("Scheduler_fetchSource", context);
+    let processed = false;
+    const lastSourceItemSaved = await SourceItemsData.getLastForSource(span, source.id);
+    for (const processorFile of await fs.readdir(config.PROCESSORS_USER)) {
+      if (!processed) {
+        processed = await Scheduler.useProcessor(
+          span,
+          `${path.resolve(config.PROCESSORS_USER)}/${processorFile}`,
+          source,
+          lastSourceItemSaved
+        );
       }
-      for (const processorFile of await fs.readdir(config.PROCESSORS_SYSTEM)) {
-        if (!processed) {
-          processed = await Scheduler.useProcessor(
-            span,
-            `${path.resolve(config.PROCESSORS_SYSTEM)}/${processorFile}`,
-            source,
-            lastSourceItemSaved
-          );
-        }
+    }
+    for (const processorFile of await fs.readdir(config.PROCESSORS_SYSTEM)) {
+      if (!processed) {
+        processed = await Scheduler.useProcessor(
+          span,
+          `${path.resolve(config.PROCESSORS_SYSTEM)}/${processorFile}`,
+          source,
+          lastSourceItemSaved
+        );
       }
     }
     span.end();
@@ -72,11 +77,10 @@ export class Scheduler {
     lastSourceItemSaved: SourceItem
   ): Promise<boolean> {
     const span = StandardTracer.startSpan("Scheduler_useProcessor", context);
-    if (path.extname(processorPath) !== ".mjs") {
+    if (path.extname(processorPath) !== ".js") {
       return false;
     }
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const processor = require(processorPath);
+    const processor = await import(processorPath);
     if (processor.test(source)) {
       let nbNewItem = 0;
       const newSourceItems = await processor.fetchLatest(source, lastSourceItemSaved);

@@ -13,6 +13,7 @@
     </div>
     <div id="sources-items-actions" v-if="selectedSource" class="actions">
       <NuxtLink :to="'/sources/' + selectedSource"><i class="bi bi-pencil-square"></i></NuxtLink>
+      <i v-on:click="refreshSourceItems(selectedSource)" class="bi bi-arrow-clockwise"></i>
       <i class="bi bi-card-checklist"></i>
     </div>
     <div id="sources-items-list">
@@ -58,9 +59,15 @@ export default {
       await axios
         .get(`${(await Config.get()).SERVER_URL}/sources/${sourceId}/items`, await AuthService.getAuthHeader())
         .then((res) => {
-          console.log(res.data);
           this.sourceItems = res.data.sourceItems;
         })
+        .catch(handleError);
+    },
+    async refreshSourceItems(sourceId) {
+      this.selectedSource = sourceId;
+      await axios
+        .put(`${(await Config.get()).SERVER_URL}/sources/${sourceId}/fetch`, {}, await AuthService.getAuthHeader())
+        .then((res) => {})
         .catch(handleError);
     },
   },

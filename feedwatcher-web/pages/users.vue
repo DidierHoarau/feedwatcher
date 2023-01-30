@@ -52,9 +52,8 @@ export default {
               type: "info",
               text: "User created",
             });
-            const router = useRouter();
-            router.push({ path: "/" });
             this.isInitialized = true;
+            this.login();
           })
           .catch(handleError);
       } else {

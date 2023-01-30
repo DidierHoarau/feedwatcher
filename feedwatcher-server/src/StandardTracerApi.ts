@@ -7,9 +7,10 @@ import { Span } from "@opentelemetry/sdk-trace-base";
 import { defaultTextMapGetter, ROOT_CONTEXT } from "@opentelemetry/api";
 import { W3CTraceContextPropagator } from "@opentelemetry/core";
 import { api } from "@opentelemetry/sdk-node";
+import { Logger } from "./utils-std-ts/Logger";
 
 const propagator = new W3CTraceContextPropagator();
-
+const logger = new Logger("StandardTracerApi");
 export class StandardTracerApi {
   //
   public static async registerHooks(fastify: FastifyInstance, config: Config): Promise<void> {
@@ -47,6 +48,7 @@ export class StandardTracerApi {
       const span = (req as any).tracerSpanApi as Span;
       span.status.code = SpanStatusCode.ERROR;
       span.recordException(error);
+      logger.error(error);
     });
   }
 }

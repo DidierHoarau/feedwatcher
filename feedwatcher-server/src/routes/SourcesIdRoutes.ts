@@ -1,6 +1,7 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../data/Auth";
 import { SourcesData } from "../data/SourcesData";
+import { Scheduler } from "../scheduler";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 
 export class SourcesIdRoutes {
@@ -65,6 +66,24 @@ export class SourcesIdRoutes {
       }
       await SourcesData.delete(StandardTracer.getSpanFromRequest(req), req.params.sourceId);
       return res.status(203).send();
+    });
+
+    interface PutSourceIdFetchRequest extends RequestGenericInterface {
+      Params: {
+        sourceId: string;
+      };
+    }
+    fastify.put<PutSourceIdFetchRequest>("/fetch", async (req, res) => {
+      const userSession = await Auth.getUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      const source = await SourcesData.get(StandardTracer.getSpanFromRequest(req), req.params.sourceId);
+      if (userSession.userId !== source.userId) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      await Scheduler.fetchSource(StandardTracer.getSpanFromRequest(req), source);
+      return res.status(201).send();
     });
   }
 }
