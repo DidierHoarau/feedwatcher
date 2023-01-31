@@ -80,26 +80,30 @@ export class Scheduler {
     if (path.extname(processorPath) !== ".js") {
       return false;
     }
-    const processor = await import(processorPath);
-    if (processor.test(source)) {
-      let nbNewItem = 0;
-      const newSourceItems = await processor.fetchLatest(source, lastSourceItemSaved);
-      for (const newSourceItem of newSourceItems) {
-        if (!lastSourceItemSaved || newSourceItem.datePublished > lastSourceItemSaved.datePublished) {
-          nbNewItem++;
-          newSourceItem.sourceId = source.id;
-          newSourceItem.status = SourceItemStatus.unread;
-          if (!newSourceItem.info) {
-            newSourceItem.info = {};
+    try {
+      const processor = await import(processorPath);
+      if (processor.test(source)) {
+        let nbNewItem = 0;
+        const newSourceItems = await processor.fetchLatest(source, lastSourceItemSaved);
+        for (const newSourceItem of newSourceItems) {
+          if (!lastSourceItemSaved || newSourceItem.datePublished > lastSourceItemSaved.datePublished) {
+            nbNewItem++;
+            newSourceItem.sourceId = source.id;
+            newSourceItem.status = SourceItemStatus.unread;
+            if (!newSourceItem.info) {
+              newSourceItem.info = {};
+            }
+            if (!newSourceItem.id) {
+              newSourceItem.id = uuidv4();
+            }
+            await SourceItemsData.add(span, newSourceItem);
           }
-          if (!newSourceItem.id) {
-            newSourceItem.id = uuidv4();
-          }
-          await SourceItemsData.add(span, newSourceItem);
         }
+        logger.info(`Source ${source.id} has ${nbNewItem} new items`);
+        return true;
       }
-      logger.info(`Source ${source.id} has ${nbNewItem} new items`);
-      return true;
+    } catch (err) {
+      // logger.error(err);
     }
     return false;
   }
