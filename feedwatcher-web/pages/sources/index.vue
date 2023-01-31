@@ -80,6 +80,7 @@ export default {
   grid-template-rows: 4em 2em 1fr;
   grid-template-columns: 10em 1fr 1fr;
   height: calc(100vh - 5em);
+  column-gap: 1em;
 }
 #sources-layout > * {
   min-height: 0px;
@@ -95,6 +96,12 @@ export default {
   grid-row-start: 2;
   grid-row-end: span 2;
   grid-column: 1;
+}
+#sources-list div {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-bottom: 0.5em;
 }
 #sources-items-actions {
   grid-row: 2;

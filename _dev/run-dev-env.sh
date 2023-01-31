@@ -37,3 +37,4 @@ fi
 cd "${REPO_DIR}"
 pm2 start ecosystem.config.js --env development
 pm2 logs
+# pm2 logs feedwatcher-server
