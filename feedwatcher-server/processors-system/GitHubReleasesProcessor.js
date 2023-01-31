@@ -6,15 +6,11 @@ module.exports = {
   //
   test: async (source) => {
     const parser = new Parser();
-    try {
-      const feed = await parser.parseURL(source.info.url);
-      if (feed.title) {
-        return true;
-      }
-      return false;
-    } catch (err) {
-      return false;
+    const feed = await parser.parseURL(source.info.url);
+    if (feed.title) {
+      return true;
     }
+    return false;
   },
 
   fetchLatest: async (source, lastSourceItemSaved) => {
