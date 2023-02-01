@@ -38,7 +38,7 @@ module.exports = {
       sourceItem.url = item.link;
       sourceItem.title = item.title;
       sourceItem.content = item.content || "";
-      sourceItem.content += `<iframe src='http://www.youtube.com/embed/${
+      sourceItem.content += `<iframe src='https://www.youtube.com/embed/${
         item.id.split(":")[2]
       }/' frameborder='0' allowfullscreen ></iframe >`;
       sourceItem.datePublished = new Date(item.pubDate);
