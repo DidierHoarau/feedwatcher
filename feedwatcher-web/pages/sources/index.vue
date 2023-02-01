@@ -7,8 +7,16 @@
       <NuxtLink to="/sources/new"><i class="bi bi-plus-square"></i></NuxtLink>
     </div>
     <div id="sources-list">
-      <div v-for="source in sources" v-bind:key="source.id" v-on:click="loadSourceItems(source.id)">
-        <i v-if="source.info.icon" :class="'bi bi-' + source.info.icon"></i> {{ source.name }}
+      <div v-for="(sourceLabel, index) in sourceLabels" v-bind:key="sourceLabel.labelName">
+        <div v-if="isLabelDisplayed(index)">
+          <i class="bi bi-caret-down-fill"></i>
+          {{ sourceLabel.labelName }}
+        </div>
+        <div v-on:click="loadSourceItems(sourceLabel.sourceId)">
+          <span v-html="getSourceIndentation(index)"></span>
+          <i v-if="sourceLabel.sourceInfo.icon" :class="'bi bi-' + sourceLabel.sourceInfo.icon"></i>
+          {{ sourceLabel.sourceName }}
+        </div>
       </div>
     </div>
     <div id="sources-items-actions" v-if="selectedSource" class="actions">
@@ -26,6 +34,7 @@
 
 <script>
 import axios from "axios";
+import * as _ from "lodash";
 import Config from "../../services/Config.ts";
 import { AuthService } from "../../services/AuthService";
 import { handleError, EventBus, EventTypes } from "../../services/EventBus";
@@ -40,6 +49,7 @@ export default {
       sources: [],
       sourceItems: [],
       selectedSource: "",
+      sourceLabels: [],
     };
   },
   async created() {
@@ -48,9 +58,9 @@ export default {
   methods: {
     async loadSources() {
       await axios
-        .get(`${(await Config.get()).SERVER_URL}/sources`, await AuthService.getAuthHeader())
+        .get(`${(await Config.get()).SERVER_URL}/sources/labels`, await AuthService.getAuthHeader())
         .then((res) => {
-          this.sources = res.data.sources;
+          this.sourceLabels = _.sortBy(res.data.sourceLabels, ["labelName", "sourceName"]);
         })
         .catch(handleError);
     },
@@ -69,6 +79,28 @@ export default {
         .put(`${(await Config.get()).SERVER_URL}/sources/${sourceId}/fetch`, {}, await AuthService.getAuthHeader())
         .then((res) => {})
         .catch(handleError);
+    },
+    isLabelDisplayed(index) {
+      if (!this.sourceLabels[index].labelName) {
+        return false;
+      }
+      if (index === 0) {
+        return true;
+      }
+      if (this.sourceLabels[index].labelName === this.sourceLabels[index - 1].labelName) {
+        return false;
+      }
+      return true;
+    },
+    getSourceIndentation(index) {
+      if (!this.sourceLabels[index].labelName) {
+        return "";
+      }
+      let indentation = "";
+      for (const count in this.sourceLabels[index].labelName.split("/")) {
+        indentation += "&nbsp;&nbsp;&nbsp;&nbsp;";
+      }
+      return indentation;
     },
   },
 };

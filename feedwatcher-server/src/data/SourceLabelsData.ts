@@ -3,68 +3,53 @@ import * as _ from "lodash";
 import { Source } from "../model/Source";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "./SqlDbUtils";
+import { v4 as uuidv4 } from "uuid";
 
-export class SourceLabelssData {
+export class SourceLabelsData {
   //
-  public static async get(context: Span, sourceId: string): Promise<Source> {
-    const span = StandardTracer.startSpan("SourceLabelssData_list", context);
-    const sourceRaw = await SqlDbutils.querySQL(span, "SELECT * FROM sources WHERE id = ?", [sourceId]);
-    let source: Source = null;
-    if (sourceRaw.length > 0) {
-      source = SourceLabelssData.fromRaw(sourceRaw[0]);
-    }
-    span.end();
-    return source;
-  }
-
   public static async listForUser(context: Span, userId: string): Promise<Source[]> {
-    const span = StandardTracer.startSpan("SourceLabelssData_list", context);
-    const sourcesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM sources WHERE userId = '${userId}'`);
-    const sources = [];
-    for (const sourceRaw of sourcesRaw) {
-      sources.push(SourceLabelssData.fromRaw(sourceRaw));
+    const span = StandardTracer.startSpan("SourceLabelsData_listForUser", context);
+    const sourceLabelsRaw = await SqlDbutils.querySQL(
+      span,
+      "SELECT sources_labels.name as labelName, sources.name as sourceName, sources.id as sourceId, sources.info as sourceInfo " +
+        "FROM sources  LEFT JOIN sources_labels ON sources_labels.sourceId = sources.id " +
+        "WHERE sources.userId = ?",
+      [userId]
+    );
+    const sourcesLabels = [];
+    for (const sourceLabelRaw of sourceLabelsRaw) {
+      sourceLabelRaw.sourceInfo = JSON.parse(sourceLabelRaw.sourceInfo) || {};
+      sourcesLabels.push(sourceLabelRaw);
     }
     span.end();
-    return sources;
+    return sourcesLabels;
   }
 
-  public static async listAll(context: Span): Promise<Source[]> {
-    const span = StandardTracer.startSpan("SourceLabelssData_list", context);
-    const sourcesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM sources`);
-    const sources = [];
-    for (const sourceRaw of sourcesRaw) {
-      sources.push(SourceLabelssData.fromRaw(sourceRaw));
+  public static async setSourceLabels(context: Span, sourceId: string, labels: string[]): Promise<void> {
+    const span = StandardTracer.startSpan("SourceLabelsData_setSourceLabels", context);
+    await SqlDbutils.execSQL(span, "DELETE FROM sources_labels WHERE sourceId = ?", [sourceId]);
+    for (const label of labels) {
+      await SqlDbutils.querySQL(span, "INSERT INTO sources_labels (id,sourceId,name,info) VALUES (?,?,?,?)", [
+        uuidv4(),
+        sourceId,
+        label.trim(),
+        JSON.stringify({}),
+      ]);
     }
     span.end();
-    return sources;
   }
 
-  public static async add(context: Span, source: Source): Promise<void> {
-    const span = StandardTracer.startSpan("SourceLabelssData_add", context);
-    await SqlDbutils.querySQL(span, "INSERT INTO sources (id,userId,name,info) VALUES (?,?,?,?)", [
-      source.id,
-      source.userId,
-      source.name,
-      JSON.stringify(source.info),
-    ]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public static async getSourceLabels(context: Span, sourceId: string): Promise<any[]> {
+    const span = StandardTracer.startSpan("SourceLabelsData_getSourceLabels", context);
+    const labelsRaw = await SqlDbutils.querySQL(span, "SELECT * FROM sources_labels WHERE sourceId = ?", [sourceId]);
+    const labels = [];
+    for (const labelRaw of labelsRaw) {
+      labelRaw.info = JSON.parse(labelRaw.info) || {};
+      labels.push(labelRaw);
+    }
     span.end();
-  }
-
-  public static async update(context: Span, source: Source): Promise<void> {
-    const span = StandardTracer.startSpan("SourceLabelssData_add", context);
-    await SqlDbutils.execSQL(span, "UPDATE sources SET name = ?, info = ? WHERE id = ?", [
-      source.name,
-      JSON.stringify(source.info),
-      source.id,
-    ]);
-    span.end();
-  }
-
-  public static async delete(context: Span, sourceId: string): Promise<void> {
-    const span = StandardTracer.startSpan("SourceLabelssData_add", context);
-    await SqlDbutils.execSQL(span, "DELETE FROM sources WHERE id = ?", [sourceId]);
-    await SqlDbutils.execSQL(span, "DELETE FROM sources_items WHERE sourceId = ?", [sourceId]);
-    span.end();
+    return labels;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

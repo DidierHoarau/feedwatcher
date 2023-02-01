@@ -24,17 +24,28 @@ export default {
     };
   },
   async created() {
-    await axios
+    axios
       .get(
         `${(await Config.get()).SERVER_URL}/sources/${this.$route.params.sourceId}`,
         await AuthService.getAuthHeader()
       )
       .then((res) => {
         this.source = res.data;
-        EventBus.emit(EventTypes.ALERT_MESSAGE, {
-          type: "info",
-          text: "Source added",
-        });
+      })
+      .catch(handleError);
+    axios
+      .get(
+        `${(await Config.get()).SERVER_URL}/sources/${this.$route.params.sourceId}/labels`,
+        await AuthService.getAuthHeader()
+      )
+      .then((res) => {
+        this.labels = "";
+        for (const label of res.data.labels) {
+          if (this.labels) {
+            this.labels += ", ";
+          }
+          this.labels += label.name;
+        }
       })
       .catch(handleError);
   },
@@ -60,7 +71,7 @@ export default {
               text: "Source added",
             });
             const router = useRouter();
-            // router.push({ path: "/sources" });
+            router.push({ path: "/sources" });
           })
           .catch(handleError);
       } else {

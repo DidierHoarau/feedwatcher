@@ -1,8 +1,8 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../data/Auth";
+import { SourceLabelsData } from "../data/SourceLabelsData";
 import { SourcesData } from "../data/SourcesData";
 import { Processor } from "../processor";
-import { Scheduler } from "../scheduler";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 
 export class SourcesIdRoutes {
@@ -24,6 +24,27 @@ export class SourcesIdRoutes {
         return res.status(403).send({ error: "Access Denied" });
       }
       return res.status(200).send(source);
+    });
+
+    interface GetSourceIdLabelsRequest extends RequestGenericInterface {
+      Params: {
+        sourceId: string;
+      };
+    }
+    fastify.get<GetSourceIdLabelsRequest>("/labels", async (req, res) => {
+      const userSession = await Auth.getUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      const source = await SourcesData.get(StandardTracer.getSpanFromRequest(req), req.params.sourceId);
+      if (userSession.userId !== source.userId) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      const labels = await SourceLabelsData.getSourceLabels(
+        StandardTracer.getSpanFromRequest(req),
+        req.params.sourceId
+      );
+      return res.status(200).send({ labels: labels });
     });
 
     interface PutSourceIdRequest extends RequestGenericInterface {
@@ -52,9 +73,7 @@ export class SourcesIdRoutes {
 
       // Labels
       if (req.body.labels && req.body.labels.length > 0) {
-        for (const label of req.body.labels) {
-          console.log(label);
-        }
+        SourceLabelsData.setSourceLabels(StandardTracer.getSpanFromRequest(req), source.id, req.body.labels);
       }
       Processor.checkSource(StandardTracer.getSpanFromRequest(req), source).then(() => {
         Processor.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);

@@ -51,7 +51,7 @@ export class SourcesData {
   }
 
   public static async update(context: Span, source: Source): Promise<void> {
-    const span = StandardTracer.startSpan("SourcesData_add", context);
+    const span = StandardTracer.startSpan("SourcesData_update", context);
     await SqlDbutils.execSQL(span, "UPDATE sources SET name = ?, info = ? WHERE id = ?", [
       source.name,
       JSON.stringify(source.info),
@@ -61,9 +61,10 @@ export class SourcesData {
   }
 
   public static async delete(context: Span, sourceId: string): Promise<void> {
-    const span = StandardTracer.startSpan("SourcesData_add", context);
+    const span = StandardTracer.startSpan("SourcesData_delete", context);
     await SqlDbutils.execSQL(span, "DELETE FROM sources WHERE id = ?", [sourceId]);
     await SqlDbutils.execSQL(span, "DELETE FROM sources_items WHERE sourceId = ?", [sourceId]);
+    await SqlDbutils.execSQL(span, "DELETE FROM sources_labels WHERE sourceId = ?", [sourceId]);
     span.end();
   }
 
