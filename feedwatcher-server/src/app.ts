@@ -12,6 +12,7 @@ import { SourcesRoutes } from "./routes/SourcesRoutes";
 import { Scheduler } from "./scheduler";
 import { SourceIditemsRoutes } from "./routes/SourceIdItemsRoutes";
 import { SourcesIdRoutes } from "./routes/SourcesIdRoutes";
+import { Processor } from "./processor";
 
 const logger = new Logger("app");
 
@@ -32,6 +33,7 @@ Promise.resolve().then(async () => {
 
   await SqlDbutils.init(span, config);
   await Auth.init(span, config);
+  await Processor.init(span, config);
   await Scheduler.init(span, config);
 
   span.end();

@@ -6,10 +6,11 @@ module.exports = {
   //
   test: async (source) => {
     let urlMatch = /.*github.com\/(.*)\/(.*)/.exec(source.info.url);
-    if (urlMatch) {
-      return true;
+    if (!urlMatch) {
+      return null;
     }
-    return false;
+    const repo = urlMatch[2];
+    return { name: repo, icon: "github" };
   },
 
   fetchLatest: async (source, lastSourceItemSaved) => {

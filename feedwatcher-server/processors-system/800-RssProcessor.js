@@ -9,11 +9,11 @@ module.exports = {
     try {
       const feed = await parser.parseURL(source.info.url);
       if (feed.title) {
-        return true;
+        return { name: feed.title, icon: "rss" };
       }
-      return false;
+      return null;
     } catch (err) {
-      return false;
+      return null;
     }
   },
 
