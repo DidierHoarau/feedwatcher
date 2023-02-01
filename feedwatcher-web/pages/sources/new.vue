@@ -14,10 +14,6 @@ import { AuthService } from "../../services/AuthService";
 import { handleError, EventBus, EventTypes } from "../../services/EventBus";
 
 export default {
-  name: "UserEdit",
-  props: {
-    userId: String,
-  },
   data() {
     return {
       source: {},

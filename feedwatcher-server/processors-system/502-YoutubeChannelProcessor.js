@@ -38,7 +38,9 @@ module.exports = {
       sourceItem.url = item.link;
       sourceItem.title = item.title;
       sourceItem.content = item.content || "";
-      sourceItem.content += `<iframe width="560" height="315" src="${item.link}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+      sourceItem.content += `<iframe src='http://www.youtube.com/embed/${
+        item.id.split(":")[2]
+      }/' frameborder='0' allowfullscreen ></iframe >`;
       sourceItem.datePublished = new Date(item.pubDate);
       sourceItems.push(sourceItem);
     });

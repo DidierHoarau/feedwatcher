@@ -4,6 +4,7 @@ import { Source } from "../model/Source";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "./SqlDbUtils";
 import { v4 as uuidv4 } from "uuid";
+import { SourceItem } from "../model/SourceItem";
 
 export class SourceLabelsData {
   //
@@ -52,6 +53,23 @@ export class SourceLabelsData {
     return labels;
   }
 
+  public static async listItemsForLabel(context: Span, label: string, userId: string): Promise<SourceItem[]> {
+    const span = StandardTracer.startSpan("SourceItemsData_getLastForSource", context);
+    const sourceItems: SourceItem[] = [];
+    const sourceItemRaw = await SqlDbutils.querySQL(
+      span,
+      "SELECT sources_items.* FROM sources_items, sources, sources_labels " +
+        "WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name = ? AND sources_items.sourceId = sources.id " +
+        "ORDER BY datePublished DESC",
+      [userId, label]
+    );
+    for (const sourceItem of sourceItemRaw) {
+      sourceItems.push(SourceLabelsData.fromRawItems(sourceItem));
+    }
+    span.end();
+    return sourceItems;
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private static fromRaw(sourceRaw: any): Source {
     const source = new Source();
@@ -60,5 +78,19 @@ export class SourceLabelsData {
     source.name = sourceRaw.name;
     source.info = JSON.parse(sourceRaw.info);
     return source;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private static fromRawItems(sourceItemRaw: any): SourceItem {
+    const sourceItem = new SourceItem();
+    sourceItem.id = sourceItemRaw.id;
+    sourceItem.sourceId = sourceItemRaw.sourceId;
+    sourceItem.title = sourceItemRaw.title;
+    sourceItem.content = sourceItemRaw.content;
+    sourceItem.url = sourceItemRaw.url;
+    sourceItem.status = sourceItemRaw.status;
+    sourceItem.datePublished = new Date(sourceItemRaw.datePublished);
+    sourceItem.info = JSON.parse(sourceItemRaw.info);
+    return sourceItem;
   }
 }

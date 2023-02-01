@@ -13,6 +13,7 @@ import { Scheduler } from "./scheduler";
 import { SourceIditemsRoutes } from "./routes/SourceIdItemsRoutes";
 import { SourcesIdRoutes } from "./routes/SourcesIdRoutes";
 import { Processor } from "./processor";
+import { SourcesLabelsRoutes } from "./routes/SourcesLabelsRoutes";
 
 const logger = new Logger("app");
 
@@ -66,6 +67,9 @@ Promise.resolve().then(async () => {
   });
   fastify.register(new SourceIditemsRoutes().getRoutes, {
     prefix: "/api/sources/:sourceId/items",
+  });
+  fastify.register(new SourcesLabelsRoutes().getRoutes, {
+    prefix: "/api/sources/labels",
   });
 
   /* eslint-disable-next-line */

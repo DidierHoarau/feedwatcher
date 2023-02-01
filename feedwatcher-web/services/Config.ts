@@ -1,12 +1,7 @@
-import axios from "axios";
-
-let config: any;
-
 export default class Config {
   public static async get(): Promise<any> {
-    if (!config) {
-      config = (await axios.get("/config.json")).data;
-    }
-    return config;
+    return {
+      SERVER_URL: "/api",
+    };
   }
 }

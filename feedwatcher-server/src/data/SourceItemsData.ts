@@ -42,7 +42,6 @@ export class SourceItemsData {
     return sourceItem;
   }
 
-  //
   public static async listForSource(context: Span, sourceId: string): Promise<SourceItem[]> {
     const span = StandardTracer.startSpan("SourceItemsData_getLastForSource", context);
     const sourceItems: SourceItem[] = [];

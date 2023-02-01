@@ -88,6 +88,9 @@ export default {
 .sourceitom-layout-date {
   grid-row: 1;
   grid-column: 1;
+  font-size: 70%;
+  padding-top: 0.4em;
+  color: #666;
 }
 .sourceitom-layout-title {
   grid-row: 1;
