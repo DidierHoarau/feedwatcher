@@ -32,6 +32,7 @@ export class SourcesIdRoutes {
       };
       Body: {
         name: string;
+        labels: string[];
       };
     }
     fastify.put<PutSourceIdRequest>("/", async (req, res) => {
@@ -48,6 +49,13 @@ export class SourcesIdRoutes {
       }
       source.name = req.body.name;
       await SourcesData.update(StandardTracer.getSpanFromRequest(req), source);
+
+      // Labels
+      if (req.body.labels && req.body.labels.length > 0) {
+        for (const label of req.body.labels) {
+          console.log(label);
+        }
+      }
       Processor.checkSource(StandardTracer.getSpanFromRequest(req), source).then(() => {
         Processor.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);
       });

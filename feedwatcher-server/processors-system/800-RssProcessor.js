@@ -5,9 +5,8 @@ const Parser = require("rss-parser");
 module.exports = {
   //
   test: async (source) => {
-    const parser = new Parser();
     try {
-      const feed = await parser.parseURL(source.info.url);
+      const feed = await new Parser().parseURL(source.info.url);
       if (feed.title) {
         return { name: feed.title, icon: "rss" };
       }
@@ -18,8 +17,7 @@ module.exports = {
   },
 
   fetchLatest: async (source, lastSourceItemSaved) => {
-    const parser = new Parser();
-    const feed = await parser.parseURL(source.info.url);
+    const feed = await new Parser().parseURL(source.info.url);
     const sourceItems = [];
     feed.items.forEach((item) => {
       const sourceItem = {};
