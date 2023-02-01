@@ -1,6 +1,7 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../data/Auth";
 import { SourcesData } from "../data/SourcesData";
+import { Processor } from "../processor";
 import { Scheduler } from "../scheduler";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 
@@ -47,6 +48,9 @@ export class SourcesIdRoutes {
       }
       source.name = req.body.name;
       await SourcesData.update(StandardTracer.getSpanFromRequest(req), source);
+      Processor.checkSource(StandardTracer.getSpanFromRequest(req), source).then(() => {
+        Processor.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);
+      });
       return res.status(202).send();
     });
 
@@ -82,7 +86,7 @@ export class SourcesIdRoutes {
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      await Scheduler.fetchSource(StandardTracer.getSpanFromRequest(req), source);
+      Processor.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);
       return res.status(201).send();
     });
   }

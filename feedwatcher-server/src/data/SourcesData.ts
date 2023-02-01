@@ -52,7 +52,11 @@ export class SourcesData {
 
   public static async update(context: Span, source: Source): Promise<void> {
     const span = StandardTracer.startSpan("SourcesData_add", context);
-    await SqlDbutils.execSQL(span, "UPDATE sources SET name = ? WHERE id = ?", [source.name, source.id]);
+    await SqlDbutils.execSQL(span, "UPDATE sources SET name = ?, info = ? WHERE id = ?", [
+      source.name,
+      JSON.stringify(source.info),
+      source.id,
+    ]);
     span.end();
   }
 

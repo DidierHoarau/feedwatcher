@@ -8,7 +8,7 @@
     </div>
     <div id="sources-list">
       <div v-for="source in sources" v-bind:key="source.id" v-on:click="loadSourceItems(source.id)">
-        {{ source.name }}
+        <i v-if="source.info.icon" :class="'bi bi-' + source.info.icon"></i> {{ source.name }}
       </div>
     </div>
     <div id="sources-items-actions" v-if="selectedSource" class="actions">
