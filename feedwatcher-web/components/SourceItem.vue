@@ -34,29 +34,29 @@ export default {
         month = day * 30,
         year = day * 365;
       if (delta < 60) {
-        return "just now.";
+        return "just now";
       } else if (delta < hour) {
-        return Math.floor(delta / minute) + " minutes ago.";
+        return Math.floor(delta / minute) + " minutes ago";
       } else if (delta < 2 * hour) {
         return "1 hour ago";
       } else if (delta < day) {
-        return Math.floor(delta / hour) + " hours ago.";
+        return Math.floor(delta / hour) + " hours ago";
       } else if (delta < 2 * day) {
         return "1 day ago";
       } else if (delta < week) {
-        return Math.floor(delta / day) + " days ago.";
+        return Math.floor(delta / day) + " days ago";
       } else if (delta < 2 * week) {
         return "1 week ago";
       } else if (delta < month) {
-        return Math.floor(delta / week) + " weeks ago.";
+        return Math.floor(delta / week) + " weeks ago";
       } else if (delta < 2 * month) {
         return "1 month ago";
       } else if (delta < year) {
-        return Math.floor(delta / month) + " months ago.";
+        return Math.floor(delta / month) + " months ago";
       } else if (delta < 2 * year) {
         return "1 year ago";
       } else {
-        return Math.floor(delta / year) + " years ago.";
+        return Math.floor(delta / year) + " years ago";
       }
     },
   },
