@@ -2,6 +2,7 @@ import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../data/Auth";
 import { SourcesData } from "../data/SourcesData";
 import { Source } from "../model/Source";
+import { Processor } from "../processor";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 
 export class SourcesRoutes {
@@ -32,7 +33,8 @@ export class SourcesRoutes {
       source.name = req.body.url;
       source.info = { url: req.body.url };
       source.userId = userSession.userId;
-      SourcesData.add(StandardTracer.getSpanFromRequest(req), source);
+      await SourcesData.add(StandardTracer.getSpanFromRequest(req), source);
+      Processor.checkSource(StandardTracer.getSpanFromRequest(req), source);
       return res.status(201).send(source.toJson());
     });
   }

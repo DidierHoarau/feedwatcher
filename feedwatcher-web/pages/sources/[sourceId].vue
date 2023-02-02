@@ -3,6 +3,8 @@
     <h1>Update Source: {{ source.info.url }}</h1>
     <label>Name</label>
     <input v-model="source.name" type="text" />
+    <label>Labels (coma separated)</label>
+    <input v-model="labels" type="text" />
     <button v-on:click="updateSource()">Update</button>
     <button v-on:click="deleteSource()">Delete</button>
   </div>
@@ -18,6 +20,7 @@ export default {
   data() {
     return {
       source: { info: {} },
+      labels: "",
     };
   },
   async created() {
@@ -37,6 +40,13 @@ export default {
   },
   methods: {
     async updateSource() {
+      const sourceLabels = [];
+      for (const label of this.labels.split(",")) {
+        if (label.trim()) {
+          sourceLabels.push(label.trim());
+        }
+      }
+      this.source.labels = sourceLabels;
       if (this.source.name) {
         await axios
           .put(
@@ -50,7 +60,7 @@ export default {
               text: "Source added",
             });
             const router = useRouter();
-            router.push({ path: "/sources" });
+            // router.push({ path: "/sources" });
           })
           .catch(handleError);
       } else {
@@ -78,3 +88,9 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+h1 {
+  word-break: break-all;
+}
+</style>
