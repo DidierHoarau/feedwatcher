@@ -2,12 +2,10 @@ import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../data/Auth";
 import { SourceItemsData } from "../data/SourceItemsData";
 import { SourcesData } from "../data/SourcesData";
-import { Source } from "../model/Source";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 
 export class SourceIditemsRoutes {
   //
-
   public async getRoutes(fastify: FastifyInstance): Promise<void> {
     //
     interface GetSourceIdItemsRequest extends RequestGenericInterface {

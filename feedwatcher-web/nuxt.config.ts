@@ -1,6 +1,5 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  modules: ["@nathanchase/nuxt-dayjs-module"],
   app: {
     head: {
       charset: "utf-16",

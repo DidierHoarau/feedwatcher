@@ -70,10 +70,8 @@ export class SourcesIdRoutes {
       }
       source.name = req.body.name;
       await SourcesData.update(StandardTracer.getSpanFromRequest(req), source);
-
-      // Labels
       if (req.body.labels && req.body.labels.length > 0) {
-        SourceLabelsData.setSourceLabels(StandardTracer.getSpanFromRequest(req), source.id, req.body.labels);
+        await SourceLabelsData.setSourceLabels(StandardTracer.getSpanFromRequest(req), source.id, req.body.labels);
       }
       Processor.checkSource(StandardTracer.getSpanFromRequest(req), source).then(() => {
         Processor.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);

@@ -27,10 +27,6 @@ import { handleError, EventBus, EventTypes } from "../services/EventBus";
 import { UserService } from "../services/UserService";
 
 export default {
-  name: "UserEdit",
-  props: {
-    userId: String,
-  },
   data() {
     return {
       user: {},
