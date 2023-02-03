@@ -17,8 +17,8 @@ export class Config implements ConfigInterface {
   public JWT_KEY: string = uuidv4();
   public LOG_LEVEL = "info";
   public SOURCE_FETCH_FREQUENCY = 30 * 60 * 1000;
-  public OPENTELEMETRY_COLLECTOR_HTTP: string;
-  public OPENTELEMETRY_COLLECTOR_AWS = false;
+  public OPENTELEMETRY_COLLECTOR_HTTP: string = process.env.OPENTELEMETRY_COLLECTOR_HTTP || "";
+  public OPENTELEMETRY_COLLECTOR_AWS = process.env.OPENTELEMETRY_COLLECTOR_AWS === "true";
   public PROCESSORS_SYSTEM = "processors-system";
   public PROCESSORS_USER = "processors-user";
 
@@ -44,6 +44,7 @@ export class Config implements ConfigInterface {
     setIfSet("SOURCE_FETCH_FREQUENCY");
     setIfSet("OPENTELEMETRY_COLLECTOR_HTTP");
     setIfSet("OPENTELEMETRY_COLLECTOR_AWS");
+    console.log(this.OPENTELEMETRY_COLLECTOR_HTTP);
     // hello
   }
 }
