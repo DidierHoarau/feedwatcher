@@ -58,8 +58,12 @@ export class SourceLabelsData {
     const sourceItems: SourceItem[] = [];
     const sourceItemRaw = await SqlDbutils.querySQL(
       span,
-      "SELECT sources_items.* FROM sources_items, sources, sources_labels " +
-        "WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name = ? AND sources_items.sourceId = sources.id " +
+      "SELECT sources_items.* FROM sources_items " +
+        "WHERE sources_items.sourceId IN ( " +
+        "    SELECT sources.id " +
+        "    FROM sources, sources_labels " +
+        "    WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name = ? " +
+        " ) " +
         "ORDER BY datePublished DESC",
       [userId, label]
     );
