@@ -28,5 +28,6 @@ main {
   cursor: pointer;
   margin-left: 0.5em;
   margin-right: 0.5em;
+  color: #bcc6ce;
 }
 </style>
