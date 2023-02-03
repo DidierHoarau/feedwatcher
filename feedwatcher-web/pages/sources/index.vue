@@ -84,7 +84,7 @@ export default {
       this.selectedSource = null;
       this.selectedIndex = index;
       this.sourceItems = [];
-      await Timeout.wait(2000);
+      await Timeout.wait(10);
       await axios
         .get(`${(await Config.get()).SERVER_URL}/sources/labels/${label}/items`, await AuthService.getAuthHeader())
         .then((res) => {
