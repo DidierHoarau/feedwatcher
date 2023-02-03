@@ -1,0 +1,16 @@
+{
+  "name": "FeedWatcher",
+  "short_name": "FeedWatcher",
+  "lang": "en-US",
+  "start_url": "/sources",
+  "display": "standalone",
+  "background_color": "white",
+  "theme_color": "#212121",
+  "icons": [
+    {
+      "src": "images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
