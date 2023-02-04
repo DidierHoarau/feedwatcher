@@ -24,12 +24,17 @@
           {{ sourceLabel.sourceName }}
         </div>
       </div>
+      <div v-on:click="loadSavedItems()" :class="{ 'source-active': index == -2 }">
+        <i class="bi bi-bookmark-plus-fill"></i>
+        Saved Items
+      </div>
     </div>
     <div id="sources-items-actions" v-if="selectedSource" class="actions">
       <NuxtLink :to="'/sources/' + selectedSource"><i class="bi bi-pencil-square"></i></NuxtLink>
       <i v-on:click="refreshSourceItems(selectedSource)" class="bi bi-arrow-clockwise"></i>
     </div>
     <div id="sources-items-list">
+      <span v-if="sourceItems.length == 0">No items</span>
       <div v-for="sourceItem in sourceItems" v-bind:key="sourceItem.id">
         <SourceItem :item="sourceItem" />
       </div>
@@ -89,6 +94,18 @@ export default {
       await Timeout.wait(10);
       await axios
         .get(`${(await Config.get()).SERVER_URL}/sources/labels/${label}/items`, await AuthService.getAuthHeader())
+        .then((res) => {
+          this.sourceItems = res.data.sourceItems;
+        })
+        .catch(handleError);
+    },
+    async loadSavedItems(index) {
+      this.selectedSource = null;
+      this.selectedIndex = -2;
+      this.sourceItems = [];
+      await Timeout.wait(10);
+      await axios
+        .get(`${(await Config.get()).SERVER_URL}/sources/items/saved/all`, await AuthService.getAuthHeader())
         .then((res) => {
           this.sourceItems = res.data.sourceItems;
         })
