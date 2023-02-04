@@ -142,11 +142,9 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-bottom: 0.5em;
+  padding: 0.2em 0.5em;
 }
-.source-active {
-  background-color: #333;
-}
+
 @media (max-width: 700px) {
   #sources-layout {
     display: grid;
@@ -217,6 +215,17 @@ export default {
   }
   .sources-actions-menu-toggle {
     visibility: hidden;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .source-active {
+    background-color: #333;
+  }
+}
+@media (prefers-color-scheme: light) {
+  .source-active {
+    background-color: #bbb;
   }
 }
 </style>
