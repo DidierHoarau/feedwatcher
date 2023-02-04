@@ -13,15 +13,26 @@
         <div
           v-on:click="loadLabelItems(index)"
           v-if="isLabelDisplayed(index)"
+          class="source-name-layout"
           :class="{ 'source-active': index == selectedIndex && !selectedSource }"
         >
-          <i class="bi bi-caret-down-fill"></i>
-          {{ sourceLabel.labelName }}
+          <div class="source-name-name">
+            <i class="bi bi-caret-down-fill"></i>
+            {{ sourceLabel.labelName }}
+          </div>
+          <div class="source-name-count">{{ getCountLabel(index) }}</div>
         </div>
-        <div v-on:click="loadSourceItems(index)" :class="{ 'source-active': index == selectedIndex && selectedSource }">
-          <span v-html="getSourceIndentation(index)"></span>
-          <i v-if="sourceLabel.sourceInfo.icon" :class="'bi bi-' + sourceLabel.sourceInfo.icon"></i>
-          {{ sourceLabel.sourceName }}
+        <div
+          v-on:click="loadSourceItems(index)"
+          class="source-name-layout"
+          :class="{ 'source-active': index == selectedIndex && selectedSource }"
+        >
+          <div class="source-name-name">
+            <span v-html="getSourceIndentation(index)"></span>
+            <i v-if="sourceLabel.sourceInfo.icon" :class="'bi bi-' + sourceLabel.sourceInfo.icon"></i>
+            {{ sourceLabel.sourceName }}
+          </div>
+          <div class="source-name-count">{{ getCountSource(sourceLabel.sourceId) }}</div>
         </div>
       </div>
       <div v-on:click="loadSavedItems()" :class="{ 'source-active': selectedIndex == -2 }">
@@ -37,7 +48,7 @@
     <div id="sources-items-list">
       <span v-if="sourceItems.length == 0">No items</span>
       <div v-for="sourceItem in sourceItems" v-bind:key="sourceItem.id">
-        <SourceItem :item="sourceItem" />
+        <SourceItem @onItemUpdated="onItemsUpdated" :item="sourceItem" />
       </div>
     </div>
   </div>
@@ -60,10 +71,12 @@ export default {
       selectedSource: "",
       sourceLabels: [],
       menuOpened: true,
+      sourceCounts: [],
     };
   },
   async created() {
     this.loadSources();
+    this.loadSourcesCounts();
   },
   methods: {
     async loadSources() {
@@ -71,6 +84,14 @@ export default {
         .get(`${(await Config.get()).SERVER_URL}/sources/labels`, await AuthService.getAuthHeader())
         .then((res) => {
           this.sourceLabels = _.sortBy(res.data.sourceLabels, ["labelName", "sourceName"]);
+        })
+        .catch(handleError);
+    },
+    async loadSourcesCounts() {
+      await axios
+        .get(`${(await Config.get()).SERVER_URL}/sources/labels/counts/unread`, await AuthService.getAuthHeader())
+        .then((res) => {
+          this.sourceCounts = res.data.counts;
         })
         .catch(handleError);
     },
@@ -122,7 +143,7 @@ export default {
     async markAllRead() {
       if (confirm("Mark all item read?") == true) {
         for (const item of this.sourceItems) {
-          axios
+          await axios
             .put(
               `${(await Config.get()).SERVER_URL}/sources/items/${item.id}/status`,
               { status: "read" },
@@ -133,6 +154,7 @@ export default {
             })
             .catch(handleError);
         }
+        this.onItemsUpdated();
       }
     },
     isLabelDisplayed(index) {
@@ -157,8 +179,28 @@ export default {
       }
       return indentation;
     },
+    getCountLabel(index) {
+      let count = 0;
+      let indexIteration = index;
+      const label = this.sourceLabels[indexIteration].labelName;
+      while (this.sourceLabels[indexIteration].labelName === label) {
+        count += this.getCountSource(this.sourceLabels[indexIteration].sourceId);
+        indexIteration++;
+      }
+      return count;
+    },
+    getCountSource(sourceId) {
+      const count = _.find(this.sourceCounts, { sourceId });
+      if (!count) {
+        return 0;
+      }
+      return count.unreadCount;
+    },
     openListMenu() {
       this.menuOpened = !this.menuOpened;
+    },
+    onItemsUpdated(item) {
+      this.loadSourcesCounts();
     },
   },
 };
@@ -268,5 +310,16 @@ export default {
   #sources-list {
     background-color: #aaaaaa33;
   }
+}
+
+.source-name-layout {
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+.source-name-name {
+  grid-column: 1;
+}
+.source-name-count {
+  grid-column: 2;
 }
 </style>
