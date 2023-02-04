@@ -4,9 +4,11 @@
       <h1>Sources</h1>
     </div>
     <div id="sources-actions" class="actions">
+      <i class="bi bi-caret-up-square sources-actions-menu-toggle" v-if="menuOpened" v-on:click="openListMenu()"></i>
+      <i class="bi bi-caret-down-square sources-actions-menu-toggle" v-else v-on:click="openListMenu()"></i>
       <NuxtLink to="/sources/new"><i class="bi bi-plus-square"></i></NuxtLink>
     </div>
-    <div id="sources-list">
+    <div id="sources-list" :class="{ 'sources-list-closed': !menuOpened }">
       <div v-for="(sourceLabel, index) in sourceLabels" v-bind:key="sourceLabel.labelName">
         <div
           v-on:click="loadLabelItems(index)"
@@ -26,7 +28,6 @@
     <div id="sources-items-actions" v-if="selectedSource" class="actions">
       <NuxtLink :to="'/sources/' + selectedSource"><i class="bi bi-pencil-square"></i></NuxtLink>
       <i v-on:click="refreshSourceItems(selectedSource)" class="bi bi-arrow-clockwise"></i>
-      <i class="bi bi-card-checklist"></i>
     </div>
     <div id="sources-items-list">
       <div v-for="sourceItem in sourceItems" v-bind:key="sourceItem.id">
@@ -52,6 +53,7 @@ export default {
       selectedIndex: -1,
       selectedSource: "",
       sourceLabels: [],
+      menuOpened: true,
     };
   },
   async created() {
@@ -121,36 +123,20 @@ export default {
       }
       return indentation;
     },
+    openListMenu() {
+      this.menuOpened = !this.menuOpened;
+    },
   },
 };
 </script>
 
 <style scoped>
-#sources-layout {
-  display: grid;
-  grid-template-rows: 4em 2em 1fr;
-  grid-template-columns: 10em 1fr 1fr;
-  height: calc(100vh - 5em);
-  column-gap: 1em;
-}
 #sources-layout > * {
   min-height: 0px;
-}
-#sources-header {
-  grid-row: 1;
-  grid-column-start: 1;
-  grid-column-end: span 2;
 }
 #sources-actions {
   text-align: right;
   padding-top: 0.5em;
-}
-#sources-list {
-  overflow: auto;
-  height: auto;
-  grid-row-start: 2;
-  grid-row-end: span 2;
-  grid-column: 1;
 }
 #sources-list div {
   white-space: nowrap;
@@ -158,18 +144,79 @@ export default {
   text-overflow: ellipsis;
   padding-bottom: 0.5em;
 }
-#sources-items-actions {
-  grid-row: 2;
-  grid-column-start: 2;
-  grid-column-end: span 2;
-}
-#sources-items-list {
-  overflow: auto;
-  grid-row: 3;
-  grid-column-start: 2;
-  grid-column-end: span 2;
-}
 .source-active {
   background-color: #333;
+}
+@media (max-width: 700px) {
+  #sources-layout {
+    display: grid;
+    grid-template-rows: 4em auto 2em 2fr;
+    grid-template-columns: 1fr 1fr;
+    height: calc(100vh - 5em);
+    column-gap: 1em;
+  }
+  #sources-items-actions {
+    grid-row: 3;
+    grid-column-start: 1;
+    grid-column-end: span 2;
+  }
+  #sources-items-list {
+    overflow: scroll;
+    grid-row: 4;
+    grid-column-start: 1;
+    grid-column-end: span 2;
+  }
+  #sources-header {
+    grid-row: 1;
+    grid-column: 1;
+  }
+  #sources-list {
+    overflow: auto;
+    height: 30vh;
+    grid-row: 2;
+    grid-column-start: 1;
+    grid-column-end: span 2;
+  }
+  .sources-list-closed {
+    height: 0px !important;
+  }
+}
+
+@media (min-width: 701px) {
+  #sources-layout {
+    display: grid;
+    grid-template-rows: 4em 2em 1fr;
+    grid-template-columns: auto 1fr 1fr;
+    height: calc(100vh - 5em);
+    column-gap: 1em;
+  }
+  #sources-items-actions {
+    grid-row: 2;
+    grid-column-start: 2;
+    grid-column-end: span 2;
+  }
+  #sources-items-list {
+    overflow: auto;
+    grid-row: 3;
+    grid-column-start: 2;
+    grid-column-end: span 2;
+  }
+  #sources-header {
+    grid-row: 1;
+    grid-column-start: 1;
+    grid-column-end: span 2;
+  }
+  #sources-list {
+    width: 30vw;
+    max-width: 20em;
+    overflow: auto;
+    height: auto;
+    grid-row-start: 2;
+    grid-row-end: span 2;
+    grid-column: 1;
+  }
+  .sources-actions-menu-toggle {
+    visibility: hidden;
+  }
 }
 </style>
