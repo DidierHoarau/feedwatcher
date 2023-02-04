@@ -10,10 +10,11 @@ import { StandardTracerApi } from "./StandardTracerApi";
 import { SqlDbutils } from "./data/SqlDbUtils";
 import { SourcesRoutes } from "./routes/SourcesRoutes";
 import { Scheduler } from "./scheduler";
-import { SourceIditemsRoutes } from "./routes/SourceIdItemsRoutes";
+import { SourceIdItemsRoutes } from "./routes/SourceIdItemsRoutes";
 import { SourcesIdRoutes } from "./routes/SourcesIdRoutes";
 import { Processor } from "./processor";
 import { SourcesLabelsRoutes } from "./routes/SourcesLabelsRoutes";
+import { SourceItemIdRoutes } from "./routes/SourceItemIdRoutes";
 
 const logger = new Logger("app");
 
@@ -65,11 +66,14 @@ Promise.resolve().then(async () => {
   fastify.register(new SourcesIdRoutes().getRoutes, {
     prefix: "/api/sources/:sourceId",
   });
-  fastify.register(new SourceIditemsRoutes().getRoutes, {
+  fastify.register(new SourceIdItemsRoutes().getRoutes, {
     prefix: "/api/sources/:sourceId/items",
   });
   fastify.register(new SourcesLabelsRoutes().getRoutes, {
     prefix: "/api/sources/labels",
+  });
+  fastify.register(new SourceItemIdRoutes().getRoutes, {
+    prefix: "/api/sources/items/:itemId",
   });
 
   /* eslint-disable-next-line */

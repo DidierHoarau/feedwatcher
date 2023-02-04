@@ -17,6 +17,8 @@ module.exports = {
       env_development: {
         DEV_MODE: "true",
         DATA_DIR: "../_dev/data",
+        OPENTELEMETRY_COLLECTOR_HTTP: "http://localhost:4318/v1/traces",
+        OPENTELEMETRY_COLLECTOR_AWS: false,
       },
     },
     {
@@ -28,6 +30,6 @@ module.exports = {
       env_development: {
         DEV_MODE: "true",
       },
-    }
+    },
   ],
 };

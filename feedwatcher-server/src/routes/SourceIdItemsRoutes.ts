@@ -4,7 +4,7 @@ import { SourceItemsData } from "../data/SourceItemsData";
 import { SourcesData } from "../data/SourcesData";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 
-export class SourceIditemsRoutes {
+export class SourceIdItemsRoutes {
   //
   public async getRoutes(fastify: FastifyInstance): Promise<void> {
     //

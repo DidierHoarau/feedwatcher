@@ -54,7 +54,7 @@ export class SourceLabelsData {
   }
 
   public static async listItemsForLabel(context: Span, label: string, userId: string): Promise<SourceItem[]> {
-    const span = StandardTracer.startSpan("SourceItemsData_getLastForSource", context);
+    const span = StandardTracer.startSpan("SourceItemsData_listItemsForLabel", context);
     const sourceItems: SourceItem[] = [];
     const sourceItemRaw = await SqlDbutils.querySQL(
       span,
@@ -64,6 +64,7 @@ export class SourceLabelsData {
         "    FROM sources, sources_labels " +
         "    WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name = ? " +
         " ) " +
+        "AND sources_items.status = 'unread' " +
         "ORDER BY datePublished DESC",
       [userId, label]
     );
