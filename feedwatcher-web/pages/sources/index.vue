@@ -182,11 +182,8 @@ export default {
     getCountLabel(index) {
       let count = 0;
       let indexIteration = index;
-      if (!this.sourceLabels[indexIteration]) {
-        return 0;
-      }
       const label = this.sourceLabels[indexIteration].labelName;
-      while (this.sourceLabels[indexIteration].labelName === label) {
+      while (this.sourceLabels.length > indexIteration && this.sourceLabels[indexIteration].labelName === label) {
         count += this.getCountSource(this.sourceLabels[indexIteration].sourceId);
         indexIteration++;
       }
