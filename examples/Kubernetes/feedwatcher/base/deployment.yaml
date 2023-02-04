@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feedwatcher
+  labels:
+    app: feedwatcher
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: feedwatcher
+  template:
+    metadata:
+      labels:
+        app: feedwatcher
+    spec:
+      containers:
+        - image: feedwatcher
+          name: feedwatcher
+          resources:
+            limits:
+              memory: 500Mi
+              cpu: 1
+            requests:
+              memory: 20Mi
+              cpu: 100m
+          volumeMounts:
+            - mountPath: /data
+              name: pod-volume
+          imagePullPolicy: Always
+      volumes:
+        - name: pod-volume
+          persistentVolumeClaim:
+            claimName: feedwatcher

@@ -1,5 +1,5 @@
 <template>
-  <div id="page-layout" data-theme="dark">
+  <div id="page-layout">
     <header>
       <Navigation />
     </header>
@@ -28,9 +28,16 @@ main {
   cursor: pointer;
   margin-left: 0.5em;
   margin-right: 0.5em;
-  color: #bcc6ce;
 }
-:root {
-  color-scheme: dark;
+
+@media (prefers-color-scheme: dark) {
+  .actions i {
+    color: #bcc6ce;
+  }
+}
+@media (prefers-color-scheme: light) {
+  .actions i {
+    color: #1d2832;
+  }
 }
 </style>
