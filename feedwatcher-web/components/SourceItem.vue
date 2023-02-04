@@ -1,7 +1,11 @@
 <template>
   <article class="sourceitem-layout">
     <div class="sourceitem-layout-date" v-on:click="clickedItem()">{{ relativeTime(item.datePublished) }}</div>
-    <div class="sourceitem-layout-title" v-on:click="clickedItem()" :class="{ 'sourceitem-read': isRead }">
+    <div
+      class="sourceitem-layout-title"
+      v-on:click="clickedItem()"
+      :class="{ 'sourceitem-read': item.status == 'read' }"
+    >
       {{ item.title }}
     </div>
     <div class="sourceitem-layout-link">
@@ -12,8 +16,8 @@
       class="sourceitem-layout-content"
     >
       <div class="sourceitem-actions actions">
-        <i v-if="isSaved" class="bi bi-bookmark-check-fill"></i>
-        <i v-else class="bi bi-bookmark-plus"></i>
+        <i v-if="isSaved" class="bi bi-bookmark-check-fill" v-on:click="unSaveItem()"></i>
+        <i v-else class="bi bi-bookmark-plus" v-on:click="saveItem()"></i>
       </div>
       <span v-html="item.content"></span>
     </div>
@@ -33,7 +37,6 @@ export default {
   data() {
     return {
       isActive: false,
-      isRead: false,
       isSaved: false,
     };
   },
@@ -42,10 +45,7 @@ export default {
       this.isActive = !this.isActive;
       if (this.isActive) {
         axios
-          .get(
-            `${(await Config.get()).SERVER_URL}/sources/items/saved/items/${this.item.id}`,
-            await AuthService.getAuthHeader()
-          )
+          .get(`${(await Config.get()).SERVER_URL}/lists/items/${this.item.id}`, await AuthService.getAuthHeader())
           .then((res) => {
             if (res.data.id) {
               this.isSaved = true;
@@ -62,34 +62,29 @@ export default {
           await AuthService.getAuthHeader()
         )
         .then((res) => {
-          this.isRead = true;
+          this.item.status = "read";
         })
         .catch(handleError);
     },
-    async saveItem(toSave) {
-      if (toSave) {
-        axios
-          .put(
-            `${(await Config.put()).SERVER_URL}/sources/items/saved/all`,
-            { itemId: this.item.id },
-            await AuthService.getAuthHeader()
-          )
-          .then((res) => {
-            this.isSaved = true;
-          })
-          .catch(handleError);
-      } else {
-        axios
-          .delete(
-            `${(await Config.put()).SERVER_URL}/sources/items/saved/all`,
-            { itemId: this.item.id },
-            await AuthService.getAuthHeader()
-          )
-          .then((res) => {
-            this.isSaved = true;
-          })
-          .catch(handleError);
-      }
+    async saveItem() {
+      axios
+        .put(
+          `${(await Config.get()).SERVER_URL}/lists/items`,
+          { itemId: this.item.id },
+          await AuthService.getAuthHeader()
+        )
+        .then((res) => {
+          this.isSaved = true;
+        })
+        .catch(handleError);
+    },
+    async unSaveItem() {
+      axios
+        .delete(`${(await Config.get()).SERVER_URL}/lists/items/${this.item.id}`, await AuthService.getAuthHeader())
+        .then((res) => {
+          this.isSaved = false;
+        })
+        .catch(handleError);
     },
     relativeTime(date) {
       const delta = Math.round((new Date() - new Date(date)) / 1000);

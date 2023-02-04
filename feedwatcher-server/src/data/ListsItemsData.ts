@@ -1,61 +1,67 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import * as _ from "lodash";
-import { Source } from "../model/Source";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "./SqlDbUtils";
-import { v4 as uuidv4 } from "uuid";
 import { SourceItem } from "../model/SourceItem";
+import { ListItem } from "../model/ListItem";
 
-export class SourceItemsSavedData {
+export class ListsItemsData {
   //
-  public static async listItemsForUser(context: Span, listName: string, userId: string): Promise<SourceItem[]> {
-    const span = StandardTracer.startSpan("SourceItemsData_listItemsForLabel", context);
+  public static async add(context: Span, listItem: ListItem): Promise<void> {
+    const span = StandardTracer.startSpan("ListsItemsData_add", context);
+    await SqlDbutils.execSQL(span, "INSERT INTO lists_items (id, itemId, userId, name, info) VALUES (?, ?, ?, ?, ?)", [
+      listItem.id,
+      listItem.itemId,
+      listItem.userId,
+      listItem.name,
+      JSON.stringify(listItem.info),
+    ]);
+    span.end();
+  }
+
+  public static async deleteForUser(context: Span, itemId: string, userId: string): Promise<void> {
+    const span = StandardTracer.startSpan("ListsItemsData_deleteForUser", context);
+    await SqlDbutils.execSQL(span, "DELETE FROM lists_items WHERE itemId = ? AND userId = ?", [itemId, userId]);
+    span.end();
+  }
+
+  public static async listItemsForUser(context: Span, userId: string): Promise<SourceItem[]> {
+    const span = StandardTracer.startSpan("ListsItemsData_listItemsForUser", context);
     const sourceItems: SourceItem[] = [];
     const sourceItemRaw = await SqlDbutils.querySQL(
       span,
       "SELECT sources_items.* " +
-        "FROM sources_items, sources_items_saved " +
-        "WHERE sources_items.id = sources_items_saved.itemId  " +
-        "  AND sources_items_saved.userId = ? " +
-        "  AND sources_items_saved.listName = ? " +
+        "FROM sources_items, lists_items " +
+        "WHERE sources_items.id = lists_items.itemId  " +
+        "  AND lists_items.userId = ? " +
         "ORDER BY datePublished DESC",
-      [userId, listName]
+      [userId]
     );
     for (const sourceItem of sourceItemRaw) {
-      sourceItems.push(SourceItemsSavedData.fromRawItems(sourceItem));
+      sourceItems.push(ListsItemsData.fromRawItems(sourceItem));
     }
     span.end();
     return sourceItems;
   }
 
   public static async getItemForUser(context: Span, itemId: string, userId: string): Promise<SourceItem> {
-    const span = StandardTracer.startSpan("SourceItemsData_listItemsForLabel", context);
+    const span = StandardTracer.startSpan("ListsItemsData_getItemForUser", context);
     const sourceItemRaw = await SqlDbutils.querySQL(
       span,
       "SELECT sources_items.* " +
-        "FROM sources_items, sources_items_saved " +
+        "FROM sources_items, lists_items " +
         "WHERE sources_items.id = ? " +
-        "  AND sources_items_saved.itemId = ? " +
-        "  AND sources_items_saved.userId = ? " +
+        "  AND lists_items.itemId = ? " +
+        "  AND lists_items.userId = ? " +
         "ORDER BY datePublished DESC",
       [itemId, itemId, userId]
     );
     let sourceItem: SourceItem = null;
     if (sourceItemRaw.length > 0) {
-      sourceItem = SourceItemsSavedData.fromRawItems(sourceItemRaw[0]);
+      sourceItem = ListsItemsData.fromRawItems(sourceItemRaw[0]);
     }
     span.end();
     return sourceItem;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private static fromRaw(sourceRaw: any): Source {
-    const source = new Source();
-    source.id = sourceRaw.id;
-    source.userId = sourceRaw.userId;
-    source.name = sourceRaw.name;
-    source.info = JSON.parse(sourceRaw.info);
-    return source;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
