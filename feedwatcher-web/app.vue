@@ -1,5 +1,5 @@
 <template>
-  <div id="page-layout">
+  <div id="page-layout" data-theme="dark">
     <header>
       <Navigation />
     </header>
@@ -29,5 +29,8 @@ main {
   margin-left: 0.5em;
   margin-right: 0.5em;
   color: #bcc6ce;
+}
+:root {
+  color-scheme: dark;
 }
 </style>

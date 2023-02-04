@@ -1,17 +1,27 @@
 <template>
   <article class="sourceitom-layout">
     <div class="sourceitom-layout-date" v-on:click="clickedItem()">{{ relativeTime(item.datePublished) }}</div>
-    <div class="sourceitom-layout-title" v-on:click="clickedItem()">{{ item.title }}</div>
+    <div class="sourceitom-layout-title" v-on:click="clickedItem()" :class="{ 'sourceitem-read': isRead }">
+      {{ item.title }}
+    </div>
     <div class="sourceitom-layout-link">
       <a :href="item.url" target="_blank"><i class="bi bi-link"></i></a>
     </div>
-    <div :class="{ 'source-active': isActive, 'source-notactive': !isActive }" class="sourceitom-layout-content">
+    <div
+      :class="{ 'sourceitem-active': isActive, 'sourceitem-notactive': !isActive }"
+      class="sourceitom-layout-content"
+    >
       <span v-html="item.content"></span>
     </div>
   </article>
 </template>
 
 <script>
+import axios from "axios";
+import { handleError, EventBus, EventTypes } from "../services/EventBus";
+import Config from "../services/Config.ts";
+import { AuthService } from "../services/AuthService";
+
 export default {
   props: {
     item: {},
@@ -19,11 +29,22 @@ export default {
   data() {
     return {
       isActive: false,
+      isRead: false,
     };
   },
   methods: {
-    clickedItem() {
+    async clickedItem() {
       this.isActive = !this.isActive;
+      axios
+        .put(
+          `${(await Config.get()).SERVER_URL}/sources/items/${this.item.id}/status`,
+          { status: "read" },
+          await AuthService.getAuthHeader()
+        )
+        .then((res) => {
+          this.isRead = true;
+        })
+        .catch(handleError);
     },
     relativeTime(date) {
       const delta = Math.round((new Date() - new Date(date)) / 1000);
@@ -64,14 +85,14 @@ export default {
 </script>
 
 <style scoped>
-.source-active {
+.sourceitem-active {
   height: auto;
   padding-bottom: 1em;
   border-top: 2px solid #333;
   padding-top: 1em;
   margin-top: 1em;
 }
-.source-notactive {
+.sourceitem-notactive {
   height: 0px;
 }
 .sourceitom-layout {
@@ -105,5 +126,8 @@ export default {
   grid-column-start: 1;
   grid-column-end: span 3;
   overflow: hidden;
+}
+.sourceitem-read {
+  color: #666;
 }
 </style>
