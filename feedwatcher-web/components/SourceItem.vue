@@ -63,6 +63,7 @@ export default {
         )
         .then((res) => {
           this.item.status = "read";
+          this.$emit("onItemUpdated", { item: this.item });
         })
         .catch(handleError);
     },
@@ -75,6 +76,7 @@ export default {
         )
         .then((res) => {
           this.isSaved = true;
+          this.$emit("onItemUpdated", { item: this.item });
         })
         .catch(handleError);
     },
@@ -182,7 +184,7 @@ export default {
 }
 @media (prefers-color-scheme: light) {
   .sourceitem-read {
-    color: #ddd;
+    color: #ccc;
   }
 }
 </style>

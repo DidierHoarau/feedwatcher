@@ -28,8 +28,25 @@ export class SourcesData {
     return sources;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public static async listCountsForUser(context: Span, userId: string): Promise<any[]> {
+    const span = StandardTracer.startSpan("SourcesData_listCountsForUser", context);
+    const countsRaw = await SqlDbutils.querySQL(
+      span,
+      "SELECT COUNT(id) as unreadCount, sourceId FROM sources_items " +
+        "WHERE sourceId IN (" +
+        "  SELECT id FROM sources " +
+        "  WHERE userId = ?) " +
+        "AND status = ? " +
+        "GROUP BY sourceId ",
+      [userId, "unread"]
+    );
+    span.end();
+    return countsRaw;
+  }
+
   public static async listAll(context: Span): Promise<Source[]> {
-    const span = StandardTracer.startSpan("SourcesData_list", context);
+    const span = StandardTracer.startSpan("SourcesData_listAll", context);
     const sourcesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM sources`);
     const sources = [];
     for (const sourceRaw of sourcesRaw) {
