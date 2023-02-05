@@ -24,12 +24,18 @@
           {{ sourceLabel.sourceName }}
         </div>
       </div>
+      <div v-on:click="loadSavedItems()" :class="{ 'source-active': selectedIndex == -2 }">
+        <i class="bi bi-bookmark-plus-fill"></i>
+        Saved Items
+      </div>
     </div>
-    <div id="sources-items-actions" v-if="selectedSource" class="actions">
-      <NuxtLink :to="'/sources/' + selectedSource"><i class="bi bi-pencil-square"></i></NuxtLink>
-      <i v-on:click="refreshSourceItems(selectedSource)" class="bi bi-arrow-clockwise"></i>
+    <div id="sources-items-actions" class="actions">
+      <NuxtLink v-if="selectedSource" :to="'/sources/' + selectedSource"><i class="bi bi-pencil-square"></i></NuxtLink>
+      <i v-if="selectedSource" v-on:click="refreshSourceItems(selectedSource)" class="bi bi-arrow-clockwise"></i>
+      <i v-if="sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
     </div>
     <div id="sources-items-list">
+      <span v-if="sourceItems.length == 0">No items</span>
       <div v-for="sourceItem in sourceItems" v-bind:key="sourceItem.id">
         <SourceItem :item="sourceItem" />
       </div>
@@ -94,12 +100,40 @@ export default {
         })
         .catch(handleError);
     },
+    async loadSavedItems(index) {
+      this.selectedSource = null;
+      this.selectedIndex = -2;
+      this.sourceItems = [];
+      await Timeout.wait(10);
+      await axios
+        .get(`${(await Config.get()).SERVER_URL}/lists/items`, await AuthService.getAuthHeader())
+        .then((res) => {
+          this.sourceItems = res.data.sourceItems;
+        })
+        .catch(handleError);
+    },
     async refreshSourceItems(sourceId) {
       this.selectedSource = sourceId;
       await axios
         .put(`${(await Config.get()).SERVER_URL}/sources/${sourceId}/fetch`, {}, await AuthService.getAuthHeader())
         .then((res) => {})
         .catch(handleError);
+    },
+    async markAllRead() {
+      if (confirm("Mark all item read?") == true) {
+        for (const item of this.sourceItems) {
+          axios
+            .put(
+              `${(await Config.get()).SERVER_URL}/sources/items/${item.id}/status`,
+              { status: "read" },
+              await AuthService.getAuthHeader()
+            )
+            .then((res) => {
+              item.status = "read";
+            })
+            .catch(handleError);
+        }
+      }
     },
     isLabelDisplayed(index) {
       if (!this.sourceLabels[index].labelName) {
@@ -157,6 +191,7 @@ export default {
     grid-row: 3;
     grid-column-start: 1;
     grid-column-end: span 2;
+    text-align: right;
   }
   #sources-items-list {
     overflow: scroll;
@@ -222,10 +257,16 @@ export default {
   .source-active {
     background-color: #333;
   }
+  #sources-list {
+    background-color: #33333333;
+  }
 }
 @media (prefers-color-scheme: light) {
   .source-active {
     background-color: #bbb;
+  }
+  #sources-list {
+    background-color: #aaaaaa33;
   }
 }
 </style>

@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS lists_items (
+    id VARCHAR(50) NOT NULL,
+    itemId VARCHAR(50) NOT NULL,
+    userId VARCHAR(50) NOT NULL,
+    name VARCHAR(200),
+    info TEXT NOT NULL
+);
