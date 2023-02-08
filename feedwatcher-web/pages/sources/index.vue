@@ -9,7 +9,7 @@
       <NuxtLink to="/sources/new"><i class="bi bi-plus-square"></i></NuxtLink>
     </div>
     <div id="sources-list" :class="{ 'sources-list-closed': !menuOpened }">
-      <div class="source-name-layout" :class="{ 'source-active': selectedIndex == -3 }">
+      <div v-on:click="loadAllItems()" class="source-name-layout" :class="{ 'source-active': selectedIndex == -3 }">
         <div class="source-name-name">
           <i class="bi bi-caret-down-fill"></i>
           All Items
@@ -124,6 +124,18 @@ export default {
       await Timeout.wait(10);
       await axios
         .get(`${(await Config.get()).SERVER_URL}/sources/labels/${label}/items`, await AuthService.getAuthHeader())
+        .then((res) => {
+          this.sourceItems = res.data.sourceItems;
+        })
+        .catch(handleError);
+    },
+    async loadAllItems() {
+      this.selectedSource = null;
+      this.selectedIndex = -3;
+      this.sourceItems = [];
+      await Timeout.wait(10);
+      await axios
+        .get(`${(await Config.get()).SERVER_URL}/items`, await AuthService.getAuthHeader())
         .then((res) => {
           this.sourceItems = res.data.sourceItems;
         })

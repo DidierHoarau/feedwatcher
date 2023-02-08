@@ -23,6 +23,23 @@ export class SourceItemsData {
     return sourceItem;
   }
 
+  public static async listForUser(context: Span, userId: string): Promise<SourceItem[]> {
+    const span = StandardTracer.startSpan("SourceItemsData_getForUser", context);
+    const sourceItems: SourceItem[] = [];
+    const sourceItemsRaw = await SqlDbutils.querySQL(
+      span,
+      "SELECT sources_items.* " +
+        " FROM sources_items, sources" +
+        " WHERE sources.userId = ? AND sources.id = sources_items.sourceId ",
+      [userId]
+    );
+    for (const sourceItem of sourceItemsRaw) {
+      sourceItems.push(SourceItemsData.fromRaw(sourceItem));
+    }
+    span.end();
+    return sourceItems;
+  }
+
   public static async add(context: Span, sourceItem: SourceItem): Promise<void> {
     const span = StandardTracer.startSpan("SourceItemsData_add", context);
     await SqlDbutils.execSQL(
