@@ -9,6 +9,13 @@
       <NuxtLink to="/sources/new"><i class="bi bi-plus-square"></i></NuxtLink>
     </div>
     <div id="sources-list" :class="{ 'sources-list-closed': !menuOpened }">
+      <div class="source-name-layout" :class="{ 'source-active': selectedIndex == -3 }">
+        <div class="source-name-name">
+          <i class="bi bi-caret-down-fill"></i>
+          All Items
+        </div>
+        <div class="source-name-count">{{ getCountAll() }}</div>
+      </div>
       <div v-for="(sourceLabel, index) in sourceLabels" v-bind:key="sourceLabel.labelName">
         <div
           v-on:click="loadLabelItems(index)"
@@ -17,6 +24,7 @@
           :class="{ 'source-active': index == selectedIndex && !selectedSource }"
         >
           <div class="source-name-name">
+            <span v-html="getLabelIndentation(index)"></span>
             <i class="bi bi-caret-down-fill"></i>
             {{ sourceLabel.labelName }}
           </div>
@@ -169,11 +177,14 @@ export default {
       }
       return true;
     },
+    getLabelIndentation(index) {
+      return "&nbsp;&nbsp;&nbsp;&nbsp;";
+    },
     getSourceIndentation(index) {
       if (!this.sourceLabels[index].labelName) {
-        return "";
+        return "&nbsp;&nbsp;&nbsp;&nbsp;";
       }
-      let indentation = "";
+      let indentation = "&nbsp;&nbsp;&nbsp;&nbsp;";
       for (const count in this.sourceLabels[index].labelName.split("/")) {
         indentation += "&nbsp;&nbsp;&nbsp;&nbsp;";
       }
@@ -195,6 +206,13 @@ export default {
         return 0;
       }
       return count.unreadCount;
+    },
+    getCountAll() {
+      let count = 0;
+      for (let i = 0; i < this.sourceCounts.length; i++) {
+        count += this.sourceCounts[i].unreadCount;
+      }
+      return count;
     },
     openListMenu() {
       this.menuOpened = !this.menuOpened;
@@ -218,7 +236,6 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0.2em 0.5em;
 }
 
 @media (max-width: 700px) {
@@ -315,6 +332,7 @@ export default {
 .source-name-layout {
   display: grid;
   grid-template-columns: 1fr auto;
+  padding: 0.3em 0.5em;
 }
 .source-name-name {
   grid-column: 1;
