@@ -30,7 +30,7 @@ export class SourceItemsData {
       span,
       "SELECT sources_items.* " +
         " FROM sources_items, sources" +
-        " WHERE sources.userId = ? AND sources.id = sources_items.sourceId ",
+        " WHERE sources.userId = ? AND sources_items.status = 'unread' AND sources.id = sources_items.sourceId  ",
       [userId]
     );
     for (const sourceItem of sourceItemsRaw) {
