@@ -335,6 +335,9 @@ export default {
   }
   .sources-actions-menu-toggle {
     visibility: hidden;
+    font-size: 0px;
+    padding: 0px;
+    margin: 0px;
   }
 }
 
