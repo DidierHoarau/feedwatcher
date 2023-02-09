@@ -2,6 +2,8 @@
 
 This project provide Web RSS Reader.
 
+![](docs/screenshot_list.png?raw=true)
+
 # Deployment
 
-Check the [exmaples] for example of deployments.
+Check the [docs/exmaples] for example of deployments.
