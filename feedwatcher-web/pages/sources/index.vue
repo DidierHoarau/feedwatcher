@@ -4,11 +4,11 @@
       <h1>Sources</h1>
     </div>
     <div id="sources-actions" class="actions">
-      <i class="bi bi-caret-up-square sources-actions-menu-toggle" v-if="menuOpened" v-on:click="openListMenu()"></i>
-      <i class="bi bi-caret-down-square sources-actions-menu-toggle" v-else v-on:click="openListMenu()"></i>
       <i class="bi bi-cloud-arrow-down" v-on:click="refreshAndFetch()"></i>
       <i class="bi bi-arrow-clockwise" v-on:click="refresh()"></i>
       <NuxtLink to="/sources/new"><i class="bi bi-plus-square"></i></NuxtLink>
+      <i class="bi bi-caret-up-square sources-actions-menu-toggle" v-if="menuOpened" v-on:click="openListMenu()"></i>
+      <i class="bi bi-caret-down-square sources-actions-menu-toggle" v-else v-on:click="openListMenu()"></i>
     </div>
     <div id="sources-list" :class="{ 'sources-list-closed': !menuOpened }">
       <div v-on:click="loadAllItems()" class="source-name-layout" :class="{ 'source-active': selectedIndex == -3 }">

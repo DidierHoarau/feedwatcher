@@ -105,7 +105,7 @@ export class SourceItemsData {
     const sourceItems: SourceItem[] = [];
     const sourceItemRaw = await SqlDbutils.querySQL(
       span,
-      "SELECT *, sources.name as sourceName " +
+      "SELECT sources_items.*, sources.name as sourceName " +
         "FROM sources_items, sources " +
         "WHERE sources_items.sourceId = ? " +
         "  AND sources.id = ? " +
