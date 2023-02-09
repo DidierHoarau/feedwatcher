@@ -14,6 +14,7 @@ import { v4 as uuidv4 } from "uuid";
 
 const logger = new Logger("Processor");
 let config: Config;
+const fetchSourceItemsQueue: Source[] = [];
 
 export class Processor {
   //
@@ -51,7 +52,7 @@ export class Processor {
   }
 
   public static async fetchSourceItemsAll(context: Span) {
-    const span = StandardTracer.startSpan("Processor_fetchAll", context);
+    const span = StandardTracer.startSpan("Processor_fetchSourceItemsAll", context);
     const sources = await SourcesData.listAll(span);
     for (const source of sources) {
       await Processor.fetchSourceItems(span, source);
@@ -59,8 +60,30 @@ export class Processor {
     span.end();
   }
 
-  public static async fetchSourceItems(context: Span, source: Source) {
-    const span = StandardTracer.startSpan("Processor_fetchSource", context);
+  public static async fetchSourceItemsForUser(context: Span, userId: string) {
+    const span = StandardTracer.startSpan("Processor_fetchSourceItemsForUser", context);
+    const sources = await SourcesData.listForUser(span, userId);
+    for (const source of sources) {
+      await Processor.fetchSourceItems(span, source);
+    }
+    span.end();
+  }
+
+  public static async fetchSourceItems(context: Span, source: Source): Promise<void> {
+    if (!_.find(fetchSourceItemsQueue, { id: source.id })) {
+      fetchSourceItemsQueue.push(source);
+      if (fetchSourceItemsQueue.length === 1) {
+        Processor.fetchSourceItemsQueued();
+      }
+    }
+  }
+
+  private static async fetchSourceItemsQueued(): Promise<void> {
+    if (fetchSourceItemsQueue.length === 0) {
+      return;
+    }
+    const span = StandardTracer.startSpan("Processor_fetchSourceItemsQueued");
+    const source = fetchSourceItemsQueue[0];
     let processed = false;
     const lastSourceItemSaved = await SourceItemsData.getLastForSource(span, source.id);
     if (source.info.processorPath && fs.pathExists(source.info.processorPath)) {
@@ -92,6 +115,8 @@ export class Processor {
       }
     }
     span.end();
+    fetchSourceItemsQueue.shift();
+    Processor.fetchSourceItemsQueued();
   }
 
   private static async processorGetSourceInfo(context: Span, processorPath: string, source: Source): Promise<boolean> {

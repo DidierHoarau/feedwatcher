@@ -30,15 +30,17 @@ export class ListsItemsData {
     const sourceItems: SourceItem[] = [];
     const sourceItemRaw = await SqlDbutils.querySQL(
       span,
-      "SELECT sources_items.* " +
-        "FROM sources_items, lists_items " +
+      "SELECT sources_items.*, sources.name as sourceName " +
+        "FROM sources_items, lists_items, sources " +
         "WHERE sources_items.id = lists_items.itemId  " +
         "  AND lists_items.userId = ? " +
+        "  AND sources.id = sources_items.sourceId " +
+        "  AND sources.userId = ? " +
         "ORDER BY datePublished DESC",
-      [userId]
+      [userId, userId]
     );
     for (const sourceItem of sourceItemRaw) {
-      sourceItems.push(ListsItemsData.fromRawItems(sourceItem));
+      sourceItems.push(SourceItem.fromRaw(sourceItem));
     }
     span.end();
     return sourceItems;
@@ -58,23 +60,9 @@ export class ListsItemsData {
     );
     let sourceItem: SourceItem = null;
     if (sourceItemRaw.length > 0) {
-      sourceItem = ListsItemsData.fromRawItems(sourceItemRaw[0]);
+      sourceItem = SourceItem.fromRaw(sourceItemRaw[0]);
     }
     span.end();
-    return sourceItem;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private static fromRawItems(sourceItemRaw: any): SourceItem {
-    const sourceItem = new SourceItem();
-    sourceItem.id = sourceItemRaw.id;
-    sourceItem.sourceId = sourceItemRaw.sourceId;
-    sourceItem.title = sourceItemRaw.title;
-    sourceItem.content = sourceItemRaw.content;
-    sourceItem.url = sourceItemRaw.url;
-    sourceItem.status = sourceItemRaw.status;
-    sourceItem.datePublished = new Date(sourceItemRaw.datePublished);
-    sourceItem.info = JSON.parse(sourceItemRaw.info);
     return sourceItem;
   }
 }

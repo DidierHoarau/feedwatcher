@@ -6,6 +6,8 @@
     <div id="sources-actions" class="actions">
       <i class="bi bi-caret-up-square sources-actions-menu-toggle" v-if="menuOpened" v-on:click="openListMenu()"></i>
       <i class="bi bi-caret-down-square sources-actions-menu-toggle" v-else v-on:click="openListMenu()"></i>
+      <i class="bi bi-cloud-arrow-down" v-on:click="refreshAndFetch()"></i>
+      <i class="bi bi-arrow-clockwise" v-on:click="refresh()"></i>
       <NuxtLink to="/sources/new"><i class="bi bi-plus-square"></i></NuxtLink>
     </div>
     <div id="sources-list" :class="{ 'sources-list-closed': !menuOpened }">
@@ -50,7 +52,7 @@
     </div>
     <div id="sources-items-actions" class="actions">
       <NuxtLink v-if="selectedSource" :to="'/sources/' + selectedSource"><i class="bi bi-pencil-square"></i></NuxtLink>
-      <i v-if="selectedSource" v-on:click="refreshSourceItems(selectedSource)" class="bi bi-arrow-clockwise"></i>
+      <i v-if="selectedSource" v-on:click="refreshSourceItems(selectedSource)" class="bi bi-cloud-arrow-down"></i>
       <i v-if="sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
     </div>
     <div id="sources-items-list">
@@ -159,6 +161,18 @@ export default {
         .put(`${(await Config.get()).SERVER_URL}/sources/${sourceId}/fetch`, {}, await AuthService.getAuthHeader())
         .then((res) => {})
         .catch(handleError);
+    },
+    async refreshAndFetch() {
+      await axios
+        .put(`${(await Config.get()).SERVER_URL}/sources/fetch`, {}, await AuthService.getAuthHeader())
+        .then((res) => {})
+        .catch(handleError);
+      this.loadSources();
+      this.loadSourcesCounts();
+    },
+    async refresh() {
+      this.loadSources();
+      this.loadSourcesCounts();
     },
     async markAllRead() {
       if (confirm("Mark all item read?") == true) {

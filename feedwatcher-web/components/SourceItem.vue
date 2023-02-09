@@ -21,6 +21,9 @@
       </div>
       <span v-html="item.content"></span>
     </div>
+    <div class="sourceitem-layout-meta">
+      {{ item.sourceName }}
+    </div>
   </article>
 </template>
 
@@ -139,7 +142,7 @@ export default {
 }
 .sourceitem-layout {
   display: grid;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto auto auto;
   grid-template-columns: auto 1fr auto;
   height: calc(100vh - 5em);
   width: 100%;
@@ -153,7 +156,6 @@ export default {
   grid-column: 1;
   font-size: 70%;
   padding-top: 0.4em;
-  color: #666;
 }
 .sourceitem-layout-title {
   grid-row: 1;
@@ -165,7 +167,7 @@ export default {
 }
 .sourceitem-layout-content {
   grid-row: 2;
-  grid-column-start: 1;
+  grid-column-start: 2;
   grid-column-end: span 3;
   overflow: hidden;
 }
@@ -177,13 +179,24 @@ export default {
   margin-bottom: 0.5em;
   text-align: right;
 }
+.sourceitem-layout-meta {
+  grid-row: 3;
+  grid-column-start: 1;
+  grid-column-end: span 3;
+  font-size: 0.5em;
+  text-align: right;
+}
 @media (prefers-color-scheme: dark) {
-  .sourceitem-read {
+  .sourceitem-layout-date,
+  .sourceitem-read,
+  .sourceitem-layout-meta {
     color: #666;
   }
 }
 @media (prefers-color-scheme: light) {
-  .sourceitem-read {
+  .sourceitem-layout-date,
+  .sourceitem-read,
+  .sourceitem-layout-meta {
     color: #ccc;
   }
 }

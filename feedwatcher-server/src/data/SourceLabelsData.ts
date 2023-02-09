@@ -12,8 +12,12 @@ export class SourceLabelsData {
     const span = StandardTracer.startSpan("SourceLabelsData_listForUser", context);
     const sourceLabelsRaw = await SqlDbutils.querySQL(
       span,
-      "SELECT sources_labels.name as labelName, sources.name as sourceName, sources.id as sourceId, sources.info as sourceInfo " +
-        "FROM sources  LEFT JOIN sources_labels ON sources_labels.sourceId = sources.id " +
+      "SELECT sources_labels.name as labelName, " +
+        "  sources.name as sourceName, " +
+        "  sources.id as sourceId, " +
+        "  sources.info as sourceInfo " +
+        "FROM sources " +
+        "  LEFT JOIN sources_labels ON sources_labels.sourceId = sources.id " +
         "WHERE sources.userId = ?",
       [userId]
     );
@@ -58,44 +62,23 @@ export class SourceLabelsData {
     const sourceItems: SourceItem[] = [];
     const sourceItemRaw = await SqlDbutils.querySQL(
       span,
-      "SELECT sources_items.* FROM sources_items " +
+      "SELECT sources_items.*, sources.name AS sourceName " +
+        "FROM sources_items, sources " +
         "WHERE sources_items.sourceId IN ( " +
         "    SELECT sources.id " +
         "    FROM sources, sources_labels " +
         "    WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name = ? " +
-        " ) " +
-        "AND sources_items.status = 'unread' " +
+        "  ) " +
+        "  AND sources_items.status = 'unread' " +
+        "  AND sources.userId = ? " +
+        "  AND sources_items.sourceId = sources.id " +
         "ORDER BY datePublished DESC",
-      [userId, label]
+      [userId, label, userId]
     );
     for (const sourceItem of sourceItemRaw) {
-      sourceItems.push(SourceLabelsData.fromRawItems(sourceItem));
+      sourceItems.push(SourceItem.fromRaw(sourceItem));
     }
     span.end();
     return sourceItems;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private static fromRaw(sourceRaw: any): Source {
-    const source = new Source();
-    source.id = sourceRaw.id;
-    source.userId = sourceRaw.userId;
-    source.name = sourceRaw.name;
-    source.info = JSON.parse(sourceRaw.info);
-    return source;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private static fromRawItems(sourceItemRaw: any): SourceItem {
-    const sourceItem = new SourceItem();
-    sourceItem.id = sourceItemRaw.id;
-    sourceItem.sourceId = sourceItemRaw.sourceId;
-    sourceItem.title = sourceItemRaw.title;
-    sourceItem.content = sourceItemRaw.content;
-    sourceItem.url = sourceItemRaw.url;
-    sourceItem.status = sourceItemRaw.status;
-    sourceItem.datePublished = new Date(sourceItemRaw.datePublished);
-    sourceItem.info = JSON.parse(sourceItemRaw.info);
-    return sourceItem;
   }
 }
