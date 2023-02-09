@@ -175,7 +175,13 @@ export default {
       this.loadSourcesCounts();
     },
     async markAllRead() {
-      if (confirm("Mark all item read?") == true) {
+      let confirmed = false;
+      if (this.sourceItems.length > 1) {
+        confirmed = confirm("Mark all item read?");
+      } else {
+        confirmed = true;
+      }
+      if (confirmed === true) {
         for (const item of this.sourceItems) {
           await axios
             .put(
