@@ -268,7 +268,7 @@ export default {
   #sources-layout {
     display: grid;
     grid-template-rows: 4em auto 2em 2fr;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: auto auto;
     height: calc(100vh - 5em);
     column-gap: 1em;
   }
