@@ -58,7 +58,7 @@
     <div id="sources-items-list">
       <span v-if="sourceItems.length == 0">No items</span>
       <div v-for="sourceItem in sourceItems" v-bind:key="sourceItem.id">
-        <SourceItem @onItemUpdated="onItemsUpdated" :item="sourceItem" />
+        <SourceItem @onItemUpdated="onItemsUpdated" :item="sourceItem" :sourceLabels="sourceLabels" />
       </div>
     </div>
   </div>

@@ -25,25 +25,6 @@ export class SourceItemsData {
     return sourceItem;
   }
 
-  public static async listForUser(context: Span, userId: string): Promise<SourceItem[]> {
-    const span = StandardTracer.startSpan("SourceItemsData_getForUser", context);
-    const sourceItems: SourceItem[] = [];
-    const sourceItemsRaw = await SqlDbutils.querySQL(
-      span,
-      "SELECT sources_items.*, sources.name as sourceName " +
-        "FROM sources_items, sources " +
-        "WHERE sources.userId = ? " +
-        "  AND sources_items.status = 'unread' " +
-        "  AND sources.id = sources_items.sourceId  ",
-      [userId]
-    );
-    for (const sourceItem of sourceItemsRaw) {
-      sourceItems.push(SourceItem.fromRaw(sourceItem));
-    }
-    span.end();
-    return sourceItems;
-  }
-
   public static async add(context: Span, sourceItem: SourceItem): Promise<void> {
     const span = StandardTracer.startSpan("SourceItemsData_add", context);
     await SqlDbutils.execSQL(
@@ -98,26 +79,5 @@ export class SourceItemsData {
     }
     span.end();
     return sourceItem;
-  }
-
-  public static async listForSource(context: Span, sourceId: string): Promise<SourceItem[]> {
-    const span = StandardTracer.startSpan("SourceItemsData_getLastForSource", context);
-    const sourceItems: SourceItem[] = [];
-    const sourceItemRaw = await SqlDbutils.querySQL(
-      span,
-      "SELECT sources_items.*, sources.name as sourceName " +
-        "FROM sources_items, sources " +
-        "WHERE sources_items.sourceId = ? " +
-        "  AND sources.id = ? " +
-        "  AND status = 'unread' " +
-        "  AND sources.id = sources_items.sourceId " +
-        "ORDER BY datePublished DESC",
-      [sourceId, sourceId]
-    );
-    for (const sourceItem of sourceItemRaw) {
-      sourceItems.push(SourceItem.fromRaw(sourceItem));
-    }
-    span.end();
-    return sourceItems;
   }
 }

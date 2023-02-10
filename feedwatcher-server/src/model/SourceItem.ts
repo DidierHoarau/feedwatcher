@@ -5,7 +5,6 @@ export class SourceItem {
   //
   public id: string;
   public sourceId: string;
-  public sourceName?: string;
   public title: string;
   public datePublished: Date;
   public content: string;
@@ -23,7 +22,6 @@ export class SourceItem {
     const sourceItem = new SourceItem();
     sourceItem.id = itemRaw.id;
     sourceItem.sourceId = itemRaw.sourceId;
-    sourceItem.sourceName = itemRaw.sourceName;
     sourceItem.title = itemRaw.title;
     sourceItem.content = itemRaw.content;
     sourceItem.url = itemRaw.url;

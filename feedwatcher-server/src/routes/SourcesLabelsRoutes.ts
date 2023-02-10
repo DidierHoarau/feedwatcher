@@ -1,6 +1,7 @@
 import { count } from "console";
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../data/Auth";
+import { SearchItemsData } from "../data/SearchItemsData";
 import { SourceLabelsData } from "../data/SourceLabelsData";
 import { SourcesData } from "../data/SourcesData";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
@@ -40,7 +41,7 @@ export class SourcesLabelsRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const sourceItems = await SourceLabelsData.listItemsForLabel(
+      const sourceItems = await SearchItemsData.listItemsForLabel(
         StandardTracer.getSpanFromRequest(req),
         req.params.labelName,
         userSession.userId
