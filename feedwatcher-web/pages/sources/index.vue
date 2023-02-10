@@ -4,11 +4,20 @@
       <h1>Sources</h1>
     </div>
     <div id="sources-actions" class="actions">
+      <i class="bi bi-cloud-arrow-down" v-on:click="refreshAndFetch()"></i>
+      <i class="bi bi-arrow-clockwise" v-on:click="refresh()"></i>
+      <NuxtLink to="/sources/new"><i class="bi bi-plus-square"></i></NuxtLink>
       <i class="bi bi-caret-up-square sources-actions-menu-toggle" v-if="menuOpened" v-on:click="openListMenu()"></i>
       <i class="bi bi-caret-down-square sources-actions-menu-toggle" v-else v-on:click="openListMenu()"></i>
-      <NuxtLink to="/sources/new"><i class="bi bi-plus-square"></i></NuxtLink>
     </div>
     <div id="sources-list" :class="{ 'sources-list-closed': !menuOpened }">
+      <div v-on:click="loadAllItems()" class="source-name-layout" :class="{ 'source-active': selectedIndex == -3 }">
+        <div class="source-name-name">
+          <i class="bi bi-caret-down-fill"></i>
+          All Items
+        </div>
+        <div class="source-name-count">{{ getCountAll() }}</div>
+      </div>
       <div v-for="(sourceLabel, index) in sourceLabels" v-bind:key="sourceLabel.labelName">
         <div
           v-on:click="loadLabelItems(index)"
@@ -17,6 +26,7 @@
           :class="{ 'source-active': index == selectedIndex && !selectedSource }"
         >
           <div class="source-name-name">
+            <span v-html="getLabelIndentation(index)"></span>
             <i class="bi bi-caret-down-fill"></i>
             {{ sourceLabel.labelName }}
           </div>
@@ -42,7 +52,7 @@
     </div>
     <div id="sources-items-actions" class="actions">
       <NuxtLink v-if="selectedSource" :to="'/sources/' + selectedSource"><i class="bi bi-pencil-square"></i></NuxtLink>
-      <i v-if="selectedSource" v-on:click="refreshSourceItems(selectedSource)" class="bi bi-arrow-clockwise"></i>
+      <i v-if="selectedSource" v-on:click="refreshSourceItems(selectedSource)" class="bi bi-cloud-arrow-down"></i>
       <i v-if="sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
     </div>
     <div id="sources-items-list">
@@ -121,6 +131,18 @@ export default {
         })
         .catch(handleError);
     },
+    async loadAllItems() {
+      this.selectedSource = null;
+      this.selectedIndex = -3;
+      this.sourceItems = [];
+      await Timeout.wait(10);
+      await axios
+        .get(`${(await Config.get()).SERVER_URL}/items`, await AuthService.getAuthHeader())
+        .then((res) => {
+          this.sourceItems = res.data.sourceItems;
+        })
+        .catch(handleError);
+    },
     async loadSavedItems(index) {
       this.selectedSource = null;
       this.selectedIndex = -2;
@@ -140,8 +162,26 @@ export default {
         .then((res) => {})
         .catch(handleError);
     },
+    async refreshAndFetch() {
+      await axios
+        .put(`${(await Config.get()).SERVER_URL}/sources/fetch`, {}, await AuthService.getAuthHeader())
+        .then((res) => {})
+        .catch(handleError);
+      this.loadSources();
+      this.loadSourcesCounts();
+    },
+    async refresh() {
+      this.loadSources();
+      this.loadSourcesCounts();
+    },
     async markAllRead() {
-      if (confirm("Mark all item read?") == true) {
+      let confirmed = false;
+      if (this.sourceItems.length > 1) {
+        confirmed = confirm("Mark all item read?");
+      } else {
+        confirmed = true;
+      }
+      if (confirmed === true) {
         for (const item of this.sourceItems) {
           await axios
             .put(
@@ -169,11 +209,14 @@ export default {
       }
       return true;
     },
+    getLabelIndentation(index) {
+      return "&nbsp;&nbsp;&nbsp;&nbsp;";
+    },
     getSourceIndentation(index) {
       if (!this.sourceLabels[index].labelName) {
-        return "";
+        return "&nbsp;&nbsp;&nbsp;&nbsp;";
       }
-      let indentation = "";
+      let indentation = "&nbsp;&nbsp;&nbsp;&nbsp;";
       for (const count in this.sourceLabels[index].labelName.split("/")) {
         indentation += "&nbsp;&nbsp;&nbsp;&nbsp;";
       }
@@ -195,6 +238,13 @@ export default {
         return 0;
       }
       return count.unreadCount;
+    },
+    getCountAll() {
+      let count = 0;
+      for (let i = 0; i < this.sourceCounts.length; i++) {
+        count += this.sourceCounts[i].unreadCount;
+      }
+      return count;
     },
     openListMenu() {
       this.menuOpened = !this.menuOpened;
@@ -218,14 +268,13 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0.2em 0.5em;
 }
 
 @media (max-width: 700px) {
   #sources-layout {
     display: grid;
     grid-template-rows: 4em auto 2em 2fr;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: auto auto;
     height: calc(100vh - 5em);
     column-gap: 1em;
   }
@@ -292,6 +341,9 @@ export default {
   }
   .sources-actions-menu-toggle {
     visibility: hidden;
+    font-size: 0px;
+    padding: 0px;
+    margin: 0px;
   }
 }
 
@@ -315,6 +367,7 @@ export default {
 .source-name-layout {
   display: grid;
   grid-template-columns: 1fr auto;
+  padding: 0.3em 0.5em;
 }
 .source-name-name {
   grid-column: 1;

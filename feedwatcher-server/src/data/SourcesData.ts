@@ -35,9 +35,10 @@ export class SourcesData {
       span,
       "SELECT COUNT(id) as unreadCount, sourceId FROM sources_items " +
         "WHERE sourceId IN (" +
-        "  SELECT id FROM sources " +
-        "  WHERE userId = ?) " +
-        "AND status = ? " +
+        "    SELECT id FROM sources " +
+        "    WHERE userId = ? " +
+        "  ) " +
+        "  AND status = ? " +
         "GROUP BY sourceId ",
       [userId, "unread"]
     );
