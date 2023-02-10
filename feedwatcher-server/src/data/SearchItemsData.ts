@@ -11,7 +11,7 @@ export class SearchItemsData {
     const sourceItems: SourceItem[] = [];
     const sourceItemsRaw = await SqlDbutils.querySQL(
       span,
-      "SELECT sources_items.* " +
+      "SELECT sources_items.*, sources.name as sourceName " +
         "FROM sources_items, sources " +
         "WHERE sources.userId = ? " +
         "  AND sources_items.status = 'unread' " +
@@ -30,12 +30,14 @@ export class SearchItemsData {
     const sourceItems: SourceItem[] = [];
     const sourceItemRaw = await SqlDbutils.querySQL(
       span,
-      "SELECT sources_items.* " +
-        "FROM sources_items " +
+      "SELECT sources_items.*, sources.name as sourceName " +
+        "FROM sources_items, sources " +
         "WHERE sources_items.sourceId = ? " +
+        "  AND sources.id = ? " +
         "  AND status = 'unread' " +
+        "  AND sources.id = sources_items.sourceId " +
         "ORDER BY datePublished DESC",
-      [sourceId]
+      [sourceId, sourceId]
     );
     for (const sourceItem of sourceItemRaw) {
       sourceItems.push(SourceItem.fromRaw(sourceItem));
@@ -49,16 +51,18 @@ export class SearchItemsData {
     const sourceItems: SourceItem[] = [];
     const sourceItemRaw = await SqlDbutils.querySQL(
       span,
-      "SELECT sources_items.* " +
-        "FROM sources_items " +
+      "SELECT sources_items.*, sources.name AS sourceName " +
+        "FROM sources_items, sources " +
         "WHERE sources_items.sourceId IN ( " +
         "    SELECT sources.id " +
         "    FROM sources, sources_labels " +
         "    WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name = ? " +
         "  ) " +
         "  AND sources_items.status = 'unread' " +
+        "  AND sources.userId = ? " +
+        "  AND sources_items.sourceId = sources.id " +
         "ORDER BY datePublished DESC",
-      [userId, label]
+      [userId, label, userId]
     );
     for (const sourceItem of sourceItemRaw) {
       sourceItems.push(SourceItem.fromRaw(sourceItem));

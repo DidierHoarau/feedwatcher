@@ -22,14 +22,13 @@
       <span v-html="item.content"></span>
     </div>
     <div class="sourceitem-layout-meta">
-      {{ displaySourceName(item.sourceId) }}
+      {{ item.sourceName }}
     </div>
   </article>
 </template>
 
 <script>
 import axios from "axios";
-import * as _ from "lodash";
 import { handleError, EventBus, EventTypes } from "../services/EventBus";
 import Config from "../services/Config.ts";
 import { AuthService } from "../services/AuthService";
@@ -37,7 +36,6 @@ import { AuthService } from "../services/AuthService";
 export default {
   props: {
     item: {},
-    sourceLabels: { sourceLabels: [] },
   },
   data() {
     return {
@@ -92,9 +90,6 @@ export default {
           this.isSaved = false;
         })
         .catch(handleError);
-    },
-    displaySourceName(sourceId) {
-      return _.find(this.sourceLabels, { sourceId: this.item.sourceId }).labelName || "";
     },
     relativeTime(date) {
       const delta = Math.round((new Date() - new Date(date)) / 1000);
