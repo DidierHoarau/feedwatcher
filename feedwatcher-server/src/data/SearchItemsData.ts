@@ -15,7 +15,8 @@ export class SearchItemsData {
         "FROM sources_items, sources " +
         "WHERE sources.userId = ? " +
         "  AND sources_items.status = 'unread' " +
-        "  AND sources.id = sources_items.sourceId  ",
+        "  AND sources.id = sources_items.sourceId  " +
+        "ORDER BY datePublished DESC",
       [userId]
     );
     for (const sourceItem of sourceItemsRaw) {
