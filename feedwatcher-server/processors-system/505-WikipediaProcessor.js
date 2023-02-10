@@ -6,10 +6,10 @@ const _ = require("lodash");
 module.exports = {
   //
   test: async (source) => {
-    let urlMatch = /.*\/\/(.*).wikipedia.org\/wiki\/(.*?)((\/\w+)+|\/?)$/.exec(source.info.url);
+    let urlMatch = /.*\/\/(.*)(\.m)?.wikipedia.org\/wiki\/(.*?)((\/\w+)+|\/?)$/.exec(source.info.url);
     if (urlMatch) {
       const pageLanguage = urlMatch[1];
-      const pageName = urlMatch[2];
+      const pageName = urlMatch[3];
       const pageInfo = (await axios.get(`https://${pageLanguage}.wikipedia.org/w/rest.php/v1/page/${pageName}/bare`))
         .data;
       return { name: pageInfo.title, icon: "wikipedia" };
@@ -18,9 +18,9 @@ module.exports = {
   },
 
   fetchLatest: async (source, lastSourceItemSaved) => {
-    let urlMatch = /.*\/\/(.*).wikipedia.org\/wiki\/(.*?)((\/\w+)+|\/?)$/.exec(source.info.url);
+    let urlMatch = /.*\/\/(.*)(\.m?).wikipedia.org\/wiki\/(.*?)((\/\w+)+|\/?)$/.exec(source.info.url);
     const pageLanguage = urlMatch[1];
-    const pageName = urlMatch[2];
+    const pageName = urlMatch[3];
     const pageRevisions = _.sortBy(
       (await axios.get(`https://${pageLanguage}.wikipedia.org/w/rest.php/v1/page/${pageName}/history`)).data.revisions,
       ["timestamp"]

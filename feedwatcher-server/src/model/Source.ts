@@ -10,6 +10,7 @@ export class Source {
 
   constructor() {
     this.id = uuidv4();
+    this.info = {};
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
