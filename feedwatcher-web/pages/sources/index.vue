@@ -263,6 +263,7 @@ export default {
 #sources-actions {
   text-align: right;
   padding-top: 0.5em;
+  white-space: nowrap;
 }
 #sources-list div {
   white-space: nowrap;
