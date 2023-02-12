@@ -12,22 +12,24 @@
     </div>
     <div id="sources-list" :class="{ 'sources-list-closed': !menuOpened }">
       <div v-on:click="loadAllItems()" class="source-name-layout" :class="{ 'source-active': selectedIndex == -3 }">
-        <div class="source-name-name">
+        <div class="source-name-indent">
           <i class="bi bi-caret-down-fill"></i>
-          All Items
         </div>
+        <div class="source-name-name">All Items</div>
         <div class="source-name-count">{{ getCountAll() }}</div>
       </div>
       <div v-for="(sourceLabel, index) in sourceLabels" v-bind:key="sourceLabel.labelName">
         <div
-          v-on:click="loadLabelItems(index)"
           v-if="isLabelDisplayed(index)"
-          class="source-name-layout"
           :class="{ 'source-active': index == selectedIndex && !selectedSource }"
+          class="source-name-layout"
         >
-          <div class="source-name-name">
+          <div v-on:click="toggleLabelCollapsed(sourceLabel.labelName)" class="source-name-indent">
             <span v-html="getLabelIndentation(index)"></span>
-            <i class="bi bi-caret-down-fill"></i>
+            <i v-if="isLabelCollapsed(sourceLabel.labelName)" class="bi bi-caret-right-fill"></i>
+            <i v-else class="bi bi-caret-down-fill"></i>
+          </div>
+          <div class="source-name-name" v-on:click="loadLabelItems(index)">
             {{ sourceLabel.labelName }}
           </div>
           <div class="source-name-count">{{ getCountLabel(index) }}</div>
@@ -36,10 +38,13 @@
           v-on:click="loadSourceItems(index)"
           class="source-name-layout"
           :class="{ 'source-active': index == selectedIndex && selectedSource }"
+          v-if="!isLabelCollapsed(sourceLabel.labelName)"
         >
-          <div class="source-name-name">
+          <div class="source-name-indent">
             <span v-html="getSourceIndentation(index)"></span>
             <i v-if="sourceLabel.sourceInfo.icon" :class="'bi bi-' + sourceLabel.sourceInfo.icon"></i>
+          </div>
+          <div class="source-name-name">
             {{ sourceLabel.sourceName }}
           </div>
           <div class="source-name-count">{{ getCountSource(sourceLabel.sourceId) }}</div>
@@ -70,6 +75,7 @@ import * as _ from "lodash";
 import Config from "../../services/Config.ts";
 import { Timeout } from "../../services/Timeout.ts";
 import { AuthService } from "../../services/AuthService";
+import { PreferencesLabels } from "../../services/PreferencesLabels";
 import { handleError, EventBus, EventTypes } from "../../services/EventBus";
 
 export default {
@@ -252,6 +258,13 @@ export default {
     onItemsUpdated(item) {
       this.loadSourcesCounts();
     },
+    isLabelCollapsed(label) {
+      return PreferencesLabels.isCollapsed(label);
+    },
+    toggleLabelCollapsed(label) {
+      PreferencesLabels.toggleCollapsed(label);
+      this.$forceUpdate();
+    },
   },
 };
 </script>
@@ -367,13 +380,17 @@ export default {
 
 .source-name-layout {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto 1fr auto;
   padding: 0.3em 0.5em;
 }
-.source-name-name {
+.source-name-indent {
   grid-column: 1;
+  padding-right: 0.5em;
+}
+.source-name-name {
+  grid-column: 2;
 }
 .source-name-count {
-  grid-column: 2;
+  grid-column: 3;
 }
 </style>

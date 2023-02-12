@@ -18,7 +18,7 @@ module.exports = {
         DEV_MODE: "true",
         DATA_DIR: "../_dev/data",
         OPENTELEMETRY_COLLECTOR_HTTP: "http://localhost:4318/v1/traces",
-        OPENTELEMETRY_COLLECTOR_AWS: false,
+        OPENTELEMETRY_COLLECTOR_AWS: true,
       },
     },
     {
