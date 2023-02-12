@@ -1,7 +1,6 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../data/Auth";
-import { ListsItemsData } from "../data/ListsItemsData";
-import { SourceItemsData } from "../data/SourceItemsData";
+import { SearchItemsData } from "../data/SearchItemsData";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 
 export class ItemsRoutes {
@@ -13,7 +12,7 @@ export class ItemsRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const sourceItems = await SourceItemsData.listForUser(StandardTracer.getSpanFromRequest(req), userSession.userId);
+      const sourceItems = await SearchItemsData.listForUser(StandardTracer.getSpanFromRequest(req), userSession.userId);
       return res.status(201).send({ sourceItems });
     });
   }

@@ -56,29 +56,4 @@ export class SourceLabelsData {
     span.end();
     return labels;
   }
-
-  public static async listItemsForLabel(context: Span, label: string, userId: string): Promise<SourceItem[]> {
-    const span = StandardTracer.startSpan("SourceItemsData_listItemsForLabel", context);
-    const sourceItems: SourceItem[] = [];
-    const sourceItemRaw = await SqlDbutils.querySQL(
-      span,
-      "SELECT sources_items.*, sources.name AS sourceName " +
-        "FROM sources_items, sources " +
-        "WHERE sources_items.sourceId IN ( " +
-        "    SELECT sources.id " +
-        "    FROM sources, sources_labels " +
-        "    WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name = ? " +
-        "  ) " +
-        "  AND sources_items.status = 'unread' " +
-        "  AND sources.userId = ? " +
-        "  AND sources_items.sourceId = sources.id " +
-        "ORDER BY datePublished DESC",
-      [userId, label, userId]
-    );
-    for (const sourceItem of sourceItemRaw) {
-      sourceItems.push(SourceItem.fromRaw(sourceItem));
-    }
-    span.end();
-    return sourceItems;
-  }
 }

@@ -15,8 +15,8 @@ fi
 
 # Monitoring
 cd "${REPO_DIR}/_dev/monitoring"
-docker compose down || true
-docker compose up -d || true
+# docker compose down || true
+# docker compose up -d || true
 
 
 # Server
