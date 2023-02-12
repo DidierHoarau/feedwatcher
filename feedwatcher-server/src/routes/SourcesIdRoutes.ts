@@ -115,23 +115,5 @@ export class SourcesIdRoutes {
       Processor.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);
       return res.status(201).send();
     });
-
-    interface GetSourceIdItemsRequest extends RequestGenericInterface {
-      Params: {
-        sourceId: string;
-      };
-    }
-    fastify.get<GetSourceIdItemsRequest>("/items", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
-      if (!userSession.isAuthenticated) {
-        return res.status(403).send({ error: "Access Denied" });
-      }
-      const source = await SourcesData.get(StandardTracer.getSpanFromRequest(req), req.params.sourceId);
-      if (source.userId !== userSession.userId) {
-        return res.status(403).send({ error: "Access Denied" });
-      }
-      const sourceItems = await SearchItemsData.listForSource(StandardTracer.getSpanFromRequest(req), source.id);
-      return res.status(201).send({ sourceItems });
-    });
   }
 }

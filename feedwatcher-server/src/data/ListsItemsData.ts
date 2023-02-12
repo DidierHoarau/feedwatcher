@@ -25,27 +25,6 @@ export class ListsItemsData {
     span.end();
   }
 
-  public static async listItemsForUser(context: Span, userId: string): Promise<SourceItem[]> {
-    const span = StandardTracer.startSpan("ListsItemsData_listItemsForUser", context);
-    const sourceItems: SourceItem[] = [];
-    const sourceItemRaw = await SqlDbutils.querySQL(
-      span,
-      "SELECT sources_items.*, sources.name as sourceName " +
-        "FROM sources_items, lists_items, sources " +
-        "WHERE sources_items.id = lists_items.itemId  " +
-        "  AND lists_items.userId = ? " +
-        "  AND sources.id = sources_items.sourceId " +
-        "  AND sources.userId = ? " +
-        "ORDER BY datePublished DESC",
-      [userId, userId]
-    );
-    for (const sourceItem of sourceItemRaw) {
-      sourceItems.push(SourceItem.fromRaw(sourceItem));
-    }
-    span.end();
-    return sourceItems;
-  }
-
   public static async getItemForUser(context: Span, itemId: string, userId: string): Promise<SourceItem> {
     const span = StandardTracer.startSpan("ListsItemsData_getItemForUser", context);
     const sourceItemRaw = await SqlDbutils.querySQL(
