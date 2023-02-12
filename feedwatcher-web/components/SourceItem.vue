@@ -18,6 +18,8 @@
       <div class="sourceitem-actions actions">
         <i v-if="isSaved" class="bi bi-bookmark-check-fill" v-on:click="unSaveItem()"></i>
         <i v-else class="bi bi-bookmark-plus" v-on:click="saveItem()"></i>
+        <i v-if="item.status == 'read'" class="bi bi-eye" v-on:click="markReadStatus('unread')"></i>
+        <i v-else class="bi bi-eye-slash" v-on:click="markReadStatus('read')"></i>
       </div>
       <span v-html="item.content"></span>
     </div>
@@ -57,18 +59,18 @@ export default {
             }
           })
           .catch(handleError);
+        axios
+          .put(
+            `${(await Config.get()).SERVER_URL}/sources/items/${this.item.id}/status`,
+            { status: "read" },
+            await AuthService.getAuthHeader()
+          )
+          .then((res) => {
+            this.item.status = "read";
+            this.$emit("onItemUpdated", { item: this.item });
+          })
+          .catch(handleError);
       }
-      axios
-        .put(
-          `${(await Config.get()).SERVER_URL}/sources/items/${this.item.id}/status`,
-          { status: "read" },
-          await AuthService.getAuthHeader()
-        )
-        .then((res) => {
-          this.item.status = "read";
-          this.$emit("onItemUpdated", { item: this.item });
-        })
-        .catch(handleError);
     },
     async saveItem() {
       axios
@@ -88,6 +90,19 @@ export default {
         .delete(`${(await Config.get()).SERVER_URL}/lists/items/${this.item.id}`, await AuthService.getAuthHeader())
         .then((res) => {
           this.isSaved = false;
+        })
+        .catch(handleError);
+    },
+    async markReadStatus(status) {
+      axios
+        .put(
+          `${(await Config.get()).SERVER_URL}/sources/items/${this.item.id}/status`,
+          { status },
+          await AuthService.getAuthHeader()
+        )
+        .then((res) => {
+          this.item.status = status;
+          this.$emit("onItemUpdated", { item: this.item });
         })
         .catch(handleError);
     },
@@ -175,7 +190,7 @@ export default {
   color: #666;
 }
 .sourceitem-actions {
-  font-size: 0.9em;
+  font-size: 0.7em;
   margin-bottom: 0.5em;
   text-align: right;
 }

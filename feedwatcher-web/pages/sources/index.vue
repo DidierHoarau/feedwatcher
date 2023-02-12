@@ -59,12 +59,14 @@
       <NuxtLink v-if="selectedSource" :to="'/sources/' + selectedSource"><i class="bi bi-pencil-square"></i></NuxtLink>
       <i v-if="selectedSource" v-on:click="refreshSourceItems(selectedSource)" class="bi bi-cloud-arrow-down"></i>
       <i v-if="sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
+      <i v-if="filterStatus == 'unread'" v-on:click="toggleUnreadFIlter()" class="bi bi-eye-slash"></i>
+      <i v-else v-on:click="toggleUnreadFIlter()" class="bi bi-eye"></i>
     </div>
     <div id="sources-items-list">
       <div
         v-on:click="pagePrevious()"
         id="sources-items-list-page-prev"
-        :class="{ 'page-inactive': seachOptions.page == 1 }"
+        :class="{ 'page-inactive': searchOptions.page == 1 }"
       >
         <i class="bi bi-caret-left"></i>
       </div>
@@ -101,8 +103,9 @@ export default {
       menuOpened: true,
       sourceCounts: [],
       pageHasMore: false,
+      page: 1,
       filterStatus: "unread",
-      seachOptions: { page: 1 },
+      searchOptions: { page: 1, filterStatus: "unread" },
     };
   },
   async created() {
@@ -131,19 +134,19 @@ export default {
       const sourceId = this.sourceLabels[index].sourceId;
       this.selectedSource = sourceId;
       this.selectedIndex = index;
-      this.seachOptions = {
+      this.searchOptions = {
         searchCriteria: "sourceId",
         page: this.page,
         filterStatus: this.filterStatus,
         sourceId,
       };
-      this.searchItems(seachOptions);
+      this.searchItems();
     },
     async loadLabelItems(index) {
       this.selectedSource = null;
       this.selectedIndex = index;
       this.page = 1;
-      this.seachOptions = {
+      this.searchOptions = {
         searchCriteria: "labelName",
         page: this.page,
         filterStatus: this.filterStatus,
@@ -155,7 +158,7 @@ export default {
       this.selectedSource = null;
       this.selectedIndex = -3;
       this.page = 1;
-      this.seachOptions = {
+      this.searchOptions = {
         searchCriteria: "all",
         page: this.page,
         filterStatus: this.filterStatus,
@@ -165,7 +168,8 @@ export default {
     async loadSavedItems(index) {
       this.selectedSource = null;
       this.selectedIndex = -2;
-      this.seachOptions = {
+      this.filterStatus = "all";
+      this.searchOptions = {
         searchCriteria: "lists",
         page: this.page,
         filterStatus: this.filterStatus,
@@ -277,24 +281,34 @@ export default {
       this.$forceUpdate();
     },
     pagePrevious() {
-      if (this.seachOptions.page == 1) {
+      if (this.searchOptions.page == 1) {
         return;
       }
-      this.seachOptions.page--;
+      this.searchOptions.page--;
       this.searchItems();
     },
     pageNext() {
       if (!this.pageHasMore) {
         return;
       }
-      this.seachOptions.page++;
+      this.searchOptions.page++;
+      this.searchItems();
+    },
+    toggleUnreadFIlter() {
+      this.page = 1;
+      if (this.filterStatus === "unread") {
+        this.filterStatus = "all";
+      } else {
+        this.filterStatus = "unread";
+      }
+      this.searchOptions.filterStatus = this.filterStatus;
       this.searchItems();
     },
     async searchItems() {
       this.sourceItems = [];
       await Timeout.wait(10);
       await axios
-        .post(`${(await Config.get()).SERVER_URL}/items/search`, this.seachOptions, await AuthService.getAuthHeader())
+        .post(`${(await Config.get()).SERVER_URL}/items/search`, this.searchOptions, await AuthService.getAuthHeader())
         .then((res) => {
           this.sourceItems = res.data.sourceItems;
           this.pageHasMore = res.data.pageHasMore;

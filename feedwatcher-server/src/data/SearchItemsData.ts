@@ -5,6 +5,7 @@ import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SourceItem } from "../model/SourceItem";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "./SqlDbUtils";
+import { SourceItemStatus } from "../model/SourceItemStatus";
 
 const PAGE_SIZE = 50;
 
@@ -21,7 +22,7 @@ export class SearchItemsData {
       "SELECT sources_items.*, sources.name as sourceName " +
         "FROM sources_items, sources " +
         "WHERE sources.userId = ? " +
-        "  AND sources_items.status = 'unread' " +
+        getStatusFilterQuery(searchOptions) +
         "  AND sources.id = sources_items.sourceId  " +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
@@ -44,7 +45,7 @@ export class SearchItemsData {
         "FROM sources_items, sources " +
         "WHERE sources_items.sourceId = ? " +
         "  AND sources.id = ? " +
-        "  AND status = 'unread' " +
+        getStatusFilterQuery(searchOptions) +
         "  AND sources.id = sources_items.sourceId " +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
@@ -71,7 +72,7 @@ export class SearchItemsData {
         "    FROM sources, sources_labels " +
         "    WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name = ? " +
         "  ) " +
-        "  AND sources_items.status = 'unread' " +
+        getStatusFilterQuery(searchOptions) +
         "  AND sources.userId = ? " +
         "  AND sources_items.sourceId = sources.id " +
         "ORDER BY datePublished DESC " +
@@ -97,6 +98,7 @@ export class SearchItemsData {
         "  AND lists_items.userId = ? " +
         "  AND sources.id = sources_items.sourceId " +
         "  AND sources.userId = ? " +
+        getStatusFilterQuery(searchOptions) +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
       [userId, userId]
@@ -122,4 +124,11 @@ function getSearchResultsfromRaw(sourceItemsRaw: any): SearchItemsResult {
     searchItemsResult.pageHasMore = true;
   }
   return searchItemsResult;
+}
+
+function getStatusFilterQuery(searchOptions: SearchItemsOptions): string {
+  if (searchOptions.filterStatus === SourceItemStatus.unread) {
+    return "  AND sources_items.status = 'unread' ";
+  }
+  return "";
 }
