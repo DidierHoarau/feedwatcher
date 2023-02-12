@@ -108,6 +108,7 @@ export default {
   async created() {
     this.loadSources();
     this.loadAllItems();
+    this.loadSourcesCounts();
   },
   methods: {
     async loadSources() {
