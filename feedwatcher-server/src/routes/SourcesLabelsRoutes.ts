@@ -30,23 +30,5 @@ export class SourcesLabelsRoutes {
       const counts = await SourcesData.listCountsForUser(StandardTracer.getSpanFromRequest(req), userSession.userId);
       return res.status(201).send({ counts });
     });
-
-    interface GetSourceLabelItemsRequest extends RequestGenericInterface {
-      Params: {
-        labelName: string;
-      };
-    }
-    fastify.get<GetSourceLabelItemsRequest>("/:labelName/items", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
-      if (!userSession.isAuthenticated) {
-        return res.status(403).send({ error: "Access Denied" });
-      }
-      const sourceItems = await SearchItemsData.listItemsForLabel(
-        StandardTracer.getSpanFromRequest(req),
-        req.params.labelName,
-        userSession.userId
-      );
-      return res.status(201).send({ sourceItems });
-    });
   }
 }

@@ -59,11 +59,25 @@
       <NuxtLink v-if="selectedSource" :to="'/sources/' + selectedSource"><i class="bi bi-pencil-square"></i></NuxtLink>
       <i v-if="selectedSource" v-on:click="refreshSourceItems(selectedSource)" class="bi bi-cloud-arrow-down"></i>
       <i v-if="sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
+      <i v-if="filterStatus == 'unread'" v-on:click="toggleUnreadFIlter()" class="bi bi-eye-slash"></i>
+      <i v-else v-on:click="toggleUnreadFIlter()" class="bi bi-eye"></i>
     </div>
     <div id="sources-items-list">
-      <span v-if="sourceItems.length == 0">No items</span>
-      <div v-for="sourceItem in sourceItems" v-bind:key="sourceItem.id">
-        <SourceItem @onItemUpdated="onItemsUpdated" :item="sourceItem" />
+      <div
+        v-on:click="pagePrevious()"
+        id="sources-items-list-page-prev"
+        :class="{ 'page-inactive': searchOptions.page == 1 }"
+      >
+        <i class="bi bi-caret-left"></i>
+      </div>
+      <div id="sources-items-list-page">
+        <span v-if="sourceItems.length == 0">No items</span>
+        <div v-for="sourceItem in sourceItems" v-bind:key="sourceItem.id">
+          <SourceItem @onItemUpdated="onItemsUpdated" :item="sourceItem" />
+        </div>
+      </div>
+      <div v-on:click="pageNext()" id="sources-items-list-page-next" :class="{ 'page-inactive': !pageHasMore }">
+        <i class="bi bi-caret-right"></i>
       </div>
     </div>
   </div>
@@ -88,10 +102,15 @@ export default {
       sourceLabels: [],
       menuOpened: true,
       sourceCounts: [],
+      pageHasMore: false,
+      page: 1,
+      filterStatus: "unread",
+      searchOptions: { page: 1, filterStatus: "unread" },
     };
   },
   async created() {
     this.loadSources();
+    this.loadAllItems();
     this.loadSourcesCounts();
   },
   methods: {
@@ -115,51 +134,47 @@ export default {
       const sourceId = this.sourceLabels[index].sourceId;
       this.selectedSource = sourceId;
       this.selectedIndex = index;
-      this.sourceItems = [];
-      await Timeout.wait(10);
-      await axios
-        .get(`${(await Config.get()).SERVER_URL}/sources/${sourceId}/items`, await AuthService.getAuthHeader())
-        .then((res) => {
-          this.sourceItems = res.data.sourceItems;
-        })
-        .catch(handleError);
+      this.searchOptions = {
+        searchCriteria: "sourceId",
+        page: this.page,
+        filterStatus: this.filterStatus,
+        sourceId,
+      };
+      this.searchItems();
     },
     async loadLabelItems(index) {
-      const label = this.sourceLabels[index].labelName;
       this.selectedSource = null;
       this.selectedIndex = index;
-      this.sourceItems = [];
-      await Timeout.wait(10);
-      await axios
-        .get(`${(await Config.get()).SERVER_URL}/sources/labels/${label}/items`, await AuthService.getAuthHeader())
-        .then((res) => {
-          this.sourceItems = res.data.sourceItems;
-        })
-        .catch(handleError);
+      this.page = 1;
+      this.searchOptions = {
+        searchCriteria: "labelName",
+        page: this.page,
+        filterStatus: this.filterStatus,
+        labelName: this.sourceLabels[index].labelName,
+      };
+      this.searchItems();
     },
     async loadAllItems() {
       this.selectedSource = null;
       this.selectedIndex = -3;
-      this.sourceItems = [];
-      await Timeout.wait(10);
-      await axios
-        .get(`${(await Config.get()).SERVER_URL}/items`, await AuthService.getAuthHeader())
-        .then((res) => {
-          this.sourceItems = res.data.sourceItems;
-        })
-        .catch(handleError);
+      this.page = 1;
+      this.searchOptions = {
+        searchCriteria: "all",
+        page: this.page,
+        filterStatus: this.filterStatus,
+      };
+      this.searchItems();
     },
     async loadSavedItems(index) {
       this.selectedSource = null;
       this.selectedIndex = -2;
-      this.sourceItems = [];
-      await Timeout.wait(10);
-      await axios
-        .get(`${(await Config.get()).SERVER_URL}/lists/items`, await AuthService.getAuthHeader())
-        .then((res) => {
-          this.sourceItems = res.data.sourceItems;
-        })
-        .catch(handleError);
+      this.filterStatus = "all";
+      this.searchOptions = {
+        searchCriteria: "lists",
+        page: this.page,
+        filterStatus: this.filterStatus,
+      };
+      this.searchItems();
     },
     async refreshSourceItems(sourceId) {
       this.selectedSource = sourceId;
@@ -264,6 +279,41 @@ export default {
     toggleLabelCollapsed(label) {
       PreferencesLabels.toggleCollapsed(label);
       this.$forceUpdate();
+    },
+    pagePrevious() {
+      if (this.searchOptions.page == 1) {
+        return;
+      }
+      this.searchOptions.page--;
+      this.searchItems();
+    },
+    pageNext() {
+      if (!this.pageHasMore) {
+        return;
+      }
+      this.searchOptions.page++;
+      this.searchItems();
+    },
+    toggleUnreadFIlter() {
+      this.page = 1;
+      if (this.filterStatus === "unread") {
+        this.filterStatus = "all";
+      } else {
+        this.filterStatus = "unread";
+      }
+      this.searchOptions.filterStatus = this.filterStatus;
+      this.searchItems();
+    },
+    async searchItems() {
+      this.sourceItems = [];
+      await Timeout.wait(10);
+      await axios
+        .post(`${(await Config.get()).SERVER_URL}/items/search`, this.searchOptions, await AuthService.getAuthHeader())
+        .then((res) => {
+          this.sourceItems = res.data.sourceItems;
+          this.pageHasMore = res.data.pageHasMore;
+        })
+        .catch(handleError);
     },
   },
 };
@@ -392,5 +442,17 @@ export default {
 }
 .source-name-count {
   grid-column: 3;
+}
+
+#sources-items-list {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+}
+#sources-items-list-page-prev,
+#sources-items-list-page-next {
+  padding: 8em 0.6em;
+}
+.page-inactive {
+  opacity: 0.1;
 }
 </style>

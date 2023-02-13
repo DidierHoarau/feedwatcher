@@ -8,18 +8,6 @@ export class ListsItemsRoutes {
   //
   public async getRoutes(fastify: FastifyInstance): Promise<void> {
     //
-    fastify.get("/items", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
-      if (!userSession.isAuthenticated) {
-        return res.status(403).send({ error: "Access Denied" });
-      }
-      const sourceItems = await ListsItemsData.listItemsForUser(
-        StandardTracer.getSpanFromRequest(req),
-        userSession.userId
-      );
-      return res.status(201).send({ sourceItems });
-    });
-
     interface GetListItemsIdRequest extends RequestGenericInterface {
       Params: {
         itemId: string;
