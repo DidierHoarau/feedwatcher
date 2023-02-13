@@ -2,11 +2,10 @@ import mitt from "mitt";
 export const EventBus = mitt();
 
 export enum EventTypes {
+  ITEMS_UPDATED = "ITEMS_UPDATED",
+  SOURCES_UPDATED = "SOURCES_UPDATED",
   AUTH_UPDATED = "AUTH_UPDATED",
-  TASK_UPDATED = "TASK_UPDATED",
   ALERT_MESSAGE = "ALERT_MESSAGE",
-  TASK_EXECUTION_TRIGGERED = "TASK_EXECUTION_TRIGGERED",
-  TASK_EXECUTION_CLOSED = "TASK_EXECUTION_CLOSED",
 }
 
 export function handleError(error: any): void {
