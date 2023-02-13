@@ -264,6 +264,9 @@ export default {
 }
 .source-name-name {
   grid-column: 2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .source-name-count {
   grid-column: 3;

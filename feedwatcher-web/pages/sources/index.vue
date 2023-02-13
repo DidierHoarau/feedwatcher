@@ -22,7 +22,7 @@
         v-on:click="refreshSourceItems(selectedSource)"
         class="bi bi-cloud-arrow-down"
       ></i>
-      <i v-if="sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
+      <i v-if="activeSourceItems.sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
       <i
         v-if="activeSourceItems.filterStatus == 'unread'"
         v-on:click="toggleUnreadFIlter()"
@@ -96,14 +96,15 @@ export default {
       EventBus.emit(EventTypes.SOURCES_UPDATED, {});
     },
     async markAllRead() {
+      const activeSourceItems = ActiveSourceItems();
       let confirmed = false;
-      if (this.sourceItems.length > 1) {
+      if (activeSourceItems.sourceItems.length > 1) {
         confirmed = confirm("Mark all item read?");
       } else {
         confirmed = true;
       }
       if (confirmed === true) {
-        for (const item of this.sourceItems) {
+        for (const item of activeSourceItems.sourceItems) {
           await axios
             .put(
               `${(await Config.get()).SERVER_URL}/sources/items/${item.id}/status`,
