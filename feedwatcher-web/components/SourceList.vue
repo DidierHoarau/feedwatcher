@@ -53,10 +53,10 @@ const activeSourceItems = ActiveSourceItems();
 <script>
 import axios from "axios";
 import * as _ from "lodash";
-import Config from "../services/Config.ts";
-import { handleError, EventBus, EventTypes } from "../services/EventBus";
-import { AuthService } from "../services/AuthService";
-import { PreferencesLabels } from "../services/PreferencesLabels";
+import Config from "~~/services/Config.ts";
+import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
+import { AuthService } from "~~/services/AuthService";
+import { PreferencesLabels } from "~~/services/PreferencesLabels";
 
 export default {
   data() {

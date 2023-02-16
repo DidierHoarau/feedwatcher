@@ -6,9 +6,20 @@ import { SqlDbutils } from "./SqlDbUtils";
 
 export class UsersData {
   //
+  public static async get(context: Span, id: string): Promise<User> {
+    const span = StandardTracer.startSpan("UsersData_get", context);
+    const usersRaw = await SqlDbutils.querySQL(span, "SELECT * FROM users WHERE id=?", [id]);
+    let user: User = null;
+    if (usersRaw.length > 0) {
+      user = UsersData.fromRaw(usersRaw[0]);
+    }
+    span.end();
+    return user;
+  }
+
   public static async getByName(context: Span, name: string): Promise<User> {
     const span = StandardTracer.startSpan("UsersData_getByName", context);
-    const usersRaw = await SqlDbutils.querySQL(span, `SELECT * FROM users WHERE name='${name}'`);
+    const usersRaw = await SqlDbutils.querySQL(span, "SELECT * FROM users WHERE name=?", [name]);
     let user: User = null;
     if (usersRaw.length > 0) {
       user = UsersData.fromRaw(usersRaw[0]);

@@ -62,10 +62,9 @@ const activeSourceItems = ActiveSourceItems();
 <script>
 import axios from "axios";
 import * as _ from "lodash";
-import Config from "../../services/Config.ts";
-import { Timeout } from "../../services/Timeout.ts";
-import { AuthService } from "../../services/AuthService";
-import { handleError, EventBus, EventTypes } from "../../services/EventBus";
+import Config from "~~/services/Config.ts";
+import { AuthService } from "~~/services/AuthService";
+import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 
 export default {
   data() {
@@ -76,7 +75,11 @@ export default {
       filterStatus: "unread",
     };
   },
-  async created() {},
+  async created() {
+    if (!(await AuthenticationState().ensureAuthenticated())) {
+      useRouter().push({ path: "/users" });
+    }
+  },
   methods: {
     async refreshSourceItems(sourceId) {
       this.selectedSource = sourceId;
@@ -94,6 +97,7 @@ export default {
     },
     async refresh() {
       EventBus.emit(EventTypes.SOURCES_UPDATED, {});
+      ActiveSourceItems().fetchItems();
     },
     async markAllRead() {
       const activeSourceItems = ActiveSourceItems();

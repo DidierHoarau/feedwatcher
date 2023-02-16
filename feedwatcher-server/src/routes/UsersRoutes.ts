@@ -25,17 +25,26 @@ export class UsersRoutes {
       };
     }
     fastify.post<PostSession>("/session", async (req, res) => {
+      let user: User;
+      // From token
+      const userSession = await Auth.getUserSession(req);
+      if (userSession.isAuthenticated) {
+        user = await UsersData.get(StandardTracer.getSpanFromRequest(req), userSession.userId);
+        return res.status(201).send({ success: true, token: await Auth.generateJWT(user) });
+      }
+
+      // From User/Pass
       if (!req.body.name) {
         return res.status(400).send({ error: "Missing: Name" });
       }
       if (!req.body.password) {
         return res.status(400).send({ error: "Missing: Password" });
       }
-      const user = await UsersData.getByName(StandardTracer.getSpanFromRequest(req), req.body.name);
+      user = await UsersData.getByName(StandardTracer.getSpanFromRequest(req), req.body.name);
       if (!user) {
         return res.status(403).send({ error: "Authentication Failed" });
       } else if (await UserPassword.checkPassword(StandardTracer.getSpanFromRequest(req), user, req.body.password)) {
-        res.status(201).send({ success: true, token: await Auth.generateJWT(user) });
+        return res.status(201).send({ success: true, token: await Auth.generateJWT(user) });
       } else {
         return res.status(403).send({ error: "Authentication Failed" });
       }

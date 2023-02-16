@@ -43,5 +43,5 @@ export const ActiveSourceItems = defineStore("ActiveSourceItems", {
 });
 
 if (import.meta.hot) {
-  import.meta.hot.accept(acceptHMRUpdate(useCounter, import.meta.hot));
+  import.meta.hot.accept(acceptHMRUpdate(ActiveSourceItems, import.meta.hot));
 }
