@@ -1,11 +1,11 @@
 <template>
   <article class="sourceitem-layout">
-    <div class="sourceitem-layout-date" v-on:click="clickedItem()">{{ relativeTime(item.datePublished) }}</div>
     <div
       class="sourceitem-layout-title"
       v-on:click="clickedItem()"
       :class="{ 'sourceitem-read': item.status == 'read' }"
     >
+      <span class="sourceitem-date">{{ relativeTime(item.datePublished) }}</span>
       {{ item.title }}
     </div>
     <div class="sourceitem-layout-link">
@@ -31,9 +31,9 @@
 
 <script>
 import axios from "axios";
-import { handleError, EventBus, EventTypes } from "../services/EventBus";
-import Config from "../services/Config.ts";
-import { AuthService } from "../services/AuthService";
+import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
+import Config from "~~/services/Config.ts";
+import { AuthService } from "~~/services/AuthService";
 
 export default {
   props: {
@@ -67,7 +67,7 @@ export default {
           )
           .then((res) => {
             this.item.status = "read";
-            this.$emit("onItemUpdated", { item: this.item });
+            EventBus.emit(EventTypes.ITEMS_UPDATED, {});
           })
           .catch(handleError);
       }
@@ -81,7 +81,6 @@ export default {
         )
         .then((res) => {
           this.isSaved = true;
-          this.$emit("onItemUpdated", { item: this.item });
         })
         .catch(handleError);
     },
@@ -102,7 +101,7 @@ export default {
         )
         .then((res) => {
           this.item.status = status;
-          this.$emit("onItemUpdated", { item: this.item });
+          EventBus.emit(EventTypes.ITEMS_UPDATED, {});
         })
         .catch(handleError);
     },
@@ -158,36 +157,28 @@ export default {
 .sourceitem-layout {
   display: grid;
   grid-template-rows: auto auto auto;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
   height: calc(100vh - 5em);
   width: 100%;
   height: auto;
   grid-gap: 0.5em;
-  padding: 0.5em;
+  padding: 0.5em 0.6em;
   margin: 0.5em 0;
-}
-.sourceitem-layout-date {
-  grid-row: 1;
-  grid-column: 1;
-  font-size: 70%;
-  padding-top: 0.4em;
 }
 .sourceitem-layout-title {
   grid-row: 1;
-  grid-column: 2;
+  grid-column: 1;
 }
 .sourceitem-layout-link {
   grid-row: 1;
-  grid-column: 3;
+  grid-column: 2;
+  text-align: right;
 }
 .sourceitem-layout-content {
   grid-row: 2;
-  grid-column-start: 2;
-  grid-column-end: span 3;
+  grid-column-start: 1;
+  grid-column-end: span 2;
   overflow: hidden;
-}
-.sourceitem-read {
-  color: #666;
 }
 .sourceitem-actions {
   font-size: 0.7em;
@@ -201,18 +192,14 @@ export default {
   font-size: 0.5em;
   text-align: right;
 }
-@media (prefers-color-scheme: dark) {
-  .sourceitem-layout-date,
-  .sourceitem-read,
-  .sourceitem-layout-meta {
-    color: #666;
-  }
+.sourceitem-date {
+  font-size: 0.7em;
+  padding-right: 0.6em;
 }
-@media (prefers-color-scheme: light) {
-  .sourceitem-layout-date,
-  .sourceitem-read,
-  .sourceitem-layout-meta {
-    color: #ccc;
-  }
+.sourceitem-read,
+.sourceitem-date,
+.sourceitem-read,
+.sourceitem-layout-meta {
+  opacity: 0.5;
 }
 </style>

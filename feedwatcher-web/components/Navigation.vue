@@ -6,7 +6,7 @@
       </li>
     </ul>
     <ul class="menu-links">
-      <li>
+      <li v-if="authenticationState.isAuthenticated">
         <NuxtLink to="/sources"><i class="bi bi-rss-fill"></i></NuxtLink>
       </li>
       <li>
@@ -15,6 +15,31 @@
     </ul>
   </nav>
 </template>
+
+<script setup>
+import { AuthService } from "~~/services/AuthService";
+const authenticationState = AuthenticationState();
+</script>
+
+<script>
+import axios from "axios";
+import Config from "~~/services/Config.ts";
+
+export default {
+  async created() {
+    if (await AuthenticationState().ensureAuthenticated()) {
+      setTimeout(async () => {
+        // Renew session tocken
+        axios
+          .post(`${(await Config.get()).SERVER_URL}/users/session`, {}, await AuthService.getAuthHeader())
+          .then((res) => {
+            AuthService.saveToken(res.data.token);
+          });
+      }, 10000);
+    }
+  },
+};
+</script>
 
 <style scoped>
 .menu-links li {
