@@ -44,7 +44,7 @@ module.exports = {
         value = dataPoint.split('value="')[1].split('"')[0];
       }
     }
-    if (new Date() - new Date(lastSourceItemSaved.datePublished) < 24 * 3600 * 1000) {
+    if (lastSourceItemSaved && new Date() - new Date(lastSourceItemSaved.datePublished) < 24 * 3600 * 1000) {
       return [];
     }
     const sourceItems = [];
