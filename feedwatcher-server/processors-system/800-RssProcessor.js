@@ -4,6 +4,14 @@ const Parser = require("rss-parser");
 // eslint-disable-next-line no-undef
 module.exports = {
   //
+  getInfo: () => {
+    return {
+      title: "RSS Feed",
+      description: "Follows a RSS feed. <br/>" + "Expected URLs: RSS or Atom feed URL",
+      icon: "rss",
+    };
+  },
+
   test: async (source) => {
     try {
       const feed = await new Parser().parseURL(source.info.url);

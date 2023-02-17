@@ -11,6 +11,7 @@ import * as _ from "lodash";
 import { Source } from "./model/Source";
 import { SourceItem } from "./model/SourceItem";
 import { v4 as uuidv4 } from "uuid";
+import { ProcessorInfo } from "./model/ProcessorInfo";
 
 const logger = new Logger("Processor");
 let config: Config;
@@ -18,10 +19,26 @@ const fetchSourceItemsQueue: Source[] = [];
 
 export class Processor {
   //
-  public static async init(context: Span, configIn: Config) {
-    const span = StandardTracer.startSpan("Scheduler_init", context);
+  public static async init(context: Span, configIn: Config): Promise<void> {
+    const span = StandardTracer.startSpan("Processor_init", context);
     config = configIn;
     span.end();
+  }
+
+  public static async getInfos(context: Span): Promise<ProcessorInfo[]> {
+    const span = StandardTracer.startSpan("Processor_getInfos", context);
+    const processorInfos = [];
+    for (const processorFile of await fs.readdir(config.PROCESSORS_SYSTEM)) {
+      try {
+        const processor = await import(`${path.resolve(config.PROCESSORS_SYSTEM)}/${processorFile}`);
+        processorInfos.push(processor.getInfo());
+      } catch (err) {
+        // Nothing
+      }
+    }
+
+    span.end();
+    return processorInfos;
   }
 
   public static async checkSource(context: Span, source: Source) {

@@ -6,6 +6,14 @@ const Parser = require("rss-parser");
 // eslint-disable-next-line no-undef
 module.exports = {
   //
+  getInfo: () => {
+    return {
+      title: "Dev.to Tag",
+      description: "Follows post from a dev.to Tags. <br/>" + "Expected URLs: https://dev.to/t/[tag]",
+      icon: "code",
+    };
+  },
+
   test: async (source) => {
     // eslint-disable-next-line no-undef
     let urlMatch = /.*dev.to\/t\/(.*)/.exec(source.info.url);

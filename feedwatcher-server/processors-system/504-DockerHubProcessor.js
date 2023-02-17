@@ -4,6 +4,15 @@ const axios = require("axios");
 // eslint-disable-next-line no-undef
 module.exports = {
   //
+  getInfo: () => {
+    return {
+      title: "Docker Hub Image",
+      description:
+        "Follows new tag from Docker Hub Image. <br/>" + "Expected URLs: https://hub.docker.com/[user]/[image]",
+      icon: "code",
+    };
+  },
+
   test: async (source) => {
     let urlMatch = /.*hub.docker.com\/(r|_)\/(.*?)\/(.*?)((\/\w+)+|\/?)$/.exec(source.info.url);
     if (urlMatch) {

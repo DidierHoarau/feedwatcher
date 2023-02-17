@@ -5,6 +5,14 @@ const _ = require("lodash");
 // eslint-disable-next-line no-undef
 module.exports = {
   //
+  getInfo: () => {
+    return {
+      title: "Wikipedia Page",
+      description: "Follows edits a a Wikipedia page. <br/>" + "Expected URLs: https://hub.wikipedia.com/wiki/[page]",
+      icon: "wikipedia",
+    };
+  },
+
   test: async (source) => {
     let urlMatch = /.*\/\/(.*)(\.m)?.wikipedia.org\/wiki\/(.*?)((\/\w+)+|\/?)$/.exec(source.info.url);
     if (urlMatch) {

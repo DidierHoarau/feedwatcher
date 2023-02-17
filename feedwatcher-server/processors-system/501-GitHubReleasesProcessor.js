@@ -4,6 +4,14 @@ const axios = require("axios");
 // eslint-disable-next-line no-undef
 module.exports = {
   //
+  getInfo: () => {
+    return {
+      title: "GitHub Releases",
+      description: "Follows the GitHub of a repository. <br/>" + "Expected URLs: https://github.com/[user]/[repo]",
+      icon: "github",
+    };
+  },
+
   test: async (source) => {
     let urlMatch = /.*github.com\/(.*)\/(.*)/.exec(source.info.url);
     if (!urlMatch) {
