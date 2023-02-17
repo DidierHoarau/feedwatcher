@@ -44,7 +44,5 @@ export class Config implements ConfigInterface {
     setIfSet("SOURCE_FETCH_FREQUENCY");
     setIfSet("OPENTELEMETRY_COLLECTOR_HTTP");
     setIfSet("OPENTELEMETRY_COLLECTOR_AWS");
-    console.log(this.OPENTELEMETRY_COLLECTOR_HTTP);
-    // hello
   }
 }
