@@ -4,12 +4,14 @@
     <p>These are the types of URLs that you can follow on this server:</p>
     <div class="processor-info-layout" v-for="processorInfo in processorInfos" v-bind:key="processorInfo.title">
       <div class="processor-info-title">
-        <h6>{{ processorInfo.title }}</h6>
+        {{ processorInfo.title }}
       </div>
       <div class="processor-info-icon">
         <i :class="'bi bi-' + processorInfo.icon"></i>
       </div>
-      <span v-html="processorInfo.description"></span>
+      <div class="processor-info-description">
+        <span v-html="processorInfo.description"></span>
+      </div>
     </div>
     <p></p>
   </div>
@@ -35,14 +37,14 @@ export default {
 
 <style scoped>
 .page {
-  overflow-y: scroll;
+  overflow-y: auto;
   height: calc(100vh - 5em);
 }
 
 .processor-info-layout {
-  margin: 2em;
+  margin: 1em 1em;
   display: grid;
-  grid-template-columns: 5em 1fr;
+  grid-template-columns: 3em 1fr;
   grid-template-rows: auto auto;
 }
 .processor-info-title {
@@ -55,10 +57,15 @@ export default {
   grid-column: 1;
   grid-row-start: 1;
   grid-row-end: span 2;
-  font-size: 3em;
+  font-size: 2em;
 }
 .processor-info-description {
   grid-row: 2;
   grid-column: 2;
+  word-break: break-all;
+}
+.processor-info-description span {
+  font-size: 0.8em;
+  opacity: 0.5;
 }
 </style>
