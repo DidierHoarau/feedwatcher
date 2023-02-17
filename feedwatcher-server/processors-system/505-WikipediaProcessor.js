@@ -14,7 +14,7 @@ module.exports = {
   },
 
   test: async (source) => {
-    let urlMatch = /.*\/\/(.*)(\.m)?.wikipedia.org\/wiki\/(.*?)((\/\w+)+|\/?)$/.exec(source.info.url);
+    let urlMatch = /.*\/\/(.+)(\.m)?.wikipedia.org\/wiki\/(.+)/.exec(source.info.url);
     if (urlMatch) {
       const pageLanguage = urlMatch[1];
       const pageName = urlMatch[3];
@@ -26,7 +26,7 @@ module.exports = {
   },
 
   fetchLatest: async (source, lastSourceItemSaved) => {
-    let urlMatch = /.*\/\/(.*)(\.m?).wikipedia.org\/wiki\/(.*?)((\/\w+)+|\/?)$/.exec(source.info.url);
+    let urlMatch = /.*\/\/(.+)(\.m)?.wikipedia.org\/wiki\/(.+)/.exec(source.info.url);
     const pageLanguage = urlMatch[1];
     const pageName = urlMatch[3];
     const pageRevisions = _.sortBy(

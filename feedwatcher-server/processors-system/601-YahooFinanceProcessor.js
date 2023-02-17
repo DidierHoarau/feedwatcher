@@ -1,7 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const axios = require("axios");
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const Parser = require("rss-parser");
 
 // eslint-disable-next-line no-undef
 module.exports = {
@@ -15,26 +13,17 @@ module.exports = {
   },
 
   test: async (source) => {
-    // eslint-disable-next-line no-undef
-    let urlMatch = /.*finance.yahoo.com\/quote\/(.*)(\?.*?)/.exec(source.info.url);
+    let urlMatch = /.*finance.yahoo.com\/quote\/(.+)(\??).*/.exec(source.info.url);
     if (urlMatch) {
       let pageRaw = (await axios.get(source.info.url)).data;
-      const code = urlMatch[1];
       const title = pageRaw.split("<title>")[1].split("</title>")[0].split(" Stock Price")[0];
-      let value;
-      const dataPoints = pageRaw.split("<fin-streamer ");
-      for (const dataPoint of dataPoints) {
-        if (dataPoint.indexOf("regularMarketPrice") > 0 && dataPoint.indexOf(`data-symbol="${code}"`) > 0) {
-          value = dataPoint.split('value="')[1].split('"')[0];
-        }
-      }
       return { name: title, icon: "coin" };
     }
     return null;
   },
 
   fetchLatest: async (source, lastSourceItemSaved) => {
-    let urlMatch = /.*finance.yahoo.com\/quote\/(.*)(\?.*?)/.exec(source.info.url);
+    let urlMatch = /.*finance.yahoo.com\/quote\/(.*)(\??).*/.exec(source.info.url);
     let pageRaw = (await axios.get(source.info.url)).data;
     const code = urlMatch[1];
     let value;

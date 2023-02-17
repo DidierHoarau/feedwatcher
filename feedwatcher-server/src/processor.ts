@@ -189,10 +189,15 @@ export class Processor {
           }
         }
         logger.info(`Source ${source.id} has ${nbNewItem} new items`);
+        if (source.info.processorPath !== processorPath) {
+          logger.info(`Updating source processor`);
+          source.info.processorPath = processorPath;
+          await SourcesData.update(span, source);
+        }
         return true;
       }
     } catch (err) {
-      // logger.error(err);
+      logger.error(err);
     }
     return false;
   }

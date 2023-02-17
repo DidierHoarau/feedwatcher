@@ -40,4 +40,21 @@ main {
     color: #1d2832;
   }
 }
+
+/* Aninations */
+
+.fade-in-slow {
+  animation: fadeIn 2s;
+}
+.fade-in-fast {
+  animation: fadeIn 0.5s;
+}
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
 </style>
