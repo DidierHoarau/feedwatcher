@@ -30,7 +30,10 @@
       ></i>
       <i v-else v-on:click="toggleUnreadFIlter()" class="bi bi-eye"></i>
     </div>
-    <div id="sources-items-list">
+    <div v-if="activeSourceItems.loading" id="sources-items-list">
+      <Loading />
+    </div>
+    <div v-else id="sources-items-list">
       <div
         v-on:click="pagePrevious()"
         id="sources-items-list-page-prev"
@@ -41,7 +44,7 @@
       <div id="sources-items-list-page">
         <span v-if="activeSourceItems.sourceItems.length == 0">No items</span>
         <div v-for="sourceItem in activeSourceItems.sourceItems" v-bind:key="sourceItem.id">
-          <SourceItem :item="sourceItem" />
+          <SourceItem class="fade-in-fast" :item="sourceItem" />
         </div>
       </div>
       <div
@@ -286,12 +289,27 @@ export default {
 #sources-items-list {
   display: grid;
   grid-template-columns: auto 1fr auto;
+  overflow: hidden;
+  align-items: center;
 }
-#sources-items-list-page-prev,
+#sources-items-list-page-prev {
+  padding-right: 0.5em;
+  align-items: center;
+}
+#sources-items-list-page-prev {
+  padding-bottom: 2em;
+  padding-right: 0.5em;
+}
 #sources-items-list-page-next {
-  padding: 8em 0.6em;
+  padding-bottom: 2em;
+  padding-left: 0.5em;
 }
 .page-inactive {
   opacity: 0.1;
+}
+
+#sources-items-list-page {
+  height: 100%;
+  overflow-y: auto;
 }
 </style>

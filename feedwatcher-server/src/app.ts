@@ -16,6 +16,7 @@ import { SourcesLabelsRoutes } from "./routes/SourcesLabelsRoutes";
 import { SourceItemIdRoutes } from "./routes/SourceItemIdRoutes";
 import { ListsItemsRoutes } from "./routes/ListsItemsRoutes";
 import { ItemsRoutes } from "./routes/ItemsRoutes";
+import { ProcessorsRoutes } from "./routes/ProcessorsRoutes";
 
 const logger = new Logger("app");
 
@@ -78,6 +79,9 @@ Promise.resolve().then(async () => {
   });
   fastify.register(new SourceItemIdRoutes().getRoutes, {
     prefix: "/api/sources/items/:itemId",
+  });
+  fastify.register(new ProcessorsRoutes().getRoutes, {
+    prefix: "/api/processors",
   });
 
   /* eslint-disable-next-line */

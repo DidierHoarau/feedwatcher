@@ -12,6 +12,7 @@ export const ActiveSourceItems = defineStore("ActiveSourceItems", {
     filterStatus: "unread",
     searchCriteria: "all",
     pageHasMore: false,
+    loading: false,
     searchCriteriaValue: "",
   }),
 
@@ -30,6 +31,7 @@ export const ActiveSourceItems = defineStore("ActiveSourceItems", {
         searchOptions.labelName = this.searchCriteriaValue;
       }
       this.sourceItems = [];
+      this.loading = true;
       await Timeout.wait(10);
       await axios
         .post(`${(await Config.get()).SERVER_URL}/items/search`, searchOptions, await AuthService.getAuthHeader())
@@ -38,6 +40,7 @@ export const ActiveSourceItems = defineStore("ActiveSourceItems", {
           this.pageHasMore = res.data.pageHasMore;
         })
         .catch(handleError);
+      this.loading = false;
     },
   },
 });

@@ -6,6 +6,14 @@ const Parser = require("rss-parser");
 // eslint-disable-next-line no-undef
 module.exports = {
   //
+  getInfo: () => {
+    return {
+      title: "YouTube Channel",
+      description: "Follows uploads from a YouTube channel. <br/>" + "Expected URLs: a channel url or a user url",
+      icon: "youtube",
+    };
+  },
+
   test: async (source) => {
     // eslint-disable-next-line no-undef
     let urlMatch = /.*youtube.com\/(.*)/.exec(source.info.url);

@@ -6,6 +6,14 @@ const Parser = require("rss-parser");
 // eslint-disable-next-line no-undef
 module.exports = {
   //
+  getInfo: () => {
+    return {
+      title: "Sub-Reddit",
+      description: "Follows posts from a subreddit. <br/>" + "Expected URLs: https://reddit.com/r/[subreddit]",
+      icon: "reddit",
+    };
+  },
+
   test: async (source) => {
     let urlMatch = /.*reddit.com\/r\/(.*?)((\/\w+)+|\/?)$/.exec(source.info.url);
     if (urlMatch) {

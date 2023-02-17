@@ -21,7 +21,7 @@
         <i v-if="item.status == 'read'" class="bi bi-eye" v-on:click="markReadStatus('unread')"></i>
         <i v-else class="bi bi-eye-slash" v-on:click="markReadStatus('read')"></i>
       </div>
-      <span v-html="item.content"></span>
+      <span v-if="isActive" v-html="item.content"></span>
     </div>
     <div class="sourceitem-layout-meta">
       {{ item.sourceName }}
