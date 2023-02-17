@@ -51,9 +51,9 @@ module.exports = {
     const sourceItem = {};
     sourceItem.url = source.info.url;
     sourceItem.title = `Price: ${value}`;
-    if (value > lastSourceItemSaved.info.price) {
+    if (lastSourceItemSaved && value > lastSourceItemSaved.info.price) {
       sourceItem.title += " 🡩";
-    } else if (value < lastSourceItemSaved.info.price) {
+    } else if (lastSourceItemSaved && value < lastSourceItemSaved.info.price) {
       sourceItem.title += " 🡫";
     }
     sourceItem.content = "";
