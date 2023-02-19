@@ -70,14 +70,14 @@ export class SearchItemsData {
         "WHERE sources_items.sourceId IN ( " +
         "    SELECT sources.id " +
         "    FROM sources, sources_labels " +
-        "    WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name = ? " +
+        "    WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name LIKE ? " +
         "  ) " +
         getStatusFilterQuery(searchOptions) +
         "  AND sources.userId = ? " +
         "  AND sources_items.sourceId = sources.id " +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
-      [userId, label, userId]
+      [userId, `${label}%`, userId]
     );
     const searchItemsResult = getSearchResultsfromRaw(sourceItemsRaw);
     span.end();

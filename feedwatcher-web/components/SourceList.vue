@@ -2,16 +2,17 @@
   <div>
     <div v-for="(source, index) in sourcesStore.sources" v-bind:key="source.name">
       <div
-        v-on:click="loadItemsv2(source, index)"
+        v-if="source.isVisible"
         class="source-name-layout"
         :class="{ 'source-active': sourcesStore.selectedIndex == index }"
       >
-        <span class="source-name-indent">
+        <span v-on:click="toggleLabelCollapsed(source, index)" class="source-name-indent">
           <span v-html="getIndentation(source)"></span>
-          <i v-if="source.isLabel" class="bi bi-caret-down-fill"></i>
+          <i v-if="source.isLabel && source.isCollapsed" class="bi bi-caret-right-fill"></i>
+          <i v-else-if="source.isLabel" class="bi bi-caret-down-fill"></i>
         </span>
-        <div class="source-name-name">{{ source.displayName }}</div>
-        <div class="source-name-count">{{ source.unreadCount }}</div>
+        <div v-on:click="loadItemsv2(source, index)" class="source-name-name">{{ source.displayName }}</div>
+        <div v-on:click="loadItemsv2(source, index)" class="source-name-count">{{ source.unreadCount }}</div>
       </div>
     </div>
     <div v-on:click="loadSavedItems()" :class="{ 'source-active': sourcesStore.selectedIndex == -2 }">
@@ -27,11 +28,8 @@ const sourcesStore = SourcesStore();
 </script>
 
 <script>
-import axios from "axios";
 import * as _ from "lodash";
-import Config from "~~/services/Config.ts";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
-import { AuthService } from "~~/services/AuthService";
 import { PreferencesLabels } from "~~/services/PreferencesLabels";
 
 export default {
@@ -120,15 +118,8 @@ export default {
       }
       return indent;
     },
-    onItemsUpdated(item) {
-      SourcesStore().fetchCounts();
-    },
-    isLabelCollapsed(label) {
-      return PreferencesLabels.isCollapsed(label);
-    },
-    toggleLabelCollapsed(label) {
-      PreferencesLabels.toggleCollapsed(label);
-      this.$forceUpdate();
+    toggleLabelCollapsed(label, index) {
+      SourcesStore().toggleLabelCollapsed(index);
     },
   },
 };

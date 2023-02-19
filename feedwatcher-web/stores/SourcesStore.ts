@@ -4,6 +4,7 @@ import Config from "~~/services/Config";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 import axios from "axios";
 import * as _ from "lodash";
+import { PreferencesLabels } from "~~/services/PreferencesLabels";
 
 export const SourcesStore = defineStore("SourcesStore", {
   state: () => ({
@@ -29,6 +30,8 @@ export const SourcesStore = defineStore("SourcesStore", {
             displayName: "All",
             labelName: "",
             unreadCount: 0,
+            isCollapsed: false,
+            isVisible: true,
           });
           for (let i = 0; i < sourceSorted.length; i++) {
             const sourceData = sourceSorted[i];
@@ -44,6 +47,8 @@ export const SourcesStore = defineStore("SourcesStore", {
                 labelName: sourceData.labelName,
                 displayName: labelSplit[labelSplit.length - 1],
                 unreadCount: 0,
+                isCollapsed: PreferencesLabels.isCollapsed(sourceData.labelName),
+                isVisible: false,
               });
             }
             sourcesTmp.push({
@@ -55,6 +60,8 @@ export const SourcesStore = defineStore("SourcesStore", {
               labelName: sourceData.labelName || "",
               displayName: sourceData.sourceName,
               unreadCount: 0,
+              isCollapsed: false,
+              isVisible: false,
             });
           }
           this.sources = sourcesTmp as never[];
@@ -100,6 +107,31 @@ export const SourcesStore = defineStore("SourcesStore", {
       }
       source.unreadCount = count;
       this.assignCounts(index + 1);
+      this.checkVisibility();
+    },
+    toggleLabelCollapsed(index: number) {
+      const source = this.sources[index] as any;
+      if (source.isLabel && !source.isRoot) {
+        source.isCollapsed = !source.isCollapsed;
+        PreferencesLabels.toggleCollapsed(source.labelName);
+        this.checkVisibility();
+      }
+    },
+    checkVisibility() {
+      let parentCollapsedLabel = "";
+      for (let i = 0; i < this.sources.length; i++) {
+        const source = this.sources[i] as any;
+        if (parentCollapsedLabel && source.labelName.indexOf(parentCollapsedLabel) === 0) {
+          source.isVisible = false;
+        } else if (source.isLabel && !source.isCollapsed) {
+          source.isVisible = true;
+        } else if (source.isLabel && source.isCollapsed) {
+          source.isVisible = true;
+          parentCollapsedLabel = source.labelName;
+        } else {
+          source.isVisible = true;
+        }
+      }
     },
   },
 });
