@@ -1,6 +1,6 @@
 import { AuthService } from "~~/services/AuthService";
 
-export const AuthenticationState = defineStore("AuthenticationState", {
+export const AuthenticationStore = defineStore("AuthenticationStore", {
   state: () => ({
     isAuthenticated: false,
   }),
@@ -16,5 +16,5 @@ export const AuthenticationState = defineStore("AuthenticationState", {
 });
 
 if (import.meta.hot) {
-  import.meta.hot.accept(acceptHMRUpdate(AuthenticationState, import.meta.hot));
+  import.meta.hot.accept(acceptHMRUpdate(AuthenticationStore, import.meta.hot));
 }

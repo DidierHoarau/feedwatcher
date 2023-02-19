@@ -4,7 +4,7 @@ import Config from "~~/services/Config";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 import axios from "axios";
 
-export const ActiveSourceItems = defineStore("ActiveSourceItems", {
+export const SourceItemsStore = defineStore("SourceItemsStore", {
   state: () => ({
     sourceItems: [],
     selectedSource: "",
@@ -19,7 +19,7 @@ export const ActiveSourceItems = defineStore("ActiveSourceItems", {
   getters: {},
 
   actions: {
-    async fetchItems(): Promise<void> {
+    async fetch(): Promise<void> {
       const searchOptions: any = {
         page: this.page,
         filterStatus: this.filterStatus,
@@ -46,5 +46,5 @@ export const ActiveSourceItems = defineStore("ActiveSourceItems", {
 });
 
 if (import.meta.hot) {
-  import.meta.hot.accept(acceptHMRUpdate(ActiveSourceItems, import.meta.hot));
+  import.meta.hot.accept(acceptHMRUpdate(SourceItemsStore, import.meta.hot));
 }

@@ -6,7 +6,7 @@
       </li>
     </ul>
     <ul class="menu-links">
-      <li v-if="authenticationState.isAuthenticated">
+      <li v-if="authenticationStore.isAuthenticated">
         <NuxtLink to="/sources"><i class="bi bi-rss-fill"></i></NuxtLink>
       </li>
       <li>
@@ -18,7 +18,7 @@
 
 <script setup>
 import { AuthService } from "~~/services/AuthService";
-const authenticationState = AuthenticationState();
+const authenticationStore = AuthenticationStore();
 </script>
 
 <script>
@@ -27,7 +27,7 @@ import Config from "~~/services/Config.ts";
 
 export default {
   async created() {
-    if (await AuthenticationState().ensureAuthenticated()) {
+    if (await AuthenticationStore().ensureAuthenticated()) {
       setTimeout(async () => {
         // Renew session tocken
         axios

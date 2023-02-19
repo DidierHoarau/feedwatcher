@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div v-if="!authenticationState.isAuthenticated">
+    <div v-if="!authenticationStore.isAuthenticated">
       <h1 v-if="isInitialized">Login</h1>
       <h1 v-else>New User</h1>
 
@@ -10,8 +10,8 @@
       <label>Password</label>
       <input v-model="user.password" type="password" />
 
-      <button v-if="!authenticationState.isAuthenticated && !isInitialized" v-on:click="saveNew()">Create</button>
-      <button v-if="!authenticationState.isAuthenticated && isInitialized" v-on:click="login()">Login</button>
+      <button v-if="!authenticationStore.isAuthenticated && !isInitialized" v-on:click="saveNew()">Create</button>
+      <button v-if="!authenticationStore.isAuthenticated && isInitialized" v-on:click="login()">Login</button>
     </div>
     <div v-else>
       <button v-on:click="logout()">Logout</button>
@@ -20,7 +20,7 @@
 </template>
 
 <script setup>
-const authenticationState = AuthenticationState();
+const authenticationStore = AuthenticationStore();
 </script>
 
 <script>
@@ -39,7 +39,7 @@ export default {
   },
   async created() {
     this.isInitialized = await UserService.isInitialized();
-    AuthenticationState().isAuthenticated = await AuthService.isAuthenticated();
+    AuthenticationStore().isAuthenticated = await AuthService.isAuthenticated();
   },
   methods: {
     async saveNew() {
@@ -68,7 +68,7 @@ export default {
           .post(`${(await Config.get()).SERVER_URL}/users/session`, this.user, await AuthService.getAuthHeader())
           .then((res) => {
             AuthService.saveToken(res.data.token);
-            AuthenticationState().isAuthenticated = true;
+            AuthenticationStore().isAuthenticated = true;
             EventBus.emit(EventTypes.ALERT_MESSAGE, {
               type: "info",
               text: "User Logged In",
@@ -85,7 +85,7 @@ export default {
     },
     async logout() {
       AuthService.removeToken();
-      AuthenticationState().isAuthenticated = false;
+      AuthenticationStore().isAuthenticated = false;
     },
   },
 };
