@@ -30,7 +30,6 @@ const sourcesStore = SourcesStore();
 <script>
 import * as _ from "lodash";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
-import { PreferencesLabels } from "~~/services/PreferencesLabels";
 
 export default {
   async created() {

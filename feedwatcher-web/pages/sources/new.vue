@@ -31,6 +31,7 @@ export default {
               text: "Source added",
             });
             const router = useRouter();
+            SourcesStore().selectedIndex = 0;
             router.push({ path: "/sources" });
           })
           .catch(handleError);

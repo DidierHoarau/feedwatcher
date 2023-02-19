@@ -122,7 +122,7 @@ export const SourcesStore = defineStore("SourcesStore", {
       for (let i = 0; i < this.sources.length; i++) {
         const source = this.sources[i] as any;
         if (parentCollapsedLabel && `${source.labelName}/`.indexOf(parentCollapsedLabel) === 0) {
-          source.isVisible = false;
+          source.isVisible = true;
         } else if (source.isLabel && !source.isCollapsed) {
           source.isVisible = true;
         } else if (source.isLabel && source.isCollapsed) {
