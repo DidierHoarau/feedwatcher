@@ -41,15 +41,32 @@ export const SourcesStore = defineStore("SourcesStore", {
               labelSplit = sourceData.labelName.split("/");
             }
             if (labelSplit.length > 0 && sourceData.labelName !== sourcesTmp[sourcesTmp.length - 1].labelName) {
-              sourcesTmp.push({
-                isLabel: true,
-                depth: labelSplit.length,
-                labelName: sourceData.labelName,
-                displayName: labelSplit[labelSplit.length - 1],
-                unreadCount: 0,
-                isCollapsed: PreferencesLabels.isCollapsed(sourceData.labelName),
-                isVisible: false,
-              });
+              const parentLabelSplit = sourcesTmp[sourcesTmp.length - 1].labelName.split("/");
+              let labelName = "";
+              for (let j = 0; j < labelSplit.length; j++) {
+                labelName += labelSplit[j];
+                if (j == labelSplit.length - 1) {
+                  sourcesTmp.push({
+                    isLabel: true,
+                    depth: labelSplit.length,
+                    labelName: sourceData.labelName,
+                    displayName: labelSplit[labelSplit.length - 1],
+                    unreadCount: 0,
+                    isCollapsed: PreferencesLabels.isCollapsed(sourceData.labelName),
+                    isVisible: false,
+                  });
+                } else if (j >= parentLabelSplit.length || parentLabelSplit[j] !== labelSplit[j]) {
+                  sourcesTmp.push({
+                    isLabel: true,
+                    depth: j + 1,
+                    labelName: labelName,
+                    displayName: labelSplit[j],
+                    unreadCount: 0,
+                    isCollapsed: PreferencesLabels.isCollapsed(labelName),
+                    isVisible: false,
+                  });
+                }
+              }
             }
             sourcesTmp.push({
               sourceId: sourceData.sourceId,
@@ -122,8 +139,7 @@ export const SourcesStore = defineStore("SourcesStore", {
       for (let i = 0; i < this.sources.length; i++) {
         const source = this.sources[i] as any;
         if (parentCollapsedLabel && `${source.labelName}/`.indexOf(parentCollapsedLabel) === 0) {
-          source.isVisible = true;
-          source.displayName += "H";
+          source.isVisible = false;
         } else if (source.isLabel && !source.isCollapsed) {
           source.isVisible = true;
         } else if (source.isLabel && source.isCollapsed) {
