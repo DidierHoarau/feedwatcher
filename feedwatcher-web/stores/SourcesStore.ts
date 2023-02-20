@@ -18,7 +18,24 @@ export const SourcesStore = defineStore("SourcesStore", {
 
   actions: {
     async selectSource(sourceId: string) {
-      this.selectedIndex = _.findIndex(this.sources, { sourceId });
+      const sourceItemsStore = SourceItemsStore();
+      if (!sourceId) {
+        sourceItemsStore.selectedSource = "";
+        sourceItemsStore.page = 1;
+        sourceItemsStore.searchCriteria = "all";
+        sourceItemsStore.filterStatus = "unread";
+        sourceItemsStore.fetch();
+      }
+      const position = _.findIndex(this.sources, { sourceId });
+      if (position < 0) {
+        return;
+      }
+      this.selectedIndex = position;
+      sourceItemsStore.selectedSource = sourceId;
+      sourceItemsStore.searchCriteria = "sourceId";
+      sourceItemsStore.searchCriteriaValue = sourceId;
+      sourceItemsStore.page = 1;
+      sourceItemsStore.fetch();
     },
     async fetch() {
       await axios

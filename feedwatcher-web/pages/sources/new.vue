@@ -25,13 +25,14 @@ export default {
       if (this.source.url) {
         await axios
           .post(`${(await Config.get()).SERVER_URL}/sources`, this.source, await AuthService.getAuthHeader())
-          .then((res) => {
+          .then(async (res) => {
             EventBus.emit(EventTypes.ALERT_MESSAGE, {
               type: "info",
               text: "Source added",
             });
+            await SourcesStore().fetch();
+            SourcesStore().selectSource(res.data.id);
             const router = useRouter();
-            SourcesStore().selectedIndex = 0;
             router.push({ path: "/sources" });
           })
           .catch(handleError);

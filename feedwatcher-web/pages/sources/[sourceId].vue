@@ -68,16 +68,19 @@ export default {
           .then((res) => {
             EventBus.emit(EventTypes.ALERT_MESSAGE, {
               type: "info",
-              text: "Source added",
+              text: "Source updated",
             });
-            SourcesStore().selectedIndex = 0;
+            return SourcesStore().fetch();
+          })
+          .then(() => {
+            SourcesStore().selectSource(this.source.id);
             useRouter().push({ path: "/sources" });
           })
           .catch(handleError);
       } else {
         EventBus.emit(EventTypes.ALERT_MESSAGE, {
           type: "error",
-          text: "URL missing",
+          text: "Name missing",
         });
       }
     },
@@ -87,9 +90,9 @@ export default {
           .delete(`${(await Config.get()).SERVER_URL}/sources/${this.source.id}`, await AuthService.getAuthHeader())
           .then((res) => {
             EventBus.emit(EventTypes.ALERT_MESSAGE, {
-              type: "info",
               text: "Source deleted",
             });
+            SourcesStore().selectSource("");
             SourcesStore().selectedIndex = 0;
             useRouter().push({ path: "/sources" });
           })

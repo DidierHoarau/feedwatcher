@@ -33,12 +33,28 @@ export default {
 .message {
   padding: 1rem;
   margin: 1rem;
-  background-color: #fff9c4;
+  color: #eee;
 }
-.message-info {
-  background-color: #c7e5c8;
+@media (prefers-color-scheme: dark) {
+  .message {
+    background-color: #546e7a;
+  }
+  .message-info {
+    background-color: #43a047;
+  }
+  .message-error {
+    background-color: #e53935;
+  }
 }
-.message-error {
-  background-color: #fff9c4;
+@media (prefers-color-scheme: light) {
+  .message {
+    background-color: #e53935;
+  }
+  .message-info {
+    background-color: #43a047;
+  }
+  .message-error {
+    background-color: #546e7a;
+  }
 }
 </style>

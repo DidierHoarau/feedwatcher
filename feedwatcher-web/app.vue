@@ -6,10 +6,13 @@
     <main>
       <NuxtPage />
     </main>
+    <AlertMessages id="page-alert-messages" />
   </div>
 </template>
 
 <style>
+/* Layout */
+
 #page-layout {
   width: auto;
   height: 100vh;
@@ -22,6 +25,15 @@ header,
 main {
   padding: 0.5em;
 }
+
+#page-alert-messages {
+  position: fixed;
+  right: 3rem;
+  bottom: 3rem;
+  max-width: 80vw;
+}
+
+/* Common Component */
 
 .actions i {
   font-size: 1.5em;

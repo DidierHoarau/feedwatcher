@@ -11,8 +11,8 @@
           <i v-if="source.isLabel && source.isCollapsed" class="bi bi-caret-right-fill"></i>
           <i v-else-if="source.isLabel" class="bi bi-caret-down-fill"></i>
         </span>
-        <div v-on:click="loadItemsv2(source, index)" class="source-name-name">{{ source.displayName }}</div>
-        <div v-on:click="loadItemsv2(source, index)" class="source-name-count">{{ source.unreadCount }}</div>
+        <div v-on:click="loadItems(source, index)" class="source-name-name">{{ source.displayName }}</div>
+        <div v-on:click="loadItems(source, index)" class="source-name-count">{{ source.unreadCount }}</div>
       </div>
     </div>
     <div v-on:click="loadSavedItems()" :class="{ 'source-active': sourcesStore.selectedIndex == -2 }">
@@ -33,7 +33,9 @@ import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 
 export default {
   async created() {
-    this.loadAllItems();
+    if (!SourceItemsStore().selectedSource) {
+      this.loadAllItems();
+    }
     SourcesStore().fetch();
     SourcesStore().fetchCounts();
     EventBus.on(EventTypes.ITEMS_UPDATED, (message) => {
@@ -45,7 +47,7 @@ export default {
     });
   },
   methods: {
-    loadItemsv2(source, index) {
+    loadItems(source, index) {
       SourcesStore().selectedIndex = index;
       if (source.isRoot) {
         this.loadAllItems();
