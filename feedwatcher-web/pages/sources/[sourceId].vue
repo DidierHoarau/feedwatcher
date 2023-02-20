@@ -70,9 +70,8 @@ export default {
               type: "info",
               text: "Source added",
             });
-            const router = useRouter();
             SourcesStore().selectedIndex = 0;
-            router.push({ path: "/sources" });
+            useRouter().push({ path: "/sources" });
           })
           .catch(handleError);
       } else {
@@ -91,9 +90,8 @@ export default {
               type: "info",
               text: "Source deleted",
             });
-            const router = useRouter();
             SourcesStore().selectedIndex = 0;
-            router.push({ path: "/sources" });
+            useRouter().push({ path: "/sources" });
           })
           .catch(handleError);
       }

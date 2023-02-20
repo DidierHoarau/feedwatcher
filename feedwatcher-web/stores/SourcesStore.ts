@@ -17,6 +17,9 @@ export const SourcesStore = defineStore("SourcesStore", {
   getters: {},
 
   actions: {
+    async selectSource(sourceId: string) {
+      this.selectedIndex = _.findIndex(this.sources, { sourceId });
+    },
     async fetch() {
       await axios
         .get(`${(await Config.get()).SERVER_URL}/sources/labels`, await AuthService.getAuthHeader())
