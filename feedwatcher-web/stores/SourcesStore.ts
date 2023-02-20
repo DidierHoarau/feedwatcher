@@ -8,6 +8,7 @@ import { PreferencesLabels } from "~~/services/PreferencesLabels";
 
 export const SourcesStore = defineStore("SourcesStore", {
   state: () => ({
+    sourcesStr: "",
     sources: [],
     selectedIndex: -1,
     sourceCounts: [],
@@ -20,7 +21,13 @@ export const SourcesStore = defineStore("SourcesStore", {
       await axios
         .get(`${(await Config.get()).SERVER_URL}/sources/labels`, await AuthService.getAuthHeader())
         .then((res) => {
-          const sourceSorted = _.sortBy(res.data.sourceLabels, ["labelName", "sourceName"]);
+          const sourcesData = _.sortBy(res.data.sourceLabels, ["labelName", "sourceName"]);
+          const soucesStr = JSON.stringify(sourcesData);
+          if (this.sourcesStr === soucesStr) {
+            this.checkVisibility();
+            return this.fetchCounts();
+          }
+          this.sourcesStr = soucesStr;
           const sourcesTmp: any[] = [];
           sourcesTmp.push({
             isLabel: true,
@@ -33,8 +40,8 @@ export const SourcesStore = defineStore("SourcesStore", {
             isCollapsed: false,
             isVisible: true,
           });
-          for (let i = 0; i < sourceSorted.length; i++) {
-            const sourceData = sourceSorted[i];
+          for (let i = 0; i < sourcesData.length; i++) {
+            const sourceData = sourcesData[i];
             const source: any = {};
             let labelSplit = [];
             if (sourceData.labelName) {
@@ -44,6 +51,9 @@ export const SourcesStore = defineStore("SourcesStore", {
               const parentLabelSplit = sourcesTmp[sourcesTmp.length - 1].labelName.split("/");
               let labelName = "";
               for (let j = 0; j < labelSplit.length; j++) {
+                if (labelName !== "") {
+                  labelName += "/";
+                }
                 labelName += labelSplit[j];
                 if (j == labelSplit.length - 1) {
                   sourcesTmp.push({
@@ -82,6 +92,7 @@ export const SourcesStore = defineStore("SourcesStore", {
             });
           }
           this.sources = sourcesTmp as never[];
+          this.checkVisibility();
           return this.fetchCounts();
         })
         .catch(handleError);
@@ -124,7 +135,6 @@ export const SourcesStore = defineStore("SourcesStore", {
       }
       source.unreadCount = count;
       this.assignCounts(index + 1);
-      this.checkVisibility();
     },
     toggleLabelCollapsed(index: number) {
       const source = this.sources[index] as any;
