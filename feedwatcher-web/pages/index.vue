@@ -2,18 +2,19 @@
   <div class="page">
     <p>FeedReader: Follow your favorite online resources.</p>
     <p>These are the types of URLs that you can follow on this server:</p>
-    <div class="processor-info-layout" v-for="processorInfo in processorInfos" v-bind:key="processorInfo.title">
-      <div class="processor-info-title">
-        {{ processorInfo.title }}
-      </div>
-      <div class="processor-info-icon">
-        <i :class="'bi bi-' + processorInfo.icon"></i>
-      </div>
-      <div class="processor-info-description">
-        <span v-html="processorInfo.description"></span>
+    <div class="processor-info-list">
+      <div class="processor-info-layout" v-for="processorInfo in processorInfos" v-bind:key="processorInfo.title">
+        <div class="processor-info-title">
+          {{ processorInfo.title }}
+        </div>
+        <div class="processor-info-icon">
+          <i :class="'bi bi-' + processorInfo.icon"></i>
+        </div>
+        <div class="processor-info-description">
+          <span v-html="processorInfo.description"></span>
+        </div>
       </div>
     </div>
-    <p></p>
   </div>
 </template>
 
@@ -40,7 +41,11 @@ export default {
   overflow-y: auto;
   height: calc(100vh - 5em);
 }
-
+.processor-info-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(25em, 1fr));
+  gap: 10px;
+}
 .processor-info-layout {
   margin: 1em 1em;
   display: grid;

@@ -37,10 +37,27 @@ describe("YahooFinance processor: Test URL", () => {
 
 describe("YahooFinance processor: Get Items", () => {
   //
-  test("First Fetch", async () => {
+  test.only("First Fetch", async () => {
     const source = new Source();
     source.info.url = "https://finance.yahoo.com/quote/9988.HK";
     const sourceItems = await processor.fetchLatest(source, null);
+    expect(sourceItems.length).toEqual(1);
+  });
+
+  test.only("Second Fetch Before 24 hours", async () => {
+    const source = new Source();
+    source.info.url = "https://finance.yahoo.com/quote/9988.HK";
+    let sourceItems = await processor.fetchLatest(source, null);
+    sourceItems = await processor.fetchLatest(source, sourceItems[0]);
+    expect(sourceItems.length).toEqual(0);
+  });
+
+  test.only("Second Fetch After 24 hours", async () => {
+    const source = new Source();
+    source.info.url = "https://finance.yahoo.com/quote/9988.HK";
+    let sourceItems = await processor.fetchLatest(source, null);
+    sourceItems[0].datePublished = new Date(new Date().getTime() - 25 * 60 * 60 * 1000);
+    sourceItems = await processor.fetchLatest(source, sourceItems[0]);
     expect(sourceItems.length).toEqual(1);
   });
 });

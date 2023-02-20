@@ -1,45 +1,21 @@
 <template>
   <div>
-    <div v-on:click="loadAllItems()" class="source-name-layout" :class="{ 'source-active': selectedIndex == -3 }">
-      <div class="source-name-indent">
-        <i class="bi bi-caret-down-fill"></i>
-      </div>
-      <div class="source-name-name">All Items</div>
-      <div class="source-name-count">{{ getCountAll() }}</div>
-    </div>
-    <div v-for="(sourceLabel, index) in sourceLabels" v-bind:key="sourceLabel.labelName">
+    <div v-for="(source, index) in sourcesStore.sources" v-bind:key="source.name">
       <div
-        v-if="isLabelDisplayed(index)"
-        :class="{ 'source-active': index == selectedIndex && !activeSourceItems.selectedSource }"
+        v-if="source.isVisible"
         class="source-name-layout"
+        :class="{ 'source-active': sourcesStore.selectedIndex == index }"
       >
-        <div v-on:click="toggleLabelCollapsed(sourceLabel.labelName)" class="source-name-indent">
-          <span v-html="getLabelIndentation(index)"></span>
-          <i v-if="isLabelCollapsed(sourceLabel.labelName)" class="bi bi-caret-right-fill"></i>
-          <i v-else class="bi bi-caret-down-fill"></i>
-        </div>
-        <div class="source-name-name" v-on:click="loadLabelItems(index)">
-          {{ sourceLabel.labelName }}
-        </div>
-        <div class="source-name-count">{{ getCountLabel(index) }}</div>
-      </div>
-      <div
-        v-on:click="loadSourceItems(index)"
-        class="source-name-layout"
-        :class="{ 'source-active': index == selectedIndex && activeSourceItems.selectedSource }"
-        v-if="!isLabelCollapsed(sourceLabel.labelName)"
-      >
-        <div class="source-name-indent">
-          <span v-html="getSourceIndentation(index)"></span>
-          <i v-if="sourceLabel.sourceInfo.icon" :class="'bi bi-' + sourceLabel.sourceInfo.icon"></i>
-        </div>
-        <div class="source-name-name">
-          {{ sourceLabel.sourceName }}
-        </div>
-        <div class="source-name-count">{{ getCountSource(sourceLabel.sourceId) }}</div>
+        <span v-on:click="toggleLabelCollapsed(source, index)" class="source-name-indent">
+          <span v-html="getIndentation(source)"></span>
+          <i v-if="source.isLabel && source.isCollapsed" class="bi bi-caret-right-fill"></i>
+          <i v-else-if="source.isLabel" class="bi bi-caret-down-fill"></i>
+        </span>
+        <div v-on:click="loadItems(source, index)" class="source-name-name">{{ source.displayName }}</div>
+        <div v-on:click="loadItems(source, index)" class="source-name-count">{{ source.unreadCount }}</div>
       </div>
     </div>
-    <div v-on:click="loadSavedItems()" :class="{ 'source-active': selectedIndex == -2 }">
+    <div v-on:click="loadSavedItems()" :class="{ 'source-active': sourcesStore.selectedIndex == -2 }">
       <i class="bi bi-bookmark-plus-fill"></i>
       Saved Items
     </div>
@@ -47,195 +23,104 @@
 </template>
 
 <script setup>
-const activeSourceItems = ActiveSourceItems();
+const sourceItemsStore = SourceItemsStore();
+const sourcesStore = SourcesStore();
 </script>
 
 <script>
-import axios from "axios";
 import * as _ from "lodash";
-import Config from "~~/services/Config.ts";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
-import { AuthService } from "~~/services/AuthService";
-import { PreferencesLabels } from "~~/services/PreferencesLabels";
 
 export default {
-  data() {
-    return {
-      sources: [],
-      sourceItems: [],
-      selectedIndex: -1,
-      sourceLabels: [],
-      sourceCounts: [],
-      menuOpened: true,
-    };
-  },
   async created() {
-    this.loadSources();
-    this.loadAllItems();
-    this.loadSourcesCounts();
+    if (!SourceItemsStore().selectedSource) {
+      this.loadAllItems();
+    }
+    SourcesStore().fetch();
+    SourcesStore().fetchCounts();
     EventBus.on(EventTypes.ITEMS_UPDATED, (message) => {
-      this.loadSourcesCounts();
+      SourcesStore().fetchCounts();
     });
     EventBus.on(EventTypes.SOURCES_UPDATED, (message) => {
-      this.loadSources();
-      this.loadSourcesCounts();
+      SourcesStore().fetch();
+      SourcesStore().fetchCounts();
     });
   },
   methods: {
-    async loadSources() {
-      await axios
-        .get(`${(await Config.get()).SERVER_URL}/sources/labels`, await AuthService.getAuthHeader())
-        .then((res) => {
-          this.sourceLabels = _.sortBy(res.data.sourceLabels, ["labelName", "sourceName"]);
-        })
-        .catch(handleError);
+    loadItems(source, index) {
+      SourcesStore().selectedIndex = index;
+      if (source.isRoot) {
+        this.loadAllItems();
+      } else if (source.isLabel) {
+        this.loadLabelItems(source);
+      } else {
+        this.loadSourceItems(source);
+      }
     },
-    async loadSourcesCounts() {
-      await axios
-        .get(`${(await Config.get()).SERVER_URL}/sources/labels/counts/unread`, await AuthService.getAuthHeader())
-        .then((res) => {
-          this.sourceCounts = res.data.counts;
-        })
-        .catch(handleError);
+    async loadSourceItems(source) {
+      const sourceItemsStore = SourceItemsStore();
+      sourceItemsStore.selectedSource = source.sourceId;
+      sourceItemsStore.page = 1;
+      sourceItemsStore.searchCriteria = "sourceId";
+      sourceItemsStore.searchCriteriaValue = source.sourceId;
+      sourceItemsStore.filterStatus = "unread";
+      sourceItemsStore.fetch();
     },
-    async loadSourceItems(index) {
-      this.selectedIndex = index;
-      const activeSourceItems = ActiveSourceItems();
-      activeSourceItems.selectedSource = this.sourceLabels[index].sourceId;
-      activeSourceItems.page = 1;
-      activeSourceItems.searchCriteria = "sourceId";
-      activeSourceItems.searchCriteriaValue = this.sourceLabels[index].sourceId;
-      activeSourceItems.filterStatus = "unread";
-      activeSourceItems.fetchItems();
-    },
-    async loadLabelItems(index) {
-      this.selectedIndex = index;
-      const activeSourceItems = ActiveSourceItems();
-      activeSourceItems.selectedSource = null;
-      activeSourceItems.page = 1;
-      activeSourceItems.searchCriteria = "labelName";
-      activeSourceItems.searchCriteriaValue = this.sourceLabels[index].labelName;
-      activeSourceItems.filterStatus = "unread";
-      activeSourceItems.fetchItems();
+    async loadLabelItems(source) {
+      const sourceItemsStore = SourceItemsStore();
+      sourceItemsStore.selectedSource = null;
+      sourceItemsStore.page = 1;
+      sourceItemsStore.searchCriteria = "labelName";
+      sourceItemsStore.searchCriteriaValue = source.labelName;
+      sourceItemsStore.filterStatus = "unread";
+      sourceItemsStore.fetch();
     },
     async loadAllItems() {
-      this.selectedIndex = -3;
-      const activeSourceItems = ActiveSourceItems();
-      activeSourceItems.selectedSource = null;
-      activeSourceItems.page = 1;
-      activeSourceItems.searchCriteria = "all";
-      activeSourceItems.filterStatus = "unread";
-      activeSourceItems.fetchItems();
+      const sourceItemsStore = SourceItemsStore();
+      sourceItemsStore.selectedSource = null;
+      sourceItemsStore.page = 1;
+      sourceItemsStore.searchCriteria = "all";
+      sourceItemsStore.filterStatus = "unread";
+      sourceItemsStore.fetch();
     },
     async loadSavedItems(index) {
-      this.selectedIndex = -2;
-      const activeSourceItems = ActiveSourceItems();
-      activeSourceItems.selectedSource = null;
-      activeSourceItems.page = 1;
-      activeSourceItems.searchCriteria = "lists";
-      activeSourceItems.filterStatus = "all";
-      activeSourceItems.fetchItems();
-    },
-    async refreshSourceItems(sourceId) {
-      this.selectedSource = sourceId;
-      await axios
-        .put(`${(await Config.get()).SERVER_URL}/sources/${sourceId}/fetch`, {}, await AuthService.getAuthHeader())
-        .then((res) => {})
-        .catch(handleError);
+      SourcesStore().selectedIndex = -2;
+      const sourceItemsStore = SourceItemsStore();
+      sourceItemsStore.selectedSource = null;
+      sourceItemsStore.page = 1;
+      sourceItemsStore.searchCriteria = "lists";
+      sourceItemsStore.filterStatus = "all";
+      sourceItemsStore.fetch();
     },
     async refreshAndFetch() {
-      await axios
-        .put(`${(await Config.get()).SERVER_URL}/sources/fetch`, {}, await AuthService.getAuthHeader())
-        .then((res) => {})
-        .catch(handleError);
-      this.loadSources();
-      this.loadSourcesCounts();
+      SourcesStore().fetch();
+      SourcesStore().fetchCounts();
     },
     async refresh() {
-      this.loadSources();
-      this.loadSourcesCounts();
-    },
-    async markAllRead() {
-      let confirmed = false;
-      if (this.sourceItems.length > 1) {
-        confirmed = confirm("Mark all item read?");
-      } else {
-        confirmed = true;
-      }
-      if (confirmed === true) {
-        for (const item of this.sourceItems) {
-          await axios
-            .put(
-              `${(await Config.get()).SERVER_URL}/sources/items/${item.id}/status`,
-              { status: "read" },
-              await AuthService.getAuthHeader()
-            )
-            .then((res) => {
-              item.status = "read";
-            })
-            .catch(handleError);
-        }
-        this.onItemsUpdated();
-      }
+      SourcesStore().fetch();
+      SourcesStore().fetchCounts();
     },
     isLabelDisplayed(index) {
-      if (!this.sourceLabels[index].labelName) {
+      if (!SourcesStore().sourceLabels[index].labelName) {
         return false;
       }
       if (index === 0) {
         return true;
       }
-      if (this.sourceLabels[index].labelName === this.sourceLabels[index - 1].labelName) {
+      if (SourcesStore().sourceLabels[index].labelName === SourcesStore().sourceLabels[index - 1].labelName) {
         return false;
       }
       return true;
     },
-    getLabelIndentation(index) {
-      return "&nbsp;&nbsp;&nbsp;&nbsp;";
-    },
-    getSourceIndentation(index) {
-      if (!this.sourceLabels[index].labelName) {
-        return "&nbsp;&nbsp;&nbsp;&nbsp;";
+    getIndentation(source) {
+      let indent = "";
+      for (let i = 0; i < source.depth; i++) {
+        indent += "&nbsp;&nbsp;&nbsp;&nbsp;";
       }
-      let indentation = "&nbsp;&nbsp;&nbsp;&nbsp;";
-      for (const count in this.sourceLabels[index].labelName.split("/")) {
-        indentation += "&nbsp;&nbsp;&nbsp;&nbsp;";
-      }
-      return indentation;
+      return indent;
     },
-    getCountLabel(index) {
-      let count = 0;
-      let indexIteration = index;
-      const label = this.sourceLabels[indexIteration].labelName;
-      while (this.sourceLabels.length > indexIteration && this.sourceLabels[indexIteration].labelName === label) {
-        count += this.getCountSource(this.sourceLabels[indexIteration].sourceId);
-        indexIteration++;
-      }
-      return count;
-    },
-    getCountSource(sourceId) {
-      const count = _.find(this.sourceCounts, { sourceId });
-      if (!count) {
-        return 0;
-      }
-      return count.unreadCount;
-    },
-    getCountAll() {
-      let count = 0;
-      for (let i = 0; i < this.sourceCounts.length; i++) {
-        count += this.sourceCounts[i].unreadCount;
-      }
-      return count;
-    },
-    onItemsUpdated(item) {
-      this.loadSourcesCounts();
-    },
-    isLabelCollapsed(label) {
-      return PreferencesLabels.isCollapsed(label);
-    },
-    toggleLabelCollapsed(label) {
-      PreferencesLabels.toggleCollapsed(label);
-      this.$forceUpdate();
+    toggleLabelCollapsed(label, index) {
+      SourcesStore().toggleLabelCollapsed(index);
     },
   },
 };

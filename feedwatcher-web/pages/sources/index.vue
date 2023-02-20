@@ -14,43 +14,39 @@
       <SourceList />
     </div>
     <div id="sources-items-actions" class="actions">
-      <NuxtLink v-if="activeSourceItems.selectedSource" :to="'/sources/' + activeSourceItems.selectedSource"
+      <NuxtLink v-if="sourceItemsStore.selectedSource" :to="'/sources/' + sourceItemsStore.selectedSource"
         ><i class="bi bi-pencil-square"></i
       ></NuxtLink>
       <i
-        v-if="activeSourceItems.selectedSource"
+        v-if="sourceItemsStore.selectedSource"
         v-on:click="refreshSourceItems(selectedSource)"
         class="bi bi-cloud-arrow-down"
       ></i>
-      <i v-if="activeSourceItems.sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
-      <i
-        v-if="activeSourceItems.filterStatus == 'unread'"
-        v-on:click="toggleUnreadFIlter()"
-        class="bi bi-eye-slash"
-      ></i>
+      <i v-if="sourceItemsStore.sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
+      <i v-if="sourceItemsStore.filterStatus == 'unread'" v-on:click="toggleUnreadFIlter()" class="bi bi-eye-slash"></i>
       <i v-else v-on:click="toggleUnreadFIlter()" class="bi bi-eye"></i>
     </div>
-    <div v-if="activeSourceItems.loading" id="sources-items-list">
+    <div v-if="sourceItemsStore.loading" id="sources-items-list">
       <Loading />
     </div>
     <div v-else id="sources-items-list">
       <div
         v-on:click="pagePrevious()"
         id="sources-items-list-page-prev"
-        :class="{ 'page-inactive': activeSourceItems.page == 1 }"
+        :class="{ 'page-inactive': sourceItemsStore.page == 1 }"
       >
         <i class="bi bi-caret-left"></i>
       </div>
       <div id="sources-items-list-page">
-        <span v-if="activeSourceItems.sourceItems.length == 0">No items</span>
-        <div v-for="sourceItem in activeSourceItems.sourceItems" v-bind:key="sourceItem.id">
+        <span v-if="sourceItemsStore.sourceItems.length == 0">No items</span>
+        <div v-for="sourceItem in sourceItemsStore.sourceItems" v-bind:key="sourceItem.id">
           <SourceItem class="fade-in-fast" :item="sourceItem" />
         </div>
       </div>
       <div
         v-on:click="pageNext()"
         id="sources-items-list-page-next"
-        :class="{ 'page-inactive': !activeSourceItems.pageHasMore }"
+        :class="{ 'page-inactive': !sourceItemsStore.pageHasMore }"
       >
         <i class="bi bi-caret-right"></i>
       </div>
@@ -59,7 +55,7 @@
 </template>
 
 <script setup>
-const activeSourceItems = ActiveSourceItems();
+const sourceItemsStore = SourceItemsStore();
 </script>
 
 <script>
@@ -79,7 +75,7 @@ export default {
     };
   },
   async created() {
-    if (!(await AuthenticationState().ensureAuthenticated())) {
+    if (!(await AuthenticationStore().ensureAuthenticated())) {
       useRouter().push({ path: "/users" });
     }
   },
@@ -100,18 +96,18 @@ export default {
     },
     async refresh() {
       EventBus.emit(EventTypes.SOURCES_UPDATED, {});
-      ActiveSourceItems().fetchItems();
+      SourceItemsStore().fetch();
     },
     async markAllRead() {
-      const activeSourceItems = ActiveSourceItems();
+      const sourceItemsStore = SourceItemsStore();
       let confirmed = false;
-      if (activeSourceItems.sourceItems.length > 1) {
+      if (sourceItemsStore.sourceItems.length > 1) {
         confirmed = confirm("Mark all item read?");
       } else {
         confirmed = true;
       }
       if (confirmed === true) {
-        for (const item of activeSourceItems.sourceItems) {
+        for (const item of sourceItemsStore.sourceItems) {
           await axios
             .put(
               `${(await Config.get()).SERVER_URL}/sources/items/${item.id}/status`,
@@ -130,30 +126,30 @@ export default {
       this.menuOpened = !this.menuOpened;
     },
     pagePrevious() {
-      const activeSourceItems = ActiveSourceItems();
-      if (activeSourceItems.page == 1) {
+      const sourceItemsStore = SourceItemsStore();
+      if (sourceItemsStore.page == 1) {
         return;
       }
-      activeSourceItems.page--;
-      activeSourceItems.fetchItems();
+      sourceItemsStore.page--;
+      sourceItemsStore.fetch();
     },
     pageNext() {
-      const activeSourceItems = ActiveSourceItems();
-      if (!activeSourceItems.pageHasMore) {
+      const sourceItemsStore = SourceItemsStore();
+      if (!sourceItemsStore.pageHasMore) {
         return;
       }
-      activeSourceItems.page++;
-      activeSourceItems.fetchItems();
+      sourceItemsStore.page++;
+      sourceItemsStore.fetch();
     },
     toggleUnreadFIlter() {
-      const activeSourceItems = ActiveSourceItems();
-      if (activeSourceItems.filterStatus === "unread") {
-        activeSourceItems.filterStatus = "all";
+      const sourceItemsStore = SourceItemsStore();
+      if (sourceItemsStore.filterStatus === "unread") {
+        sourceItemsStore.filterStatus = "all";
       } else {
-        activeSourceItems.filterStatus = "unread";
+        sourceItemsStore.filterStatus = "unread";
       }
-      activeSourceItems.page = 1;
-      activeSourceItems.fetchItems();
+      sourceItemsStore.page = 1;
+      sourceItemsStore.fetch();
     },
   },
 };
