@@ -3,7 +3,7 @@ import { Auth } from "../data/Auth";
 import { SearchItemsData } from "../data/SearchItemsData";
 import { SourceLabelsData } from "../data/SourceLabelsData";
 import { SourcesData } from "../data/SourcesData";
-import { Processor } from "../processor";
+import { Processors } from "../procesors/processors";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 
 export class SourcesIdRoutes {
@@ -74,8 +74,8 @@ export class SourcesIdRoutes {
       if (req.body.labels && req.body.labels.length > 0) {
         await SourceLabelsData.setSourceLabels(StandardTracer.getSpanFromRequest(req), source.id, req.body.labels);
       }
-      Processor.checkSource(StandardTracer.getSpanFromRequest(req), source).then(() => {
-        Processor.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);
+      Processors.checkSource(StandardTracer.getSpanFromRequest(req), source).then(() => {
+        Processors.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);
       });
       return res.status(202).send();
     });
@@ -112,7 +112,7 @@ export class SourcesIdRoutes {
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      Processor.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);
+      Processors.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);
       return res.status(201).send();
     });
   }
