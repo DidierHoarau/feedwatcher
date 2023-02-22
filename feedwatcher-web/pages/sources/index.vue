@@ -63,6 +63,7 @@ import axios from "axios";
 import * as _ from "lodash";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
+import { Timeout } from "~~/services/Timeout";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 
 export default {
@@ -107,18 +108,26 @@ export default {
         confirmed = true;
       }
       if (confirmed === true) {
+        const markReadPromises = [];
         for (const item of sourceItemsStore.sourceItems) {
-          await axios
-            .put(
-              `${(await Config.get()).SERVER_URL}/sources/items/${item.id}/status`,
-              { status: "read" },
-              await AuthService.getAuthHeader()
-            )
-            .then((res) => {
-              item.status = "read";
-            })
-            .catch(handleError);
+          markReadPromises.push(async () => {
+            await axios
+              .put(
+                `${(await Config.get()).SERVER_URL}/sources/items/${item.id}/status`,
+                { status: "read" },
+                await AuthService.getAuthHeader()
+              )
+              .then((res) => {
+                item.status = "read";
+              });
+          });
         }
+        while (markReadPromises.length) {
+          await Promise.all(markReadPromises.splice(0, 10).map((f) => f())).catch(handleError);
+        }
+        EventBus.emit(EventTypes.ALERT_MESSAGE, {
+          text: "All displayed items marked as read",
+        });
         EventBus.emit(EventTypes.ITEMS_UPDATED, {});
       }
     },

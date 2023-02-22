@@ -11,7 +11,7 @@ import { SqlDbutils } from "./data/SqlDbUtils";
 import { SourcesRoutes } from "./routes/SourcesRoutes";
 import { Scheduler } from "./scheduler";
 import { SourcesIdRoutes } from "./routes/SourcesIdRoutes";
-import { Processor } from "./processor";
+import { Processors } from "./procesors/processors";
 import { SourcesLabelsRoutes } from "./routes/SourcesLabelsRoutes";
 import { SourceItemIdRoutes } from "./routes/SourceItemIdRoutes";
 import { ListsItemsRoutes } from "./routes/ListsItemsRoutes";
@@ -37,7 +37,7 @@ Promise.resolve().then(async () => {
 
   await SqlDbutils.init(span, config);
   await Auth.init(span, config);
-  await Processor.init(span, config);
+  await Processors.init(span, config);
   await Scheduler.init(span, config);
 
   span.end();

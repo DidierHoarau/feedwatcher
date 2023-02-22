@@ -2,7 +2,7 @@ import { Span } from "@opentelemetry/sdk-trace-base";
 import { Config } from "./Config";
 import { StandardTracer } from "./utils-std-ts/StandardTracer";
 import { Timeout } from "./utils-std-ts/Timeout";
-import { Processor } from "./processor";
+import { Processors } from "./procesors/processors";
 
 let config: Config;
 
@@ -19,7 +19,7 @@ export class Scheduler {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const span = StandardTracer.startSpan("Scheduler_start");
-      await Processor.fetchSourceItemsAll(span);
+      await Processors.fetchSourceItemsAll(span);
       span.end();
       await Timeout.wait(config.SOURCE_FETCH_FREQUENCY);
     }
