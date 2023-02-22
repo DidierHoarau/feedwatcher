@@ -35,6 +35,7 @@ export default {
   async created() {
     if (!SourceItemsStore().selectedSource) {
       this.loadAllItems();
+      SourcesStore().selectedIndex = 0;
     }
     SourcesStore().fetch();
     SourcesStore().fetchCounts();

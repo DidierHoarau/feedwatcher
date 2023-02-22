@@ -6,40 +6,38 @@ module.exports = {
   //
   getInfo: () => {
     return {
-      title: "Yahoo Finance",
-      description: "Get a stock price per day. <br/>" + "Expected URLs: https://finance.yahoo.com/quote/[code]",
+      title: "CoinGecko",
+      description:
+        "Get a price of a crypto currency once per day. <br/>" +
+        "Expected URLs: https://www.coingecko.com/en/coins/[coin]",
       icon: "coin",
     };
   },
 
   test: async (source) => {
-    let urlMatch = /.*finance.yahoo.com\/quote\/(.+)(\??).*/.exec(source.info.url);
+    let urlMatch = /.*coingecko.com\/en\/coins\/(.+)(\??).*/.exec(source.info.url);
     if (urlMatch) {
-      let pageRaw = (await axios.get(source.info.url)).data;
-      const title = pageRaw.split("<title>")[1].split("</title>")[0].split(" Stock Price")[0];
-      return { name: title, icon: "coin" };
+      const coin = urlMatch[1];
+      const info = (await axios.get(`https://api.coingecko.com/api/v3/coins/${coin}`)).data;
+      if (info.name) {
+        return { name: `${info.name} (${info.symbol})`, icon: "coin" };
+      }
     }
     return null;
   },
 
   fetchLatest: async (source, lastSourceItemSaved) => {
-    let urlMatch = /.*finance.yahoo.com\/quote\/(.*)(\??).*/.exec(source.info.url);
-    let pageRaw = (await axios.get(source.info.url)).data;
-    const code = urlMatch[1];
-    let value;
-    const dataPoints = pageRaw.split("<fin-streamer ");
-    for (const dataPoint of dataPoints) {
-      if (dataPoint.indexOf("regularMarketPrice") > 0 && dataPoint.indexOf(`data-symbol="${code}"`) > 0) {
-        value = dataPoint.split('value="')[1].split('"')[0];
-      }
-    }
+    let urlMatch = /.*coingecko.com\/en\/coins\/(.+)(\??).*/.exec(source.info.url);
+    const coin = urlMatch[1];
+    const info = (await axios.get(`https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=usd`)).data;
+    let value = info[coin].usd;
     if (lastSourceItemSaved && new Date() - new Date(lastSourceItemSaved.datePublished) < 24 * 3600 * 1000) {
       return [];
     }
     const sourceItems = [];
     const sourceItem = {};
     sourceItem.url = source.info.url;
-    sourceItem.title = `Price: ${value}`;
+    sourceItem.title = `Price: USD ${value}`;
     if (lastSourceItemSaved && value > lastSourceItemSaved.info.price) {
       sourceItem.title += " (up)";
     } else if (lastSourceItemSaved && value < lastSourceItemSaved.info.price) {
