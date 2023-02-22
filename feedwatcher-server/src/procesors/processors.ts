@@ -158,6 +158,9 @@ export class Processors {
         }
       }
     }
+    if (!processed) {
+      logger.warn(`No processor found for ${source.id}`);
+    }
     span.end();
     fetchSourceItemsQueue.shift();
     Processors.fetchSourceItemsQueued();

@@ -3,7 +3,8 @@
     <h1>New Source</h1>
     <label>URL</label>
     <input v-model="source.url" type="text" />
-    <button v-on:click="saveNew()">Add</button>
+    <button v-if="!loading" v-on:click="saveNew()">Add</button>
+    <Loading v-if="loading" />
   </div>
 </template>
 
@@ -16,6 +17,7 @@ import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 export default {
   data() {
     return {
+      loading: false,
       source: {},
     };
   },
@@ -23,6 +25,7 @@ export default {
   methods: {
     async saveNew() {
       if (this.source.url) {
+        this.loading = true;
         await axios
           .post(`${(await Config.get()).SERVER_URL}/sources`, this.source, await AuthService.getAuthHeader())
           .then(async (res) => {
@@ -36,6 +39,7 @@ export default {
             router.push({ path: "/sources" });
           })
           .catch(handleError);
+        this.loading = false;
       } else {
         EventBus.emit(EventTypes.ALERT_MESSAGE, {
           type: "error",

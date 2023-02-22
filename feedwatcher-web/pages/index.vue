@@ -30,6 +30,8 @@ export default {
   },
   async created() {
     await axios.get(`${(await Config.get()).SERVER_URL}/processors`).then((res) => {
+      const catchAllProcessor = res.data.pop();
+      res.data.unshift(catchAllProcessor);
       this.processorInfos = res.data;
     });
   },
