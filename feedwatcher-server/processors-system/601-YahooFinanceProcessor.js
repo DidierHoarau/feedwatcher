@@ -41,9 +41,9 @@ module.exports = {
     sourceItem.url = source.info.url;
     sourceItem.title = `Price: ${value}`;
     if (lastSourceItemSaved && value > lastSourceItemSaved.info.price) {
-      sourceItem.title += " 🡩";
+      sourceItem.title += " (up)";
     } else if (lastSourceItemSaved && value < lastSourceItemSaved.info.price) {
-      sourceItem.title += " 🡫";
+      sourceItem.title += " (down)";
     }
     sourceItem.content = "";
     sourceItem.datePublished = new Date();
