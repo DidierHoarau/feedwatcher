@@ -51,8 +51,13 @@ export default {
   },
   methods: {
     async updateSource() {
+      const labelsStr = this.labels
+        .replace(/ +(?= )/g, "")
+        .replace(/\/ /g, "/")
+        .replace(/ \//g, "/")
+        .replace(/\/+/g, "/");
       const sourceLabels = [];
-      for (const label of this.labels.split(",")) {
+      for (const label of labelsStr.split(",")) {
         if (label.trim()) {
           sourceLabels.push(label.trim());
         }
