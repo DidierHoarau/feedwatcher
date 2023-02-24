@@ -69,4 +69,20 @@ main {
     opacity: 1;
   }
 }
+
+.blink {
+  transition: all 1s ease-in-out;
+  animation: blink normal 3s infinite ease-in-out;
+}
+@keyframes blink {
+  0% {
+    color: inherit;
+  }
+  50% {
+    color: #039be5;
+  }
+  100% {
+    color: inherit;
+  }
+}
 </style>

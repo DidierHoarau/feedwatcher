@@ -74,6 +74,7 @@ export default {
           })
           .then(() => {
             SourcesStore().selectSource(this.source.id);
+            UserProcessorInfoStore().check();
             useRouter().push({ path: "/sources" });
           })
           .catch(handleError);

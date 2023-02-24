@@ -4,7 +4,11 @@
       <h2>Sources</h2>
     </div>
     <div id="sources-actions" class="actions">
-      <i class="bi bi-cloud-arrow-down" v-on:click="refreshAndFetch()"></i>
+      <i
+        class="bi bi-cloud-arrow-down"
+        :class="{ blink: userProcessorInfoStore.status !== 'idle' }"
+        v-on:click="refreshAndFetch()"
+      ></i>
       <i class="bi bi-arrow-clockwise" v-on:click="refresh()"></i>
       <NuxtLink to="/sources/new"><i class="bi bi-plus-square"></i></NuxtLink>
       <i class="bi bi-caret-up-square sources-actions-menu-toggle" v-if="menuOpened" v-on:click="openListMenu()"></i>
@@ -19,7 +23,7 @@
       ></NuxtLink>
       <i
         v-if="sourceItemsStore.selectedSource"
-        v-on:click="refreshSourceItems(selectedSource)"
+        v-on:click="fetchOneSource(sourceItemsStore.selectedSource)"
         class="bi bi-cloud-arrow-down"
       ></i>
       <i v-if="sourceItemsStore.sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
@@ -56,6 +60,7 @@
 
 <script setup>
 const sourceItemsStore = SourceItemsStore();
+const userProcessorInfoStore = UserProcessorInfoStore();
 </script>
 
 <script>
@@ -63,7 +68,6 @@ import axios from "axios";
 import * as _ from "lodash";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
-import { Timeout } from "~~/services/Timeout";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 
 export default {
@@ -79,25 +83,31 @@ export default {
     if (!(await AuthenticationStore().ensureAuthenticated())) {
       useRouter().push({ path: "/users" });
     }
+    EventBus.on(EventTypes.ITEMS_UPDATED, (message) => {
+      if (this.sourceItems.length === 0) {
+        SourceItemsStore().fetch();
+      }
+    });
   },
   methods: {
-    async refreshSourceItems(sourceId) {
+    async fetchOneSource(sourceId) {
       this.selectedSource = sourceId;
       await axios
         .put(`${(await Config.get()).SERVER_URL}/sources/${sourceId}/fetch`, {}, await AuthService.getAuthHeader())
         .then((res) => {})
         .catch(handleError);
+      UserProcessorInfoStore().check();
     },
     async refreshAndFetch() {
       await axios
         .put(`${(await Config.get()).SERVER_URL}/sources/fetch`, {}, await AuthService.getAuthHeader())
         .then((res) => {})
         .catch(handleError);
-      EventBus.emit(EventTypes.SOURCES_UPDATED, {});
+      UserProcessorInfoStore().check();
     },
     async refresh() {
-      EventBus.emit(EventTypes.SOURCES_UPDATED, {});
       SourceItemsStore().fetch();
+      UserProcessorInfoStore().check();
     },
     async markAllRead() {
       const sourceItemsStore = SourceItemsStore();

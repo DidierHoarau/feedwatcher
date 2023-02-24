@@ -1,6 +1,5 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../data/Auth";
-import { SearchItemsData } from "../data/SearchItemsData";
 import { SourceLabelsData } from "../data/SourceLabelsData";
 import { SourcesData } from "../data/SourcesData";
 import { Processors } from "../procesors/processors";

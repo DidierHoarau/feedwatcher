@@ -73,6 +73,7 @@ export default {
               type: "info",
               text: "User Logged In",
             });
+            UserProcessorInfoStore().check();
             useRouter().push({ path: "/sources" });
           })
           .catch(handleError);
