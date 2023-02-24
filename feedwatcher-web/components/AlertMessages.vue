@@ -35,26 +35,13 @@ export default {
   margin: 1rem;
   color: #eee;
 }
-@media (prefers-color-scheme: dark) {
-  .message {
-    background-color: #546e7a;
-  }
-  .message-info {
-    background-color: #43a047;
-  }
-  .message-error {
-    background-color: #e53935;
-  }
+.message {
+  background-color: #546e7a;
 }
-@media (prefers-color-scheme: light) {
-  .message {
-    background-color: #e53935;
-  }
-  .message-info {
-    background-color: #43a047;
-  }
-  .message-error {
-    background-color: #546e7a;
-  }
+.message-info {
+  background-color: #43a047;
+}
+.message-error {
+  background-color: #e53935;
 }
 </style>
