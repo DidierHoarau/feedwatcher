@@ -73,7 +73,6 @@ import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 export default {
   data() {
     return {
-      sourceItems: [],
       selectedSource: "",
       menuOpened: true,
       filterStatus: "unread",
@@ -84,7 +83,7 @@ export default {
       useRouter().push({ path: "/users" });
     }
     EventBus.on(EventTypes.ITEMS_UPDATED, (message) => {
-      if (this.sourceItems.length === 0) {
+      if (SourceItemsStore().sourceItems.length === 0) {
         SourceItemsStore().fetch();
       }
     });
