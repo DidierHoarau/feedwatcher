@@ -22,11 +22,11 @@
         ><i class="bi bi-pencil-square"></i
       ></NuxtLink>
       <i
-        v-if="sourceItemsStore.selectedSource"
-        v-on:click="fetchOneSource(sourceItemsStore.selectedSource)"
-        class="bi bi-cloud-arrow-down"
+        v-if="sourceItemsStore.sourceItems.length > 0"
+        v-on:click="markAllRead()"
+        class="bi bi-archive"
+        :class="{ blink: markingUnreead }"
       ></i>
-      <i v-if="sourceItemsStore.sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
       <i v-if="sourceItemsStore.filterStatus == 'unread'" v-on:click="toggleUnreadFIlter()" class="bi bi-eye-slash"></i>
       <i v-else v-on:click="toggleUnreadFIlter()" class="bi bi-eye"></i>
     </div>
@@ -69,6 +69,7 @@ import * as _ from "lodash";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
+import { Timeout } from "~~/services/Timeout";
 
 export default {
   data() {
@@ -76,6 +77,7 @@ export default {
       selectedSource: "",
       menuOpened: true,
       filterStatus: "unread",
+      markingUnreead: false,
     };
   },
   async created() {
@@ -89,14 +91,6 @@ export default {
     });
   },
   methods: {
-    async fetchOneSource(sourceId) {
-      this.selectedSource = sourceId;
-      await axios
-        .put(`${(await Config.get()).SERVER_URL}/sources/${sourceId}/fetch`, {}, await AuthService.getAuthHeader())
-        .then((res) => {})
-        .catch(handleError);
-      UserProcessorInfoStore().check();
-    },
     async refreshAndFetch() {
       await axios
         .put(`${(await Config.get()).SERVER_URL}/sources/fetch`, {}, await AuthService.getAuthHeader())
@@ -117,23 +111,27 @@ export default {
         confirmed = true;
       }
       if (confirmed === true) {
+        this.markingUnreead = true;
         const markReadPromises = [];
         for (const item of sourceItemsStore.sourceItems) {
           markReadPromises.push(async () => {
-            await axios
-              .put(
-                `${(await Config.get()).SERVER_URL}/sources/items/${item.id}/status`,
-                { status: "read" },
-                await AuthService.getAuthHeader()
-              )
-              .then((res) => {
-                item.status = "read";
-              });
+            if (item.status !== "read") {
+              await axios
+                .put(
+                  `${(await Config.get()).SERVER_URL}/sources/items/${item.id}/status`,
+                  { status: "read" },
+                  await AuthService.getAuthHeader()
+                )
+                .then((res) => {
+                  item.status = "read";
+                });
+            }
           });
         }
         while (markReadPromises.length) {
           await Promise.all(markReadPromises.splice(0, 10).map((f) => f())).catch(handleError);
         }
+        this.markingUnreead = false;
         EventBus.emit(EventTypes.ALERT_MESSAGE, {
           text: "All displayed items marked as read",
         });
