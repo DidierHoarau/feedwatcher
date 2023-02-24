@@ -104,6 +104,7 @@ export const SourcesStore = defineStore("SourcesStore", {
               isRoot: false,
               depth: labelSplit.length + 1,
               name: sourceData.sourceName,
+              icon: sourceData.sourceInfo.icon,
               labelName: sourceData.labelName || "",
               displayName: sourceData.sourceName,
               unreadCount: 0,
