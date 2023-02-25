@@ -30,10 +30,7 @@
       <i v-if="sourceItemsStore.filterStatus == 'unread'" v-on:click="toggleUnreadFIlter()" class="bi bi-eye-slash"></i>
       <i v-else v-on:click="toggleUnreadFIlter()" class="bi bi-eye"></i>
     </div>
-    <div v-if="sourceItemsStore.loading" id="sources-items-list">
-      <Loading />
-    </div>
-    <div v-else id="sources-items-list">
+    <div id="sources-items-list">
       <div
         v-on:click="pagePrevious()"
         id="sources-items-list-page-prev"
@@ -41,7 +38,10 @@
       >
         <i class="bi bi-caret-left"></i>
       </div>
-      <div id="sources-items-list-page">
+      <div v-if="sourceItemsStore.loading" id="sources-items-list-page">
+        <Loading />
+      </div>
+      <div v-else id="sources-items-list-page">
         <span v-if="sourceItemsStore.sourceItems.length == 0">No items</span>
         <div v-for="sourceItem in sourceItemsStore.sourceItems" v-bind:key="sourceItem.id">
           <SourceItem class="fade-in-fast" :item="sourceItem" />
@@ -69,7 +69,6 @@ import * as _ from "lodash";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
-import { Timeout } from "~~/services/Timeout";
 
 export default {
   data() {
@@ -85,7 +84,7 @@ export default {
       useRouter().push({ path: "/users" });
     }
     EventBus.on(EventTypes.ITEMS_UPDATED, (message) => {
-      if (SourceItemsStore().sourceItems.length === 0) {
+      if (SourceItemsStore().sourceItems.length === 0 && UserProcessorInfoStore().status === "idle") {
         SourceItemsStore().fetch();
       }
     });

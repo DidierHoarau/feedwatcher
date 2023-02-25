@@ -74,6 +74,10 @@ export default {
           })
           .then(() => {
             SourcesStore().selectSource(this.source.id);
+            setTimeout(() => {
+              UserProcessorInfoStore().check();
+              useRouter().push({ path: "/sources" });
+            }, 100);
             UserProcessorInfoStore().check();
             useRouter().push({ path: "/sources" });
           })

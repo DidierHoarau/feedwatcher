@@ -45,7 +45,7 @@ export default {
 }
 .processor-info-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(25em, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(20em, 1fr));
   gap: 10px;
 }
 .processor-info-layout {
@@ -69,10 +69,10 @@ export default {
 .processor-info-description {
   grid-row: 2;
   grid-column: 2;
-  word-break: break-all;
 }
 .processor-info-description span {
   font-size: 0.8em;
   opacity: 0.5;
+  word-break: break-all;
 }
 </style>

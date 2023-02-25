@@ -11,13 +11,22 @@
           <i v-if="source.isLabel && source.isCollapsed" class="bi bi-caret-right-fill"></i>
           <i v-else-if="source.isLabel" class="bi bi-caret-down-fill"></i>
         </span>
-        <div v-on:click="loadItems(source, index)" class="source-name-name">{{ source.displayName }}</div>
+        <div v-on:click="loadItems(source, index)" class="source-name-name">
+          <span v-if="!source.isLabel"><i :class="'bi bi-' + source.icon"></i>&nbsp;&nbsp;{{ source.icon }}</span>
+          {{ source.displayName }}
+        </div>
         <div v-on:click="loadItems(source, index)" class="source-name-count">{{ source.unreadCount }}</div>
       </div>
     </div>
-    <div v-on:click="loadSavedItems()" :class="{ 'source-active': sourcesStore.selectedIndex == -2 }">
-      <i class="bi bi-bookmark-plus-fill"></i>
-      Saved Items
+    <div
+      v-on:click="loadSavedItems()"
+      class="source-name-layout"
+      :class="{ 'source-active': sourcesStore.selectedIndex == -2 }"
+    >
+      <span class="source-name-indent">
+        <i class="bi bi-bookmark-plus-fill"></i>
+      </span>
+      <div class="source-name-name">Saved Items</div>
     </div>
   </div>
 </template>
