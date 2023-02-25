@@ -11,10 +11,13 @@ import * as _ from "lodash";
 import { Source } from "../model/Source";
 import { v4 as uuidv4 } from "uuid";
 import { ProcessorInfo } from "../model/ProcessorInfo";
+import { UserProcessorInfoStatus } from "../model/UserProcessorInfoStatus";
+import { UserProcessorInfo } from "../model/UserProcessorInfo";
 
 const logger = new Logger("Processor");
 let config: Config;
 let processorFiles = [];
+const userProcessorInfoStatus: UserProcessorInfo[] = [];
 const fetchSourceItemsQueue: Source[] = [];
 
 export class Processors {
@@ -61,29 +64,30 @@ export class Processors {
 
   public static async checkSource(context: Span, source: Source) {
     const span = StandardTracer.startSpan("Processors_checkSource", context);
-    if (source.info.processorPath) {
-      return;
-    }
-    let processed = false;
-    for (const processorFile of processorFiles) {
-      if (!processed) {
-        try {
-          const processor = await import(processorFile.path);
-          const sourceInfo = await processor.test(source);
-          if (sourceInfo) {
-            sourceInfo.processorPath = processorFile.path;
-            source.name = sourceInfo.name;
-            if (!source.info) {
-              source.info = {};
+    if (!source.info.processorPath) {
+      Processors.userProcessorInfoStatusStart(span, source.userId);
+      let processed = false;
+      for (const processorFile of processorFiles) {
+        if (!processed) {
+          try {
+            const processor = await import(processorFile.path);
+            const sourceInfo = await processor.test(source);
+            if (sourceInfo) {
+              sourceInfo.processorPath = processorFile.path;
+              source.name = sourceInfo.name;
+              if (!source.info) {
+                source.info = {};
+              }
+              source.info = _.merge(source.info, sourceInfo);
+              await SourcesData.update(span, source);
+              processed = true;
             }
-            source.info = _.merge(source.info, sourceInfo);
-            await SourcesData.update(span, source);
-            processed = true;
+          } catch (err) {
+            // Nothing to do
+            // logger.error(err);
           }
-        } catch (err) {
-          // Nothing to do
-          // logger.error(err);
         }
+        Processors.userProcessorInfoStatusStop(span, source.userId);
       }
     }
     span.end();
@@ -122,6 +126,7 @@ export class Processors {
     }
     const span = StandardTracer.startSpan("Processors_fetchSourceItemsQueued");
     const source = fetchSourceItemsQueue[0];
+    Processors.userProcessorInfoStatusStart(span, source.userId);
     let processed = false;
     const lastSourceItemSaved = await SourceItemsData.getLastForSource(span, source.id);
     for (const processorFile of processorFiles) {
@@ -161,8 +166,39 @@ export class Processors {
     if (!processed) {
       logger.warn(`No processor found for ${source.id}`);
     }
+    Processors.userProcessorInfoStatusStop(span, source.userId);
     span.end();
     fetchSourceItemsQueue.shift();
     Processors.fetchSourceItemsQueued();
+  }
+
+  public static getUserProcessorInfo(context: Span, userId: string): UserProcessorInfo {
+    const span = StandardTracer.startSpan("Processors_getUserProcessorInfo", context);
+    return _.find(userProcessorInfoStatus, { userId });
+    span.end();
+  }
+
+  private static userProcessorInfoStatusStart(context: Span, userId: string): void {
+    const span = StandardTracer.startSpan("Processors_userProcessorInfoStatusStart", context);
+    let userStatus = _.find(userProcessorInfoStatus, { userId });
+    if (!userStatus) {
+      userStatus = {
+        userId: userId,
+        status: UserProcessorInfoStatus.working,
+      };
+      userProcessorInfoStatus.push(userStatus);
+    }
+    userStatus.status = UserProcessorInfoStatus.working;
+    span.end();
+  }
+
+  private static userProcessorInfoStatusStop(context: Span, userId: string): void {
+    const span = StandardTracer.startSpan("Processors_userProcessorInfoStatusStop", context);
+    const userStatus = _.find(userProcessorInfoStatus, { userId });
+    if (userStatus) {
+      userStatus.status = UserProcessorInfoStatus.idle;
+      userStatus.lastUpdate = new Date();
+    }
+    span.end();
   }
 }

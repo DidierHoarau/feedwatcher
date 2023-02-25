@@ -4,6 +4,7 @@ import { Auth } from "../data/Auth";
 import { User } from "../model/User";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { UsersData } from "../data/UsersData";
+import { Timeout } from "../utils-std-ts/Timeout";
 
 export class UsersRoutes {
   //
@@ -78,6 +79,29 @@ export class UsersRoutes {
       newUser.name = req.body.name;
       await UserPassword.setPassword(StandardTracer.getSpanFromRequest(req), newUser, req.body.password);
       await UsersData.add(StandardTracer.getSpanFromRequest(req), newUser);
+      res.status(201).send({});
+    });
+
+    interface PutNewPassword extends RequestGenericInterface {
+      Body: {
+        password: string;
+        passwordOld: string;
+      };
+    }
+    fastify.put<PutNewPassword>("/password", async (req, res) => {
+      const userSession = await Auth.getUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      const user = await UsersData.get(StandardTracer.getSpanFromRequest(req), userSession.userId);
+      if (!req.body.password || !req.body.password) {
+        return res.status(400).send({ error: "Missing: Password" });
+      }
+      if (!(await UserPassword.checkPassword(StandardTracer.getSpanFromRequest(req), user, req.body.passwordOld))) {
+        return res.status(403).send({ error: "Old Password Wrong" });
+      }
+      await UserPassword.setPassword(StandardTracer.getSpanFromRequest(req), user, req.body.password);
+      await UsersData.update(StandardTracer.getSpanFromRequest(req), user);
       res.status(201).send({});
     });
   }

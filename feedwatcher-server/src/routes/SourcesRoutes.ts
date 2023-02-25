@@ -23,8 +23,11 @@ export class SourcesRoutes {
       source.name = req.body.url;
       source.info = { url: req.body.url };
       source.userId = userSession.userId;
-      await SourcesData.add(StandardTracer.getSpanFromRequest(req), source);
       await Processors.checkSource(StandardTracer.getSpanFromRequest(req), source);
+      if (!source.info.processorPath) {
+        return res.status(400).send({ error: "Source Not Supported (No Processor Matching)" });
+      }
+      await SourcesData.add(StandardTracer.getSpanFromRequest(req), source);
       Processors.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);
       return res.status(201).send(source.toJson());
     });

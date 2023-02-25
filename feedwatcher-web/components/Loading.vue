@@ -1,5 +1,5 @@
 <template>
-  <div class="fade-in-slow"><i class="bi bi-hourglass-split"></i> Loading...</div>
+  <div class="fade-in-slow blink"><i class="bi bi-hourglass-split"></i> Loading...</div>
 </template>
 
 <script>

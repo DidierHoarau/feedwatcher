@@ -41,10 +41,20 @@ export class UsersData {
 
   public static async add(context: Span, user: User): Promise<void> {
     const span = StandardTracer.startSpan("UsersData_add", context);
-    await SqlDbutils.querySQL(
-      span,
-      `INSERT INTO users (id,name,passwordEncrypted) VALUES ('${user.id}','${user.name}','${user.passwordEncrypted}')`
-    );
+    await SqlDbutils.execSQL(span, "INSERT INTO users (id,name,passwordEncrypted) VALUES (?, ?, ?)", [
+      user.id,
+      user.name,
+      user.passwordEncrypted,
+    ]);
+    span.end();
+  }
+
+  public static async update(context: Span, user: User): Promise<void> {
+    const span = StandardTracer.startSpan("UsersData_update", context);
+    await SqlDbutils.execSQL(span, "UPDATE users SET passwordEncrypted = ? WHERE id = ? ", [
+      user.passwordEncrypted,
+      user.id,
+    ]);
     span.end();
   }
 

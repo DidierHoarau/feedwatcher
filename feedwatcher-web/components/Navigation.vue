@@ -37,6 +37,7 @@ export default {
           });
       }, 10000);
     }
+    UserProcessorInfoStore().check();
   },
 };
 </script>

@@ -52,7 +52,7 @@ export class SourceItemsData {
       span,
       "UPDATE sources_items " +
         " SET title = ?, content = ?, url = ?, status = ?, datePublished = ?, info = ? " +
-        " WHERE ID = ?",
+        " WHERE id = ?",
       [
         sourceItem.title,
         sourceItem.content,
