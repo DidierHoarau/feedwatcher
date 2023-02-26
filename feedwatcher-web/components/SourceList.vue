@@ -12,7 +12,7 @@
           <i v-else-if="source.isLabel" class="bi bi-caret-down-fill"></i>
         </span>
         <div v-on:click="loadItems(source, index)" class="source-name-name">
-          <span v-if="!source.isLabel"><i :class="'bi bi-' + source.icon"></i>&nbsp;&nbsp;{{ source.icon }}</span>
+          <span v-if="!source.isLabel"><i :class="'bi bi-' + source.icon"></i>&nbsp;</span>
           {{ source.displayName }}
         </div>
         <div v-on:click="loadItems(source, index)" class="source-name-count">{{ source.unreadCount }}</div>
