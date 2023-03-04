@@ -38,16 +38,16 @@ jobs:
       - name: Build Docker Images
         run: |
           set -e
-          chmod +x _dev/*.sh
-          ./_dev/docker-build-images.sh
-          ./_dev/docker-publish-images-beta.sh
+          chmod +x docs/dev/*.sh
+          ./docs/dev/docker-build-images.sh
+          ./docs/dev/docker-publish-images-beta.sh
 
       # - name: Start Test Environment
       #   run: |
       #     set -e
-      #     chmod +x _dev/*.sh
+      #     chmod +x docs/dev/*.sh
       #     npm install -g pm2
-      #     ./_dev/run-test-env.sh
+      #     ./docs/dev/run-test-env.sh
       #     sleep 20
 
       # - name: E2E Test

@@ -8,5 +8,5 @@ resources:
   - base/service.yaml
 images:
   - name: feedwatcher
-    newTag: 0.1.0
+    newTag: latest
     newName: didierhoarau/feedwatcher
