@@ -2,13 +2,13 @@
 
 set -e
 
-REPO_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+REPO_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd )"
 
 pm2 delete all || true
 
 cd ${REPO_DIR}
 
-./_dev/docker-build-images.sh
+./docs/dev/docker-build-images.sh
 
 docker rm -f feedwatcher || true
 

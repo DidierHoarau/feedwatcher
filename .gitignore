@@ -6,4 +6,4 @@
 /builds
 node_modules/
 coverage
-/_dev/env.sh
+/docs/dev/env.sh
