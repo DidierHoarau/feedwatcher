@@ -59,17 +59,7 @@ export default {
             }
           })
           .catch(handleError);
-        axios
-          .put(
-            `${(await Config.get()).SERVER_URL}/sources/items/${this.item.id}/status`,
-            { status: "read" },
-            await AuthService.getAuthHeader()
-          )
-          .then((res) => {
-            this.item.status = "read";
-            EventBus.emit(EventTypes.ITEMS_UPDATED, {});
-          })
-          .catch(handleError);
+        this.markReadStatus("read");
       }
     },
     async saveItem() {
@@ -95,8 +85,8 @@ export default {
     async markReadStatus(status) {
       axios
         .put(
-          `${(await Config.get()).SERVER_URL}/sources/items/${this.item.id}/status`,
-          { status },
+          `${(await Config.get()).SERVER_URL}/items/status`,
+          { status, itemIds: [this.item.id] },
           await AuthService.getAuthHeader()
         )
         .then((res) => {

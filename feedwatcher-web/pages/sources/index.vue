@@ -21,12 +21,7 @@
       <NuxtLink v-if="sourceItemsStore.selectedSource" :to="'/sources/' + sourceItemsStore.selectedSource"
         ><i class="bi bi-pencil-square"></i
       ></NuxtLink>
-      <i
-        v-if="sourceItemsStore.sourceItems.length > 0"
-        v-on:click="markAllRead()"
-        class="bi bi-archive"
-        :class="{ blink: markingUnreead }"
-      ></i>
+      <i v-if="sourceItemsStore.sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
       <i v-if="sourceItemsStore.filterStatus == 'unread'" v-on:click="toggleUnreadFIlter()" class="bi bi-eye-slash"></i>
       <i v-else v-on:click="toggleUnreadFIlter()" class="bi bi-eye"></i>
     </div>
@@ -110,31 +105,26 @@ export default {
         confirmed = true;
       }
       if (confirmed === true) {
-        this.markingUnreead = true;
-        const markReadPromises = [];
+        const itemIds = [];
         for (const item of sourceItemsStore.sourceItems) {
-          markReadPromises.push(async () => {
-            if (item.status !== "read") {
-              await axios
-                .put(
-                  `${(await Config.get()).SERVER_URL}/sources/items/${item.id}/status`,
-                  { status: "read" },
-                  await AuthService.getAuthHeader()
-                )
-                .then((res) => {
-                  item.status = "read";
-                });
+          itemIds.push(item.id);
+        }
+        await axios
+          .put(
+            `${(await Config.get()).SERVER_URL}/items/status`,
+            { status: "read", itemIds },
+            await AuthService.getAuthHeader()
+          )
+          .then(() => {
+            for (const item of sourceItemsStore.sourceItems) {
+              item.status = "read";
             }
-          });
-        }
-        while (markReadPromises.length) {
-          await Promise.all(markReadPromises.splice(0, 10).map((f) => f())).catch(handleError);
-        }
-        this.markingUnreead = false;
-        EventBus.emit(EventTypes.ALERT_MESSAGE, {
-          text: "All displayed items marked as read",
-        });
-        EventBus.emit(EventTypes.ITEMS_UPDATED, {});
+            EventBus.emit(EventTypes.ALERT_MESSAGE, {
+              text: "All displayed items marked as read",
+            });
+            EventBus.emit(EventTypes.ITEMS_UPDATED, {});
+          })
+          .catch(handleError);
       }
     },
     openListMenu() {
@@ -186,12 +176,14 @@ export default {
 #sources-items-actions {
   text-align: right;
   font-size: 0.9em;
+  padding-top: 0.2em;
+  padding-bottom: 0.2em;
 }
 
 @media (max-width: 700px) {
   #sources-layout {
     display: grid;
-    grid-template-rows: 4em auto 2em 2fr;
+    grid-template-rows: 4em auto 2.5em 2fr;
     grid-template-columns: auto auto;
     height: calc(100vh - 5em);
     column-gap: 1em;
@@ -226,7 +218,7 @@ export default {
 @media (min-width: 701px) {
   #sources-layout {
     display: grid;
-    grid-template-rows: 4em 2em 1fr;
+    grid-template-rows: 4em 2.5em 1fr;
     grid-template-columns: auto 1fr 1fr;
     height: calc(100vh - 5em);
     column-gap: 1em;
