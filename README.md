@@ -16,7 +16,7 @@ The main use case for the application is to subscribe to RSS feeds. But because 
 
 FeedWatcher is designed to be deployed as a container.
 
-- The Docker image is: `didierhoarau/feedwatcher` [https://hub.docker.com/r/didierhoarau/feedwatcher]
+- The Docker image is: `didierhoarau/feedwatcher` [https://hub.docker.com/r/didierhoarau/feedwatcher](https://hub.docker.com/r/didierhoarau/feedwatcher)
 - This image exposes port `8080`
 - The volume is located in `/data`
 
