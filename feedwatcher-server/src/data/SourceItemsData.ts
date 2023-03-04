@@ -1,6 +1,7 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import * as _ from "lodash";
 import { SourceItem } from "../model/SourceItem";
+import { SourceItemStatus } from "../model/SourceItemStatus";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "./SqlDbUtils";
 
@@ -62,6 +63,36 @@ export class SourceItemsData {
         JSON.stringify(sourceItem.info),
         sourceItem.id,
       ]
+    );
+    span.end();
+  }
+
+  public static async updateMultipleStatusForUser(
+    context: Span,
+    itemIds: string[],
+    status: SourceItemStatus,
+    userId: string
+  ): Promise<void> {
+    const span = StandardTracer.startSpan("SourceItemsData_updateMultipleStatusForUser", context);
+    let inItemsId = "";
+    for (const itemId of itemIds) {
+      if (inItemsId.length > 0) {
+        inItemsId += ",";
+      }
+      inItemsId += `"${itemId}"`;
+    }
+    await SqlDbutils.execSQL(
+      span,
+      "UPDATE sources_items " +
+        " SET status = ? " +
+        " WHERE id IN ( " +
+        "   SELECT sources_items.id " +
+        "   FROM sources_items, sources " +
+        `   WHERE sources_items.id IN (${inItemsId}) ` +
+        "         AND sources_items.sourceId = sources.id " +
+        "         AND sources.userId = ? " +
+        " )",
+      [status, userId]
     );
     span.end();
   }
