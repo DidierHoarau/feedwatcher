@@ -28,3 +28,7 @@ docker run --name feedwatcher -p 8080:8080 -v "$(pwd)/data:/data" -d didierhoara
 ```
 
 Check the [docs/deployments](docs/deployments) for more examples of deployments.
+
+# Development
+
+If you want to extend the application with your own Processors: [docs/processors](docs/processors)
