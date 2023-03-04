@@ -2,11 +2,13 @@
 
 A key concept of feedwatcher are processors. These are modules that can be added to hande new type of URL.
 
-Built-in processors are stored in the `feedwatcher-server/processors-system` of thise repository.
+Built-in processors are stored in the [feedwatcher-server/processors-system](../../feedwatcher-server/processors-system/) of thise repository.
 
 However, users can implement their own processors wihout changing the application.
 
 Do do so you need to create a Javascript file in the `/opt/app/feedwatcher/processors-user` of the runtime container
+
+Processors are used in alphabetical order. It is then recommended to name processors from the most specific to the more general.
 
 The provided Javascript files need to follow the following structure:
 
@@ -32,7 +34,7 @@ module.exports = {
   fetchLatest: async (source, lastSourceItemSaved) => {
     // lastSourceItemSaved IS THE LAST ITEM KNOWN FOR THIS SOURCE
 
-// RETURN THE FOLLOWING ARRAY:
+    // RETURN THE FOLLOWING ARRAY:
     const sourceItems = [
         {
             url = "<URL OF THE ITEM>",
@@ -46,3 +48,5 @@ module.exports = {
   },
 };
 ```
+
+It is recommenede to have a look at the existing [System Processors](../../feedwatcher-server/processors-system/).
