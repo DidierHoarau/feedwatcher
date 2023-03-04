@@ -27,4 +27,4 @@ mkdir -p data
 docker run --name feedwatcher -p 8080:8080 -v "$(pwd)/data:/data" -d didierhoarau/feedwatcher
 ```
 
-Check the [docs/deployments] for more examples of deployments.
+Check the [docs/deployments](docs/deployments) for more examples of deployments.
