@@ -102,15 +102,12 @@ export class ItemsRoutes {
         return res.status(400).send({ error: "Wrong status parameter" });
       }
 
-      for (const itemId of req.body.itemIds) {
-        const sourceItem = await SourceItemsData.getForUser(
-          StandardTracer.getSpanFromRequest(req),
-          itemId,
-          userSession.userId
-        );
-        sourceItem.status = req.body.status;
-        await SourceItemsData.update(StandardTracer.getSpanFromRequest(req), sourceItem);
-      }
+      await SourceItemsData.updateMultipleStatusForUser(
+        StandardTracer.getSpanFromRequest(req),
+        req.body.itemIds,
+        req.body.status,
+        userSession.userId
+      );
       return res.status(201).send({});
     });
   }
