@@ -1,6 +1,7 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../data/Auth";
 import { SearchItemsData } from "../data/SearchItemsData";
+import { SourceItemsData } from "../data/SourceItemsData";
 import { SourcesData } from "../data/SourcesData";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SourceItemStatus } from "../model/SourceItemStatus";
@@ -81,6 +82,36 @@ export class ItemsRoutes {
       }
 
       return res.status(400).send({ error: "Search Criteria Missing or Unknown" });
+    });
+
+    interface PutSourceItemIdStatusRequest extends RequestGenericInterface {
+      Body: {
+        itemIds: string[];
+        status: string;
+      };
+    }
+    fastify.put<PutSourceItemIdStatusRequest>("/status", async (req, res) => {
+      const userSession = await Auth.getUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      if (
+        !req.body.status ||
+        (req.body.status !== SourceItemStatus.read && req.body.status !== SourceItemStatus.unread)
+      ) {
+        return res.status(400).send({ error: "Wrong status parameter" });
+      }
+
+      for (const itemId of req.body.itemIds) {
+        const sourceItem = await SourceItemsData.getForUser(
+          StandardTracer.getSpanFromRequest(req),
+          itemId,
+          userSession.userId
+        );
+        sourceItem.status = req.body.status;
+        await SourceItemsData.update(StandardTracer.getSpanFromRequest(req), sourceItem);
+      }
+      return res.status(201).send({});
     });
   }
 }
