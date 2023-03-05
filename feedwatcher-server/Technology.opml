@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="1.0">
+  <head>
+    <title>Feeds of didier.hoarau.web tagged as Technology from Inoreader [https://www.inoreader.com]</title>
+  </head>
+  <body>
+    <outline text="Technology" title="Technology">
+      <outline text="Ars Technica" title="Ars Technica" type="rss" xmlUrl="http://feeds.arstechnica.com/arstechnica/index" htmlUrl="http://arstechnica.com/"/>
+    </outline>
+  </body>
+</opml>

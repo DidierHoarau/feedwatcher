@@ -12,6 +12,7 @@
     </div>
     <div v-else>
       <button v-on:click="logout()">Logout</button>
+      <button v-on:click="gotoImport()">Import Sources</button>
       <button v-if="!isChangePasswordStarted" v-on:click="changePasswordStart(true)">Change Password</button>
       <article v-else>
         <h1>Change Password</h1>
@@ -69,6 +70,9 @@ export default {
           text: "Username or password missing",
         });
       }
+    },
+    gotoImport() {
+      useRouter().push({ path: "/sources/import" });
     },
     async login() {
       if (this.user.name && this.user.password) {

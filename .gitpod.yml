@@ -1,7 +1,7 @@
 tasks:
   - name: Dev Server
     before: npm install -g pm2
-    command: ./_dev/run-dev-env.sh
+    command: ./docs/dev/run-dev-env.sh
 ports:
   - name: Web Proxy
     description: Application Proxy
