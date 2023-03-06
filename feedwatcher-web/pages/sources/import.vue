@@ -1,12 +1,16 @@
 <template>
-  <div id="sources-layout">
-    <div id="sources-header">
+  <div>
       <h2>Source Import</h2>
       <label for="file"
         >OPML Import
         <input type="file" id="file" name="file" @change="uploadOpml" multiple />
       </label>
-    </div>
+      <div v-for="source in sourcesImports" v-bind:key="source.name" class="source-import">
+        <div class="source-import-check"></div>
+        <div class="source-import-url">{{ source.name }}</div>
+        <div class="source-import-url">{{ source.info.url }}</div>
+        {{ source }}
+      </div>
   </div>
 </template>
 
@@ -25,6 +29,7 @@ import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 export default {
   data() {
     return {
+      sources: [],
       selectedSource: "",
       menuOpened: true,
       filterStatus: "unread",
@@ -48,78 +53,12 @@ export default {
       formData.append("image", opmlFile.files[0]);
       const headers = await AuthService.getAuthHeader();
       headers["Content-Type"] = "multipart/form-data";
-      axios.post(`${(await Config.get()).SERVER_URL}/sources/import/opml`, formData, headers);
-    },
-    async refreshAndFetch() {
-      await axios
-        .put(`${(await Config.get()).SERVER_URL}/sources/fetch`, {}, await AuthService.getAuthHeader())
-        .then((res) => {})
+      axios.post(`${(await Config.get()).SERVER_URL}/sources/import/analyze/opml`, formData, headers)
+        .then(res => {
+          console.log(res.data)
+          this.sourcesImports = res.data.sources;
+        })
         .catch(handleError);
-      UserProcessorInfoStore().check();
-    },
-    async refresh() {
-      SourceItemsStore().fetch();
-      UserProcessorInfoStore().check();
-    },
-    async markAllRead() {
-      const sourceItemsStore = SourceItemsStore();
-      let confirmed = false;
-      if (sourceItemsStore.sourceItems.length > 1) {
-        confirmed = confirm("Mark all item read?");
-      } else {
-        confirmed = true;
-      }
-      if (confirmed === true) {
-        const itemIds = [];
-        for (const item of sourceItemsStore.sourceItems) {
-          itemIds.push(item.id);
-        }
-        await axios
-          .put(
-            `${(await Config.get()).SERVER_URL}/items/status`,
-            { status: "read", itemIds },
-            await AuthService.getAuthHeader()
-          )
-          .then(() => {
-            for (const item of sourceItemsStore.sourceItems) {
-              item.status = "read";
-            }
-            EventBus.emit(EventTypes.ALERT_MESSAGE, {
-              text: "All displayed items marked as read",
-            });
-            EventBus.emit(EventTypes.ITEMS_UPDATED, {});
-          })
-          .catch(handleError);
-      }
-    },
-    openListMenu() {
-      this.menuOpened = !this.menuOpened;
-    },
-    pagePrevious() {
-      const sourceItemsStore = SourceItemsStore();
-      if (sourceItemsStore.page == 1) {
-        return;
-      }
-      sourceItemsStore.page--;
-      sourceItemsStore.fetch();
-    },
-    pageNext() {
-      const sourceItemsStore = SourceItemsStore();
-      if (!sourceItemsStore.pageHasMore) {
-        return;
-      }
-      sourceItemsStore.page++;
-      sourceItemsStore.fetch();
-    },
-    toggleUnreadFIlter() {
-      const sourceItemsStore = SourceItemsStore();
-      if (sourceItemsStore.filterStatus === "unread") {
-        sourceItemsStore.filterStatus = "all";
-      } else {
-        sourceItemsStore.filterStatus = "unread";
-      }
-      sourceItemsStore.page = 1;
-      sourceItemsStore.fetch();
     },
   },
 };
