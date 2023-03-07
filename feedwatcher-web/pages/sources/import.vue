@@ -3,12 +3,14 @@
       <h2>Source Import</h2>
       <label for="file"
         >OPML Import
-        <input type="file" id="file" name="file" @change="uploadOpml" multiple />
+        <input type="file" id="file" name="file" @change="uploadOpml()" multiple />
       </label>
+      <button v-on:click="uploadOpml()">Check</button>
       <div v-for="source in sourcesImports" v-bind:key="source.name" class="source-import">
         <div class="source-import-check"></div>
-        <div class="source-import-url">{{ source.name }}</div>
+        <div class="source-import-name">{{ source.name }}</div>
         <div class="source-import-url">{{ source.info.url }}</div>
+        <div class="source-import-status"></div>
         {{ source }}
       </div>
   </div>
@@ -29,7 +31,9 @@ import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 export default {
   data() {
     return {
-      sources: [],
+      sources: [{
+        name:"Name",url: "a url", imported: true, label: "label"
+      }],
       selectedSource: "",
       menuOpened: true,
       filterStatus: "unread",
