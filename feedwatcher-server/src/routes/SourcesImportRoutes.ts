@@ -54,10 +54,13 @@ function opmlLoad(text: string): Promise<any> {
 
 async function opmlProcessSub(
   context: Span,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   opmlSub: any[],
   parentFolder: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sourcesOpml: any[],
   userId: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   for (const feed of opmlSub) {
     if (feed.xmlUrl) {
@@ -65,13 +68,14 @@ async function opmlProcessSub(
       source.name = feed.title;
       source.info = { url: feed.xmlUrl };
       source.userId = userId;
+      source.labels = [parentFolder];
       sourcesOpml.push(source);
     }
     if (feed.subs) {
       await opmlProcessSub(
         context,
         feed.subs,
-        parentFolder + "/" + feed.title,
+        `${parentFolder ? parentFolder + "/" : ""}${feed.title}`,
         sourcesOpml,
         userId
       );

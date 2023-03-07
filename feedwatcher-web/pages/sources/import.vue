@@ -1,18 +1,35 @@
 <template>
-  <div>
-      <h2>Source Import</h2>
-      <label for="file"
-        >OPML Import
-        <input type="file" id="file" name="file" @change="uploadOpml()" multiple />
-      </label>
-      <button v-on:click="uploadOpml()">Check</button>
-      <div v-for="source in sourcesImports" v-bind:key="source.name" class="source-import">
-        <div class="source-import-check"></div>
-        <div class="source-import-name">{{ source.name }}</div>
-        <div class="source-import-url">{{ source.info.url }}</div>
-        <div class="source-import-status"></div>
-        {{ source }}
+  <div class="page">
+    <h2>Source Import (OPML)</h2>
+    <input type="file" id="file" name="file" @change="uploadOpml()" />
+    <button v-if="sourcesImports.length > 0" v-on:click="startImport()" :disabled="processing">
+      Import Selected <i class="bi bi-hourglass-split blink" v-if="processing"></i>
+    </button>
+    <div v-for="sourcesImport in sourcesImports" v-bind:key="sourcesImport.source.name" class="source-import">
+      <div class="source-import-select">
+        <input
+          type="checkbox"
+          v-model="sourcesImport.checked"
+          id="terms"
+          name="terms"
+          :disabled="processing || sourcesImport.imported"
+        />
       </div>
+      <div class="source-import-url">{{ sourcesImport.source.info.url }}</div>
+      <div class="source-import-name">
+        <label>Name</label>
+        <input v-model="sourcesImport.source.name" type="text" :disabled="processing || sourcesImport.imported" />
+      </div>
+      <div class="source-import-labels">
+        <label>Labels (coma separated)</label>
+        <input v-model="sourcesImport.source.labels" type="text" :disabled="processing || sourcesImport.imported" />
+      </div>
+      <div class="source-import-status">
+        <i v-if="sourcesImport.imported" class="bi bi-check-circle"></i>
+        <i v-else-if="processing" class="bi bi-hourglass-split blink"></i>
+        <i v-else-if="sourcesImport.importFailed" class="bi bi-exclamation-circle-fill"></i>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -27,17 +44,13 @@ import * as _ from "lodash";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
+import { Timeout } from "~~/services/Timeout";
 
 export default {
   data() {
     return {
-      sources: [{
-        name:"Name",url: "a url", imported: true, label: "label"
-      }],
-      selectedSource: "",
-      menuOpened: true,
-      filterStatus: "unread",
-      markingUnreead: false,
+      sourcesImports: [],
+      processing: false,
     };
   },
   async created() {
@@ -57,170 +70,108 @@ export default {
       formData.append("image", opmlFile.files[0]);
       const headers = await AuthService.getAuthHeader();
       headers["Content-Type"] = "multipart/form-data";
-      axios.post(`${(await Config.get()).SERVER_URL}/sources/import/analyze/opml`, formData, headers)
-        .then(res => {
-          console.log(res.data)
-          this.sourcesImports = res.data.sources;
+      axios
+        .post(`${(await Config.get()).SERVER_URL}/sources/import/analyze/opml`, formData, headers)
+        .then((res) => {
+          const sourcesImportTmp = [];
+          for (const source of res.data.sources) {
+            let labels = "";
+            for (const label of source.labels) {
+              if (labels) {
+                labels += ", ";
+              }
+              labels += label;
+            }
+            source.labels = labels;
+            sourcesImportTmp.push({
+              source,
+              checked: true,
+              processing: true,
+              imported: false,
+            });
+          }
+          this.sourcesImports = sourcesImportTmp;
         })
         .catch(handleError);
+    },
+    async startImport() {
+      this.processing = true;
+      const processingPromises = [];
+      for (const sourcesImport of this.sourcesImports) {
+        if (!sourcesImport.imported) {
+          processingPromises.push(async () => {
+            try {
+              let res = await axios.post(
+                `${(await Config.get()).SERVER_URL}/sources`,
+                { url: sourcesImport.source.info.url },
+                await AuthService.getAuthHeader()
+              );
+              const source = res.data;
+              const labelsStr = sourcesImport.source.labels
+                .replace(/ +(?= )/g, "")
+                .replace(/\/ /g, "/")
+                .replace(/ \//g, "/")
+                .replace(/\/+/g, "/");
+              const sourceLabels = [];
+              for (const label of labelsStr.split(",")) {
+                if (label.trim()) {
+                  sourceLabels.push(label.trim());
+                }
+              }
+              source.labels = sourceLabels;
+              if (sourcesImport.source.name) {
+                source.name = sourcesImport.source.name;
+              }
+              await axios.put(
+                `${(await Config.get()).SERVER_URL}/sources/${source.id}`,
+                source,
+                await AuthService.getAuthHeader()
+              );
+              sourcesImport.imported = true;
+              sourcesImport.importFailed = false;
+            } catch (err) {
+              console.error(err);
+              sourcesImport.importFailed = true;
+            }
+          });
+        }
+      }
+      while (processingPromises.length) {
+        await Promise.all(processingPromises.splice(0, 3).map((f) => f())).catch(handleError);
+      }
+      this.processing = false;
+      await SourcesStore().fetch();
     },
   },
 };
 </script>
 
 <style scoped>
-#sources-layout > * {
-  min-height: 0px;
-}
-#sources-actions {
-  text-align: right;
-  white-space: nowrap;
-}
-#sources-list div {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-#sources-items-actions {
-  text-align: right;
-  font-size: 0.9em;
-  padding-top: 0.2em;
-  padding-bottom: 0.2em;
-}
-
-@media (max-width: 700px) {
-  #sources-layout {
-    display: grid;
-    grid-template-rows: 4em auto 2.5em 2fr;
-    grid-template-columns: auto auto;
-    height: calc(100vh - 5em);
-    column-gap: 1em;
-  }
-  #sources-items-actions {
-    grid-row: 3;
-    grid-column-start: 1;
-    grid-column-end: span 2;
-  }
-  #sources-items-list {
-    overflow: scroll;
-    grid-row: 4;
-    grid-column-start: 1;
-    grid-column-end: span 2;
-  }
-  #sources-header {
-    grid-row: 1;
-    grid-column: 1;
-  }
-  #sources-list {
-    overflow: auto;
-    height: 30vh;
-    grid-row: 2;
-    grid-column-start: 1;
-    grid-column-end: span 2;
-  }
-  .sources-list-closed {
-    height: 0px !important;
-  }
-}
-
-@media (min-width: 701px) {
-  #sources-layout {
-    display: grid;
-    grid-template-rows: 4em 2.5em 1fr;
-    grid-template-columns: auto 1fr 1fr;
-    height: calc(100vh - 5em);
-    column-gap: 1em;
-  }
-  #sources-items-actions {
-    grid-row: 2;
-    grid-column-start: 2;
-    grid-column-end: span 2;
-  }
-  #sources-items-list {
-    overflow: auto;
-    grid-row: 3;
-    grid-column-start: 2;
-    grid-column-end: span 2;
-  }
-  #sources-header {
-    grid-row: 1;
-    grid-column-start: 1;
-    grid-column-end: span 2;
-  }
-  #sources-list {
-    width: 30vw;
-    max-width: 20em;
-    overflow: auto;
-    height: auto;
-    grid-row-start: 2;
-    grid-row-end: span 2;
-    grid-column: 1;
-  }
-  .sources-actions-menu-toggle {
-    visibility: hidden;
-    font-size: 0px;
-    padding: 0px;
-    margin: 0px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .source-active {
-    background-color: #333;
-  }
-  #sources-list {
-    background-color: #33333333;
-  }
-}
-@media (prefers-color-scheme: light) {
-  .source-active {
-    background-color: #bbb;
-  }
-  #sources-list {
-    background-color: #aaaaaa33;
-  }
-}
-
-.source-name-layout {
+.source-import {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  padding: 0.3em 0.5em;
+  grid-template-columns: 2em 1fr 2em;
+  grid-template-rows: auto auto auto;
+  margin: 0.5em 0em;
 }
-.source-name-indent {
+.source-import-check {
+  grid-row: 1;
   grid-column: 1;
-  padding-right: 0.5em;
 }
-.source-name-name {
+.source-import-name {
+  grid-row: 2;
   grid-column: 2;
 }
-.source-name-count {
+.source-import-url {
+  grid-row: 1;
+  grid-column: 2;
+}
+.source-import-labels {
+  grid-row: 3;
+  grid-column: 2;
+}
+.source-import-status {
+  grid-row: 1;
   grid-column: 3;
-}
-
-#sources-items-list {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  overflow: hidden;
-  align-items: center;
-}
-#sources-items-list-page-prev {
-  padding-right: 0.5em;
-  align-items: center;
-}
-#sources-items-list-page-prev {
-  padding-bottom: 2em;
-  padding-right: 0.5em;
-}
-#sources-items-list-page-next {
-  padding-bottom: 2em;
-  padding-left: 0.5em;
-}
-.page-inactive {
-  opacity: 0.1;
-}
-
-#sources-items-list-page {
-  height: 100%;
-  overflow-y: auto;
+  text-align: right;
 }
 </style>
