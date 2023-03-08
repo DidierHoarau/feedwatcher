@@ -1,10 +1,13 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../data/Auth";
 import * as opml from "opml";
+import * as _ from "lodash";
 import { Logger } from "../utils-std-ts/Logger";
 import { Source } from "../model/Source";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { Span } from "@opentelemetry/sdk-trace-base";
+import { SourcesData } from "../data/SourcesData";
+import { SourceLabelsData } from "../data/SourceLabelsData";
 
 const logger = new Logger("SourcesImportRoutes");
 
@@ -35,6 +38,43 @@ export class SourcesImportRoutes {
         logger.error(err);
         return res.status(400).send({ error: "Invalid File" });
       }
+    });
+
+    fastify.get("/export/opml", async (req, res) => {
+      const userSession = await Auth.getUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      const sourceLabels = await SourceLabelsData.listForUser(
+        StandardTracer.getSpanFromRequest(req),
+        userSession.userId
+      );
+      const sourcesOutlines = { opml: { head: { title: "Feedwatcher Source Export" }, body: { subs: [] } } };
+      for (const source of sourceLabels) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sourceLabel = source as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const newOutline: any = {
+          text: sourceLabel.name,
+          type: sourceLabel.sourceInfo.icon,
+          url: sourceLabel.sourceInfo.url,
+        };
+        if (newOutline.type === "rss") {
+          newOutline.xmlUrl = sourceLabel.sourceInfo.url;
+        }
+        if (!sourceLabel.labelName) {
+          sourcesOutlines.opml.body.subs.push(newOutline);
+        } else {
+          let parentSub = _.find(sourcesOutlines.opml.body.subs, { title: sourceLabel.labelName });
+          if (!parentSub) {
+            parentSub = { title: sourceLabel.labelName, subs: [] };
+            sourcesOutlines.opml.body.subs.push(parentSub);
+          }
+          parentSub.subs.push(newOutline);
+        }
+      }
+      console.log(opml.stringify(sourcesOutlines));
+      return res.type("text/xml").send(opml.stringify(sourcesOutlines));
     });
   }
 }

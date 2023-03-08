@@ -1,7 +1,5 @@
-import { count } from "console";
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../data/Auth";
-import { SearchItemsData } from "../data/SearchItemsData";
 import { SourceLabelsData } from "../data/SourceLabelsData";
 import { SourcesData } from "../data/SourcesData";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";

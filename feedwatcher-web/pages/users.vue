@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="user-page">
     <div v-if="!authenticationStore.isAuthenticated">
       <h1 v-if="isInitialized">Login</h1>
       <h1 v-else>New User</h1>
@@ -11,8 +11,12 @@
       <button v-if="!authenticationStore.isAuthenticated && isInitialized" v-on:click="login()">Login</button>
     </div>
     <div v-else>
+      <h1>Import/Export Sources</h1>
+      <button v-on:click="gotoImport()">Import Sources (OPML)</button>
+      <button v-on:click="gotoExport()">Export Sources (OPML)</button>
+      <br />
+      <h1>Authentication</h1>
       <button v-on:click="logout()">Logout</button>
-      <button v-on:click="gotoImport()">Import Sources</button>
       <button v-if="!isChangePasswordStarted" v-on:click="changePasswordStart(true)">Change Password</button>
       <article v-else>
         <h1>Change Password</h1>
@@ -71,9 +75,6 @@ export default {
         });
       }
     },
-    gotoImport() {
-      useRouter().push({ path: "/sources/import" });
-    },
     async login() {
       if (this.user.name && this.user.password) {
         await axios
@@ -124,6 +125,20 @@ export default {
       this.isChangePasswordStarted = enable;
       this.user = {};
     },
+    gotoImport() {
+      useRouter().push({ path: "/sources/import" });
+    },
+    async gotoExport() {
+      axios
+        .get(`${(await Config.get()).SERVER_URL}/sources/import/export/opml`, await AuthService.getAuthHeader())
+        .catch(handleError);
+    },
   },
 };
 </script>
+
+<style scoped>
+.user-page {
+  width: min(100%, 50em);
+}
+</style>
