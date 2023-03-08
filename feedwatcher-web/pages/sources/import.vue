@@ -109,7 +109,7 @@ export default {
       };
       const processingPromises = [];
       for (const sourcesImport of this.sourcesImports) {
-        if (sourcesImport.imported) {
+        if (sourcesImport.imported || !sourcesImport.checked) {
           importSummary.skipped++;
         } else {
           processingPromises.push(async () => {
