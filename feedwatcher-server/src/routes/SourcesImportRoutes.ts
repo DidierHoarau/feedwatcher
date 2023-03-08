@@ -6,7 +6,6 @@ import { Logger } from "../utils-std-ts/Logger";
 import { Source } from "../model/Source";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { Span } from "@opentelemetry/sdk-trace-base";
-import { SourcesData } from "../data/SourcesData";
 import { SourceLabelsData } from "../data/SourceLabelsData";
 
 const logger = new Logger("SourcesImportRoutes");
@@ -55,7 +54,7 @@ export class SourcesImportRoutes {
         const sourceLabel = source as any;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const newOutline: any = {
-          text: sourceLabel.name,
+          text: sourceLabel.sourceName,
           type: sourceLabel.sourceInfo.icon,
           url: sourceLabel.sourceInfo.url,
         };
@@ -104,9 +103,9 @@ async function opmlProcessSub(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   for (const feed of opmlSub) {
-    if (feed.xmlUrl) {
+    if (feed.xmlUrl || feed.url) {
       const source = new Source();
-      source.name = feed.title;
+      source.name = feed.text;
       source.info = { url: feed.xmlUrl ? feed.xmlUrl : feed.url };
       source.userId = userId;
       source.labels = [parentFolder];
