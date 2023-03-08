@@ -44,7 +44,6 @@ import * as _ from "lodash";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
-import { Timeout } from "~~/services/Timeout";
 
 export default {
   data() {
@@ -72,7 +71,10 @@ export default {
       headers["Content-Type"] = "multipart/form-data";
       axios
         .post(`${(await Config.get()).SERVER_URL}/sources/import/analyze/opml`, formData, headers)
-        .then((res) => {
+        .then(async (res) => {
+          const sourcesExisting = (
+            await axios.get(`${(await Config.get()).SERVER_URL}/sources`, await AuthService.getAuthHeader())
+          ).data.sources;
           const sourcesImportTmp = [];
           for (const source of res.data.sources) {
             let labels = "";
@@ -83,11 +85,15 @@ export default {
               labels += label;
             }
             source.labels = labels;
+            let imported = false;
+            if (_.find(sourcesExisting, { info: { url: source.info.url } })) {
+              imported = true;
+            }
             sourcesImportTmp.push({
               source,
               checked: true,
               processing: true,
-              imported: false,
+              imported,
             });
           }
           this.sourcesImports = sourcesImportTmp;
@@ -96,9 +102,16 @@ export default {
     },
     async startImport() {
       this.processing = true;
+      let importSummary = {
+        success: 0,
+        error: 0,
+        skipped: 0,
+      };
       const processingPromises = [];
       for (const sourcesImport of this.sourcesImports) {
-        if (!sourcesImport.imported) {
+        if (sourcesImport.imported) {
+          importSummary.skipped++;
+        } else {
           processingPromises.push(async () => {
             try {
               let res = await axios.post(
@@ -129,8 +142,10 @@ export default {
               );
               sourcesImport.imported = true;
               sourcesImport.importFailed = false;
+              importSummary.success++;
             } catch (err) {
               console.error(err);
+              importSummary.error++;
               sourcesImport.importFailed = true;
             }
           });
@@ -140,6 +155,9 @@ export default {
         await Promise.all(processingPromises.splice(0, 3).map((f) => f())).catch(handleError);
       }
       this.processing = false;
+      EventBus.emit(EventTypes.ALERT_MESSAGE, {
+        text: `Imported: ${importSummary.success} ; Failed: ${importSummary.error} ; Skipped: ${importSummary.skipped}`,
+      });
       await SourcesStore().fetch();
     },
   },
