@@ -31,7 +31,7 @@ module.exports = {
       const sourceItem = {};
       sourceItem.url = item.link;
       sourceItem.title = item.title;
-      sourceItem.content = item.content;
+      sourceItem.content = item.content || "";
       sourceItem.datePublished = new Date(item.pubDate);
       sourceItems.push(sourceItem);
     });
