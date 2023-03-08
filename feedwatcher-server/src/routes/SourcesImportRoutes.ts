@@ -74,12 +74,12 @@ export class SourcesImportRoutes {
         }
       }
 
-      res.header('Content-Disposition', 'attachment; filename=data.opml')
-      res.header('Content-Type', 'text/plain')
+      res.header("Content-Disposition", "attachment; filename=data.opml");
+      res.header("Content-Type", "text/plain");
       res.send(opml.stringify(sourcesOutlines));
     });
   }
-};
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function opmlLoad(text: string): Promise<any> {
