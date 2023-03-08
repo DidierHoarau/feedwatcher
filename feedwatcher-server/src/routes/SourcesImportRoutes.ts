@@ -73,7 +73,6 @@ export class SourcesImportRoutes {
           parentSub.subs.push(newOutline);
         }
       }
-
       res.header("Content-Disposition", "attachment; filename=data.opml");
       res.header("Content-Type", "text/plain");
       res.send(opml.stringify(sourcesOutlines));
@@ -108,7 +107,7 @@ async function opmlProcessSub(
     if (feed.xmlUrl) {
       const source = new Source();
       source.name = feed.title;
-      source.info = { url: feed.xmlUrl };
+      source.info = { url: feed.xmlUrl ? feed.xmlUrl : feed.url };
       source.userId = userId;
       source.labels = [parentFolder];
       sourcesOpml.push(source);
