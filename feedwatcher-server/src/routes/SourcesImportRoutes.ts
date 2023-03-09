@@ -73,11 +73,13 @@ export class SourcesImportRoutes {
           parentSub.subs.push(newOutline);
         }
       }
-      console.log(opml.stringify(sourcesOutlines));
-      return res.type("text/xml").send(opml.stringify(sourcesOutlines));
+
+      res.header('Content-Disposition', 'attachment; filename=data.opml')
+      res.header('Content-Type', 'text/plain')
+      res.send(opml.stringify(sourcesOutlines));
     });
   }
-}
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function opmlLoad(text: string): Promise<any> {
