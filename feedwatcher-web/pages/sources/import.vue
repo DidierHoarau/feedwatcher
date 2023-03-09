@@ -182,6 +182,7 @@ export default {
 .source-import-url {
   grid-row: 1;
   grid-column: 2;
+  word-break: break-all;
 }
 .source-import-labels {
   grid-row: 3;
