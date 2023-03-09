@@ -16,6 +16,7 @@ import { SourcesLabelsRoutes } from "./routes/SourcesLabelsRoutes";
 import { ListsItemsRoutes } from "./routes/ListsItemsRoutes";
 import { ItemsRoutes } from "./routes/ItemsRoutes";
 import { ProcessorsRoutes } from "./routes/ProcessorsRoutes";
+import { SourcesImportRoutes } from "./routes/SourcesImportRoutes";
 
 const logger = new Logger("app");
 
@@ -55,6 +56,8 @@ Promise.resolve().then(async () => {
       methods: "GET,PUT,POST,DELETE",
     });
   }
+  /* eslint-disable-next-line */
+  fastify.register(require("@fastify/multipart"));
 
   StandardTracerApi.registerHooks(fastify, config);
 
@@ -72,6 +75,9 @@ Promise.resolve().then(async () => {
   });
   fastify.register(new SourcesLabelsRoutes().getRoutes, {
     prefix: "/api/sources/labels",
+  });
+  fastify.register(new SourcesImportRoutes().getRoutes, {
+    prefix: "/api/sources/import",
   });
   fastify.register(new ListsItemsRoutes().getRoutes, {
     prefix: "/api/lists",

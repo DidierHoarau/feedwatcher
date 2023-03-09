@@ -7,6 +7,7 @@ export class Source {
   public userId: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public info: any;
+  public labels?: string[];
 
   constructor() {
     this.id = uuidv4();
@@ -20,6 +21,7 @@ export class Source {
       name: this.name,
       info: this.info,
       userId: this.userId,
+      labels: this.labels,
     };
   }
 }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="1.0">
+  <head>
+    <title>Feeds of didier.hoarau.web tagged as Society from Inoreader [https://www.inoreader.com]</title>
+  </head>
+  <body>
+    <outline text="Society" title="Society">
+      <outline text="Elucid" title="Elucid" type="rss" xmlUrl="https://elucid.media/feed/" htmlUrl="https://elucid.media/"/>
+    </outline>
+  </body>
+</opml>

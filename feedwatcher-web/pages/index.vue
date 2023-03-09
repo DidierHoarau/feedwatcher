@@ -39,10 +39,6 @@ export default {
 </script>
 
 <style scoped>
-.page {
-  overflow-y: auto;
-  height: calc(100vh - 5em);
-}
 .processor-info-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(20em, 1fr));

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="user-page">
     <div v-if="!authenticationStore.isAuthenticated">
       <h1 v-if="isInitialized">Login</h1>
       <h1 v-else>New User</h1>
@@ -11,6 +11,11 @@
       <button v-if="!authenticationStore.isAuthenticated && isInitialized" v-on:click="login()">Login</button>
     </div>
     <div v-else>
+      <h1>Import/Export Sources</h1>
+      <button v-on:click="gotoImport()">Import Sources (OPML)</button>
+      <button v-on:click="gotoExport()">Export Sources (OPML)</button>
+      <br />
+      <h1>Authentication</h1>
       <button v-on:click="logout()">Logout</button>
       <button v-if="!isChangePasswordStarted" v-on:click="changePasswordStart(true)">Change Password</button>
       <article v-else>
@@ -120,6 +125,30 @@ export default {
       this.isChangePasswordStarted = enable;
       this.user = {};
     },
+    gotoImport() {
+      useRouter().push({ path: "/sources/import" });
+    },
+    async gotoExport() {
+      const headers = await AuthService.getAuthHeader();
+      headers.responseType = 'blob';      
+      axios
+        .get(`${(await Config.get()).SERVER_URL}/sources/import/export/opml`, headers)
+        .then((response) => {
+          const url = window.URL.createObjectURL(new Blob([response.data]));
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', `sources_export_${new Date().toISOString()}.opml`);
+          document.body.appendChild(link);
+          link.click();
+        })
+        .catch(handleError);
+    },
   },
 };
 </script>
+
+<style scoped>
+.user-page {
+  width: min(100%, 50em);
+}
+</style>
