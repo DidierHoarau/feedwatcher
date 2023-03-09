@@ -3,7 +3,7 @@ import { Config } from "./Config";
 import { StandardTracer } from "./utils-std-ts/StandardTracer";
 import { Timeout } from "./utils-std-ts/Timeout";
 import { Processors } from "./procesors/processors";
-import { SourceItemsData } from "./data/SourceItemsData";
+import { SourcesData } from "./data/SourcesData";
 
 let config: Config;
 
@@ -20,10 +20,17 @@ export class Scheduler {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const span = StandardTracer.startSpan("Scheduler_start");
-      await Processors.fetchSourceItemsAll(span);
-      await SourceItemsData.cleanupOrphans(span);
+      const sources = await SourcesData.listAll(span);
+      for (const source of sources) {
+        if (
+          !source.info.dateFetched ||
+          new Date().getTime() - new Date(source.info.dateFetched).getTime() > config.SOURCE_FETCH_FREQUENCY
+        ) {
+          await Processors.fetchSourceItems(span, source);
+        }
+      }
       span.end();
-      await Timeout.wait(config.SOURCE_FETCH_FREQUENCY);
+      await Timeout.wait(config.SOURCE_FETCH_FREQUENCY / 4);
     }
   }
 }
