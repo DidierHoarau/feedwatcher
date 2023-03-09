@@ -3,6 +3,7 @@ import { Config } from "./Config";
 import { StandardTracer } from "./utils-std-ts/StandardTracer";
 import { Timeout } from "./utils-std-ts/Timeout";
 import { Processors } from "./procesors/processors";
+import { SourceItemsData } from "./data/SourceItemsData";
 
 let config: Config;
 
@@ -20,6 +21,7 @@ export class Scheduler {
     while (true) {
       const span = StandardTracer.startSpan("Scheduler_start");
       await Processors.fetchSourceItemsAll(span);
+      await SourceItemsData.cleanupOrphans(span);
       span.end();
       await Timeout.wait(config.SOURCE_FETCH_FREQUENCY);
     }
