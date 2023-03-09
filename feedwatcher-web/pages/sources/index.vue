@@ -95,7 +95,7 @@ export default {
     async refresh() {
       SourceItemsStore().fetch();
       UserProcessorInfoStore().check();
-      SourcesStore().fetchCounts();
+      SourcesStore().fetch();
     },
     async markAllRead() {
       const sourceItemsStore = SourceItemsStore();

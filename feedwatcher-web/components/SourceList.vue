@@ -47,13 +47,11 @@ export default {
       SourcesStore().selectedIndex = 0;
     }
     SourcesStore().fetch();
-    SourcesStore().fetchCounts();
     EventBus.on(EventTypes.ITEMS_UPDATED, (message) => {
       SourcesStore().fetchCounts();
     });
     EventBus.on(EventTypes.SOURCES_UPDATED, (message) => {
       SourcesStore().fetch();
-      SourcesStore().fetchCounts();
     });
   },
   methods: {
@@ -101,14 +99,6 @@ export default {
       sourceItemsStore.searchCriteria = "lists";
       sourceItemsStore.filterStatus = "all";
       sourceItemsStore.fetch();
-    },
-    async refreshAndFetch() {
-      SourcesStore().fetch();
-      SourcesStore().fetchCounts();
-    },
-    async refresh() {
-      SourcesStore().fetch();
-      SourcesStore().fetchCounts();
     },
     isLabelDisplayed(index) {
       if (!SourcesStore().sourceLabels[index].labelName) {
