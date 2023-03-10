@@ -111,4 +111,10 @@ export class SourceItemsData {
     span.end();
     return sourceItem;
   }
+
+  public static async cleanupOrphans(context: Span): Promise<void> {
+    const span = StandardTracer.startSpan("SourceItemsData_cleanupOrphans", context);
+    await SqlDbutils.execSQL(span, "DELETE FROM sources_items WHERE sourceId NOT IN (SELECT id FROM sources)");
+    span.end();
+  }
 }
