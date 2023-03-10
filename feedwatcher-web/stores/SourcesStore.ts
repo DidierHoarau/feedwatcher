@@ -45,6 +45,7 @@ export const SourcesStore = defineStore("SourcesStore", {
           const soucesStr = JSON.stringify(sourcesData);
           if (this.sourcesStr === soucesStr) {
             this.checkVisibility();
+            this.assignCounts();
             return this.fetchCounts();
           }
           this.sourcesStr = soucesStr;
@@ -113,6 +114,7 @@ export const SourcesStore = defineStore("SourcesStore", {
             });
           }
           this.sources = sourcesTmp as never[];
+          this.assignCounts();
           this.checkVisibility();
           return this.fetchCounts();
         })
@@ -123,11 +125,11 @@ export const SourcesStore = defineStore("SourcesStore", {
         .get(`${(await Config.get()).SERVER_URL}/sources/labels/counts/unread`, await AuthService.getAuthHeader())
         .then((res) => {
           this.sourceCounts = res.data.counts;
-          this.assignCounts(0);
+          this.assignCounts();
         })
         .catch(handleError);
     },
-    assignCounts(index: number) {
+    assignCounts(index = 0) {
       if (index >= this.sources.length) {
         return;
       }

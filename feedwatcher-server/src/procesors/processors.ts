@@ -57,7 +57,6 @@ export class Processors {
         // Nothing
       }
     }
-
     span.end();
     return processorInfos;
   }
@@ -89,15 +88,6 @@ export class Processors {
         }
         Processors.userProcessorInfoStatusStop(span, source.userId);
       }
-    }
-    span.end();
-  }
-
-  public static async fetchSourceItemsAll(context: Span) {
-    const span = StandardTracer.startSpan("Processors_fetchSourceItemsAll", context);
-    const sources = await SourcesData.listAll(span);
-    for (const source of sources) {
-      await Processors.fetchSourceItems(span, source);
     }
     span.end();
   }
@@ -153,9 +143,10 @@ export class Processors {
             logger.info(`Source ${source.id} has ${nbNewItem} new items`);
             if (source.info.processorPath !== processorFile.path) {
               logger.info(`Updating source processor`);
-              source.info.processorPath = processorFile.path;
-              await SourcesData.update(span, source);
             }
+            source.info.processorPath = processorFile.path;
+            source.info.dateFetched = new Date();
+            await SourcesData.update(span, source);
             processed = true;
           }
         } catch (err) {
