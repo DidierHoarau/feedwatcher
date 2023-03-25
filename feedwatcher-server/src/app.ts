@@ -20,7 +20,7 @@ import { SourcesImportRoutes } from "./routes/SourcesImportRoutes";
 
 const logger = new Logger("app");
 
-logger.info("====== Starting Telepathy Server ======");
+logger.info("====== Starting FeedWatcher Server ======");
 
 Promise.resolve().then(async () => {
   //
