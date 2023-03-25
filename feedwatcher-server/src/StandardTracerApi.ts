@@ -15,6 +15,10 @@ export class StandardTracerApi {
   //
   public static async registerHooks(fastify: FastifyInstance, config: Config): Promise<void> {
     fastify.addHook("onRequest", async (req) => {
+      if (req.url.indexOf("/api") !== 0) {
+        return;
+      }
+
       let spanName = `${req.method}-${req.url}`;
       let urlName = req.url;
       if (config.OPENTELEMETRY_COLLECTOR_AWS) {

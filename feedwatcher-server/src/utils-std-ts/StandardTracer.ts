@@ -42,33 +42,32 @@ export class StandardTracer {
     opentelemetry.context.setGlobalContextManager(contextManager);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static getSpanFromRequest(req: any): Span {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (req as any).tracerSpanApi as Span;
   }
 
   public static startSpan(name, parentSpan?: Span): Span {
     const tracer = StandardTracer.getTracer();
-    let spanName = name;
-    if (config.OPENTELEMETRY_COLLECTOR_AWS) {
-      spanName = `${config.SERVICE_ID}-${config.VERSION}`;
-    }
 
     if (parentSpan) {
       return tracer.startSpan(
-        spanName,
+        name,
         undefined,
         opentelemetry.trace.setSpan(opentelemetry.context.active(), parentSpan)
       ) as Span;
     }
 
-    const span = tracer.startSpan(spanName) as Span;
-    if (config.OPENTELEMETRY_COLLECTOR_AWS) {
-      span.setAttribute(SemanticAttributes.HTTP_URL, `${config.SERVICE_ID}-${config.VERSION}-${name}`);
-    }
+    const span = tracer.startSpan(name) as Span;
+    span.setAttribute(SemanticAttributes.HTTP_METHOD, `BACKEND`);
+    span.setAttribute(SemanticAttributes.HTTP_URL, `${config.SERVICE_ID}-${config.VERSION}-${name}`);
+    span.setAttribute(SemanticAttributes.HTTP_SERVER_NAME, `${config.SERVICE_ID}-${config.VERSION}`);
 
     return span;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static getTracer(): any {
     if (!tracerInstance) {
       tracerInstance = opentelemetry.trace.getTracer(`${config.SERVICE_ID}-${config.VERSION}`);
@@ -76,10 +75,12 @@ export class StandardTracer {
     return tracerInstance;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static appendHeader(context: Span, headers = {}): any {
     if (!headers) {
       headers = {};
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     propagator.inject(trace.setSpanContext(ROOT_CONTEXT, context.spanContext()), headers as any, defaultTextMapSetter);
     return headers;
   }

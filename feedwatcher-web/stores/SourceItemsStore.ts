@@ -14,12 +14,15 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
     pageHasMore: false,
     loading: false,
     searchCriteriaValue: "",
+    etagFetch: "",
   }),
 
   getters: {},
 
   actions: {
     async fetch(): Promise<void> {
+      const etagFetch = new Date().toISOString();
+      this.etagFetch = etagFetch;
       const searchOptions: any = {
         page: this.page,
         filterStatus: this.filterStatus,
@@ -31,16 +34,21 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
         searchOptions.labelName = this.searchCriteriaValue;
       }
       this.sourceItems = [];
+      this.pageHasMore = false;
       this.loading = true;
       await Timeout.wait(10);
       await axios
         .post(`${(await Config.get()).SERVER_URL}/items/search`, searchOptions, await AuthService.getAuthHeader())
         .then((res) => {
-          this.sourceItems = res.data.sourceItems;
-          this.pageHasMore = res.data.pageHasMore;
+          if (etagFetch === this.etagFetch) {
+            this.sourceItems = res.data.sourceItems;
+            this.pageHasMore = res.data.pageHasMore;
+          }
         })
         .catch(handleError);
-      this.loading = false;
+      if (etagFetch === this.etagFetch) {
+        this.loading = false;
+      }
     },
   },
 });
