@@ -6,7 +6,6 @@ export enum EventTypes {
   SOURCES_UPDATED = "SOURCES_UPDATED",
   AUTH_UPDATED = "AUTH_UPDATED",
   ALERT_MESSAGE = "ALERT_MESSAGE",
-  FOLDERS_UPDATED = "FOLDERS_UPDATED",
 }
 
 export function handleError(error: any): void {
