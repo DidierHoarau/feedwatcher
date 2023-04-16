@@ -11,7 +11,7 @@ export class Config implements ConfigInterface {
   public readonly SERVICE_ID = "feedwatcher-server";
   public VERSION = 1;
   public readonly API_PORT: number = 8080;
-  public JWT_VALIDITY_DURATION: number = 7 * 24 * 3600;
+  public JWT_VALIDITY_DURATION: number = 31 * 24 * 3600;
   public CORS_POLICY_ORIGIN: string;
   public DATA_DIR = process.env.DATA_DIR || "/data";
   public JWT_KEY: string = uuidv4();
