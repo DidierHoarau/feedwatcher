@@ -26,28 +26,15 @@
       <i v-else v-on:click="toggleUnreadFIlter()" class="bi bi-eye"></i>
     </div>
     <div id="sources-items-list">
-      <div
-        v-on:click="pagePrevious()"
-        id="sources-items-list-page-prev"
-        :class="{ 'page-inactive': sourceItemsStore.page == 1 }"
-      >
-        <i class="bi bi-caret-left"></i>
-      </div>
-      <div v-if="sourceItemsStore.loading" id="sources-items-list-page">
-        <Loading />
-      </div>
-      <div v-else id="sources-items-list-page">
-        <span v-if="sourceItemsStore.sourceItems.length == 0">No items</span>
+      <div id="sources-items-list-page">
         <div v-for="sourceItem in sourceItemsStore.sourceItems" v-bind:key="sourceItem.id">
           <SourceItem class="fade-in-fast" :item="sourceItem" />
         </div>
-      </div>
-      <div
-        v-on:click="pageNext()"
-        id="sources-items-list-page-next"
-        :class="{ 'page-inactive': !sourceItemsStore.pageHasMore }"
-      >
-        <i class="bi bi-caret-right"></i>
+        <div v-on:click="pageNext()" id="sources-items-list-page-next">
+          <Loading v-if="sourceItemsStore.loading" />
+          <span v-if="sourceItemsStore.sourceItems.length == 0 && !sourceItemsStore.loading">No items</span>
+          <i v-if="sourceItemsStore.pageHasMore && !sourceItemsStore.loading" class="bi bi-caret-down"></i>
+        </div>
       </div>
     </div>
   </div>
@@ -64,6 +51,7 @@ import * as _ from "lodash";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
+import { Timeout } from "~~/services/Timeout";
 
 export default {
   data() {
@@ -124,6 +112,10 @@ export default {
               text: "All displayed items marked as read",
             });
             EventBus.emit(EventTypes.ITEMS_UPDATED, {});
+            return Timeout.wait(1000);
+          })
+          .then(() => {
+            sourceItemsStore.fetch();
           })
           .catch(handleError);
       }
@@ -131,21 +123,13 @@ export default {
     openListMenu() {
       this.menuOpened = !this.menuOpened;
     },
-    pagePrevious() {
-      const sourceItemsStore = SourceItemsStore();
-      if (sourceItemsStore.page == 1) {
-        return;
-      }
-      sourceItemsStore.page--;
-      sourceItemsStore.fetch();
-    },
     pageNext() {
       const sourceItemsStore = SourceItemsStore();
       if (!sourceItemsStore.pageHasMore) {
         return;
       }
       sourceItemsStore.page++;
-      sourceItemsStore.fetch();
+      sourceItemsStore.fetchMore();
     },
     toggleUnreadFIlter() {
       const sourceItemsStore = SourceItemsStore();
@@ -292,21 +276,15 @@ export default {
 
 #sources-items-list {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr;
   overflow: hidden;
   align-items: center;
 }
-#sources-items-list-page-prev {
-  padding-right: 0.5em;
-  align-items: center;
-}
-#sources-items-list-page-prev {
-  padding-bottom: 2em;
-  padding-right: 0.5em;
-}
 #sources-items-list-page-next {
-  padding-bottom: 2em;
-  padding-left: 0.5em;
+  padding-bottom: 0.6em;
+  padding-top: 0.6em;
+  text-align: center;
+  font-size: 1.3em;
 }
 .page-inactive {
   opacity: 0.1;
