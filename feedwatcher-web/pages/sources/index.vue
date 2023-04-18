@@ -168,7 +168,7 @@ export default {
 @media (max-width: 700px) {
   #sources-layout {
     display: grid;
-    grid-template-rows: 4em auto 2.5em 2fr;
+    grid-template-rows: 4em auto 3em 2fr;
     grid-template-columns: auto auto;
     height: calc(100vh - 5em);
     column-gap: 1em;
@@ -177,6 +177,9 @@ export default {
     grid-row: 3;
     grid-column-start: 1;
     grid-column-end: span 2;
+    display: flex;
+    justify-content: right;
+    align-items: center;
   }
   #sources-items-list {
     overflow: scroll;
@@ -203,7 +206,7 @@ export default {
 @media (min-width: 701px) {
   #sources-layout {
     display: grid;
-    grid-template-rows: 4em 2.5em 1fr;
+    grid-template-rows: 4em 3em 1fr;
     grid-template-columns: auto 1fr 1fr;
     height: calc(100vh - 5em);
     column-gap: 1em;
@@ -284,7 +287,6 @@ export default {
   padding-bottom: 0.6em;
   padding-top: 0.6em;
   text-align: center;
-  font-size: 1.3em;
 }
 .page-inactive {
   opacity: 0.1;
