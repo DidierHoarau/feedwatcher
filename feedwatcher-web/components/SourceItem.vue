@@ -16,14 +16,14 @@
     <div class="sourceitem-layout-link">
       <a :href="item.url" target="_blank" v-on:click="markReadStatus('read')"><i class="bi bi-link"></i></a>
     </div>
+    <div class="sourceitem-layout-save" v-if="isActive">
+      <i v-if="isSaved" class="bi bi-bookmark-check-fill" v-on:click="unSaveItem()"></i>
+      <i v-else class="bi bi-bookmark-plus" v-on:click="saveItem()"></i>
+    </div>
     <div
       :class="{ 'sourceitem-active': isActive, 'sourceitem-notactive': !isActive }"
       class="sourceitem-layout-content"
     >
-      <div class="sourceitem-actions actions">
-        <i v-if="isSaved" class="bi bi-bookmark-check-fill" v-on:click="unSaveItem()"></i>
-        <i v-else class="bi bi-bookmark-plus" v-on:click="saveItem()"></i>
-      </div>
       <span v-if="isActive" v-html="item.content"></span>
     </div>
     <div class="sourceitem-layout-meta">
@@ -139,18 +139,16 @@ export default {
 <style scoped>
 .sourceitem-active {
   height: auto;
-  padding-bottom: 1em;
   border-top: 2px solid #333;
-  padding-top: 1em;
-  margin-top: 1em;
+  padding-top: 0.6em;
 }
 .sourceitem-notactive {
   height: 0px;
 }
 .sourceitem-layout {
   display: grid;
-  grid-template-rows: auto auto auto auto;
-  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto auto;
+  grid-template-columns: auto 1fr auto;
   height: calc(100vh - 5em);
   width: 100%;
   height: auto;
@@ -165,8 +163,8 @@ export default {
 .sourceitem-layout-read-status {
   grid-row: 1;
   grid-column: 1;
+  text-align: center;
   padding-right: 0.5em;
-  padding-top: 0.3em;
 }
 .sourceitem-layout-link {
   grid-row: 1;
@@ -175,10 +173,17 @@ export default {
   padding-left: 0.5em;
 }
 .sourceitem-layout-content {
-  grid-row: 2;
-  grid-column-start: 1;
-  grid-column-end: span 3;
+  grid-row: 3;
+  grid-column-start: 2;
+  grid-column-end: span 2;
   overflow: hidden;
+}
+.sourceitem-layout-save {
+  grid-row: 3;
+  grid-column: 1;
+  text-align: center;
+  padding-right: 0.5em;
+  padding-top: 0.7em;
 }
 .sourceitem-actions {
   font-size: 0.7em;
@@ -186,9 +191,9 @@ export default {
   text-align: right;
 }
 .sourceitem-layout-meta {
-  grid-row: 3;
-  grid-column-start: 1;
-  grid-column-end: span 3;
+  grid-row: 2;
+  grid-column-start: 2;
+  grid-column-end: span 2;
   font-size: 0.5em;
   text-align: right;
 }
