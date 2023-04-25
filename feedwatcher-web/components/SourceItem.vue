@@ -1,5 +1,10 @@
 <template>
   <article class="sourceitem-layout">
+    <div class="sourceitem-layout-read-status">
+      <i v-if="item.status == 'read'" class="bi bi-envelope-open" v-on:click="markReadStatus('unread')"></i>
+      <i v-else class="bi bi-envelope" v-on:click="markReadStatus('read')"></i>
+    </div>
+
     <div
       class="sourceitem-layout-title"
       v-on:click="clickedItem()"
@@ -9,7 +14,7 @@
       {{ item.title }}
     </div>
     <div class="sourceitem-layout-link">
-      <a :href="item.url" target="_blank"><i class="bi bi-link"></i></a>
+      <a :href="item.url" target="_blank" v-on:click="markReadStatus('read')"><i class="bi bi-link"></i></a>
     </div>
     <div
       :class="{ 'sourceitem-active': isActive, 'sourceitem-notactive': !isActive }"
@@ -18,8 +23,6 @@
       <div class="sourceitem-actions actions">
         <i v-if="isSaved" class="bi bi-bookmark-check-fill" v-on:click="unSaveItem()"></i>
         <i v-else class="bi bi-bookmark-plus" v-on:click="saveItem()"></i>
-        <i v-if="item.status == 'read'" class="bi bi-eye" v-on:click="markReadStatus('unread')"></i>
-        <i v-else class="bi bi-eye-slash" v-on:click="markReadStatus('read')"></i>
       </div>
       <span v-if="isActive" v-html="item.content"></span>
     </div>
@@ -146,7 +149,7 @@ export default {
 }
 .sourceitem-layout {
   display: grid;
-  grid-template-rows: auto auto auto;
+  grid-template-rows: auto auto auto auto;
   grid-template-columns: 1fr auto;
   height: calc(100vh - 5em);
   width: 100%;
@@ -157,17 +160,24 @@ export default {
 }
 .sourceitem-layout-title {
   grid-row: 1;
+  grid-column: 2;
+}
+.sourceitem-layout-read-status {
+  grid-row: 1;
   grid-column: 1;
+  padding-right: 0.5em;
+  padding-top: 0.3em;
 }
 .sourceitem-layout-link {
   grid-row: 1;
-  grid-column: 2;
+  grid-column: 3;
   text-align: right;
+  padding-left: 0.5em;
 }
 .sourceitem-layout-content {
   grid-row: 2;
   grid-column-start: 1;
-  grid-column-end: span 2;
+  grid-column-end: span 3;
   overflow: hidden;
 }
 .sourceitem-actions {
