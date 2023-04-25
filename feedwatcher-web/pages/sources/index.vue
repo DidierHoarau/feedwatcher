@@ -22,8 +22,8 @@
         ><i class="bi bi-pencil-square"></i
       ></NuxtLink>
       <i v-if="sourceItemsStore.sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
-      <i v-if="sourceItemsStore.filterStatus == 'unread'" v-on:click="toggleUnreadFIlter()" class="bi bi-eye-slash"></i>
-      <i v-else v-on:click="toggleUnreadFIlter()" class="bi bi-eye"></i>
+      <i v-if="sourceItemsStore.filterStatus == 'unread'" v-on:click="toggleUnreadFIlter()" class="bi bi-envelope"></i>
+      <i v-else v-on:click="toggleUnreadFIlter()" class="bi bi-envelope-open"></i>
     </div>
     <div id="sources-items-list">
       <div id="sources-items-list-page">
