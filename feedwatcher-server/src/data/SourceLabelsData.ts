@@ -1,10 +1,8 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
-import * as _ from "lodash";
 import { Source } from "../model/Source";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "./SqlDbUtils";
 import { v4 as uuidv4 } from "uuid";
-import { SourceItem } from "../model/SourceItem";
 
 export class SourceLabelsData {
   //

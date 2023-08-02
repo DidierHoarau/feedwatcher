@@ -48,7 +48,7 @@ export class SqlDbutils {
   public static execSQL(context: Span, sql: string, params = []): Promise<void> {
     const span = StandardTracer.startSpan("SqlDbutils_execSQL", context);
     return new Promise((resolve, reject) => {
-      database.run(sql, params, (error, res) => {
+      database.run(sql, params, (error) => {
         span.end();
         if (error) {
           reject(error);
@@ -63,7 +63,7 @@ export class SqlDbutils {
     const span = StandardTracer.startSpan("SqlDbutils_execSQLFile", context);
     const sql = (await fs.readFile(filename)).toString();
     return new Promise((resolve, reject) => {
-      database.exec(sql, (error, res) => {
+      database.exec(sql, (error) => {
         span.end();
         if (error) {
           reject(error);

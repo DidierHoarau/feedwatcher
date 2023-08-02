@@ -1,5 +1,4 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
-import * as _ from "lodash";
 import { SourceItem } from "../model/SourceItem";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";

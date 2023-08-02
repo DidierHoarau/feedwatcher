@@ -4,7 +4,6 @@ import { Auth } from "../data/Auth";
 import { User } from "../model/User";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { UsersData } from "../data/UsersData";
-import { Timeout } from "../utils-std-ts/Timeout";
 
 export class UsersRoutes {
   //

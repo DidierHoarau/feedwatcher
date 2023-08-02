@@ -35,7 +35,7 @@ export class StandardTracerApi {
       });
     });
 
-    fastify.addHook("onResponse", async (req, reply, payload) => {
+    fastify.addHook("onResponse", async (req, reply) => {
       /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
       const span = (req as any).tracerSpanApi as Span;
       if (reply.statusCode > 299) {
