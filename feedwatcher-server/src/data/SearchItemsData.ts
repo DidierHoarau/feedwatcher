@@ -1,5 +1,4 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
-import * as _ from "lodash";
 import { SearchItemsResult } from "../model/SearchItemsResult";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SourceItem } from "../model/SourceItem";

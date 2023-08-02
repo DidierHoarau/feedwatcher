@@ -1,4 +1,4 @@
-import { FastifyInstance, RequestGenericInterface } from "fastify";
+import { FastifyInstance } from "fastify";
 import { Auth } from "../data/Auth";
 import { SourceLabelsData } from "../data/SourceLabelsData";
 import { SourcesData } from "../data/SourcesData";

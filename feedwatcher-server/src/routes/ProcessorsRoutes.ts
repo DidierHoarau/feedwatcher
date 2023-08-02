@@ -1,4 +1,4 @@
-import { FastifyInstance, RequestGenericInterface } from "fastify";
+import { FastifyInstance } from "fastify";
 import { Auth } from "../data/Auth";
 import { Processors } from "../procesors/processors";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";

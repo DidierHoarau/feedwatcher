@@ -1,4 +1,4 @@
-import { FastifyInstance, RequestGenericInterface } from "fastify";
+import { FastifyInstance } from "fastify";
 import { Auth } from "../data/Auth";
 import * as opml from "opml";
 import * as _ from "lodash";

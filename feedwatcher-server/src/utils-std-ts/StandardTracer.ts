@@ -5,7 +5,7 @@ import { Resource } from "@opentelemetry/resources";
 import { AWSXRayIdGenerator } from "@opentelemetry/id-generator-aws-xray";
 
 import { SemanticAttributes, SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
-import opentelemetry, { Context } from "@opentelemetry/api";
+import opentelemetry from "@opentelemetry/api";
 import * as os from "os";
 import { ConfigInterface } from "./models/ConfigInterface";
 import { defaultTextMapSetter, trace, ROOT_CONTEXT } from "@opentelemetry/api";
