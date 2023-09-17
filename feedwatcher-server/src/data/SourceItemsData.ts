@@ -66,6 +66,12 @@ export class SourceItemsData {
     span.end();
   }
 
+  public static async delete(context: Span, sourceItemId: string): Promise<void> {
+    const span = StandardTracer.startSpan("SourceItemsData_delete", context);
+    await SqlDbutils.execSQL(span, "DELETE FROM sources_items WHERE id = ?", [sourceItemId]);
+    span.end();
+  }
+
   public static async updateMultipleStatusForUser(
     context: Span,
     itemIds: string[],

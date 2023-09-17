@@ -97,6 +97,7 @@ export class SearchItemsData {
         "  AND lists_items.userId = ? " +
         "  AND sources.id = sources_items.sourceId " +
         "  AND sources.userId = ? " +
+        getAgeFilterQuery(searchOptions) +
         getStatusFilterQuery(searchOptions) +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
@@ -109,6 +110,9 @@ export class SearchItemsData {
 }
 
 function getPageQuery(searchOptions: SearchItemsOptions): string {
+  if (searchOptions.page < 0) {
+    return "";
+  }
   return `LIMIT ${PAGE_SIZE + 1} OFFSET ${(searchOptions.page - 1) * PAGE_SIZE}`;
 }
 
@@ -128,6 +132,12 @@ function getSearchResultsfromRaw(sourceItemsRaw: any): SearchItemsResult {
 function getStatusFilterQuery(searchOptions: SearchItemsOptions): string {
   if (searchOptions.filterStatus === SourceItemStatus.unread) {
     return "  AND sources_items.status = 'unread' ";
+  }
+  return "";
+}
+function getAgeFilterQuery(searchOptions: SearchItemsOptions): string {
+  if (searchOptions.maxDate) {
+    return `  AND sources_items.datePublished <= '${searchOptions.maxDate.toISOString()}' `;
   }
   return "";
 }

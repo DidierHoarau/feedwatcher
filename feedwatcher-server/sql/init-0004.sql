@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS rules (
+    id VARCHAR(50) NOT NULL,
+    userId VARCHAR(50) NOT NULL,
+    info TEXT NOT NULL
+);

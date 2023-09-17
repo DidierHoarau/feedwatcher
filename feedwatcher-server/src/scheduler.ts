@@ -2,10 +2,16 @@ import { Span } from "@opentelemetry/sdk-trace-base";
 import { Config } from "./Config";
 import { StandardTracer } from "./utils-std-ts/StandardTracer";
 import { Timeout } from "./utils-std-ts/Timeout";
-import { Processors } from "./procesors/processors";
 import { SourcesData } from "./data/SourcesData";
 import { SourceItemsData } from "./data/SourceItemsData";
+import { RulesData } from "./data/RulesData";
+import { SearchItemsData } from "./data/SearchItemsData";
+import { minimatch } from "minimatch";
+import { SourceItemStatus } from "./model/SourceItemStatus";
+import { Logger } from "./utils-std-ts/Logger";
+import { Processors } from "./procesors/processors";
 
+const logger = new Logger("Scheduler");
 let config: Config;
 
 export class Scheduler {
@@ -31,6 +37,49 @@ export class Scheduler {
         }
       }
       await SourceItemsData.cleanupOrphans(span);
+
+      // Rules
+      for (const userRules of await RulesData.listAll(span)) {
+        let rulesMarkRead = 0;
+        let rulesDelete = 0;
+        for (const sourceRules of userRules.info) {
+          if (sourceRules.autoRead) {
+            for (const rule of sourceRules.autoRead) {
+              const itemList = await SearchItemsData.listForUser(span, userRules.userId, {
+                maxDate: new Date(new Date().getTime() - rule.ageDays * 24 * 3600 * 1000),
+                page: -1,
+              });
+              for (const item of itemList.sourceItems) {
+                if (minimatch(item.title, rule.pattern)) {
+                  await SourceItemsData.updateMultipleStatusForUser(
+                    span,
+                    [item.id],
+                    SourceItemStatus.read,
+                    userRules.id
+                  );
+                  rulesMarkRead++;
+                }
+              }
+            }
+          }
+          if (sourceRules.autoDelete) {
+            for (const rule of sourceRules.autoDelete) {
+              const itemList = await SearchItemsData.listForUser(span, userRules.userId, {
+                maxDate: new Date(new Date().getTime() - rule.ageDays * 24 * 3600 * 1000),
+                page: -1,
+              });
+              for (const item of itemList.sourceItems) {
+                if (minimatch(item.title, rule.pattern)) {
+                  await SourceItemsData.delete(span, item.id);
+                  rulesDelete++;
+                }
+              }
+            }
+          }
+          logger.info(`Rules for ${userRules.userId}: ${rulesMarkRead} marked read ; ${rulesDelete} deleted`);
+        }
+      }
+
       span.end();
       await Timeout.wait(config.SOURCE_FETCH_FREQUENCY / 4);
     }

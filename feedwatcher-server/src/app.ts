@@ -17,6 +17,7 @@ import { ListsItemsRoutes } from "./routes/ListsItemsRoutes";
 import { ItemsRoutes } from "./routes/ItemsRoutes";
 import { ProcessorsRoutes } from "./routes/ProcessorsRoutes";
 import { SourcesImportRoutes } from "./routes/SourcesImportRoutes";
+import { RulesRoutes } from "./routes/RulesRoutes";
 
 const logger = new Logger("app");
 
@@ -84,6 +85,9 @@ Promise.resolve().then(async () => {
   });
   fastify.register(new ProcessorsRoutes().getRoutes, {
     prefix: "/api/processors",
+  });
+  fastify.register(new RulesRoutes().getRoutes, {
+    prefix: "/api/rules",
   });
 
   /* eslint-disable-next-line */
