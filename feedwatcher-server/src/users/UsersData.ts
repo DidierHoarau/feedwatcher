@@ -1,7 +1,7 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { User } from "../model/User";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
-import { SqlDbutils } from "./SqlDbUtils";
+import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
 
 export class UsersData {
   //

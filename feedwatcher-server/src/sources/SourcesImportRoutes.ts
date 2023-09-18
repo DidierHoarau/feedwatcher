@@ -1,12 +1,12 @@
 import { FastifyInstance } from "fastify";
-import { Auth } from "../data/Auth";
+import { Auth } from "../users/Auth";
 import * as opml from "opml";
 import * as _ from "lodash";
 import { Logger } from "../utils-std-ts/Logger";
 import { Source } from "../model/Source";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { Span } from "@opentelemetry/sdk-trace-base";
-import { SourceLabelsData } from "../data/SourceLabelsData";
+import { SourceLabelsData } from "../sources/SourceLabelsData";
 
 const logger = new Logger("SourcesImportRoutes");
 

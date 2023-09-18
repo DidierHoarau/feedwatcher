@@ -1,7 +1,7 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
-import { Auth } from "../data/Auth";
+import { Auth } from "../users/Auth";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
-import { RulesData } from "../data/RulesData";
+import { RulesData } from "./RulesData";
 import { Rules } from "../model/Rules";
 
 export class RulesRoutes {

@@ -1,9 +1,9 @@
 import { Database } from "sqlite3";
 import { Config } from "../Config";
 import * as fs from "fs-extra";
-import { Logger } from "../utils-std-ts/Logger";
+import { Logger } from "./Logger";
 import { Span } from "@opentelemetry/sdk-trace-base";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
+import { StandardTracer } from "./StandardTracer";
 
 const logger = new Logger("SqlDbutils");
 const SQL_DIR = `${__dirname}/../../sql`;

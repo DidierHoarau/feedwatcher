@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
-import { Auth } from "../data/Auth";
-import { SourceLabelsData } from "../data/SourceLabelsData";
-import { SourcesData } from "../data/SourcesData";
+import { Auth } from "../users/Auth";
+import { SourceLabelsData } from "../sources/SourceLabelsData";
+import { SourcesData } from "../sources/SourcesData";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 
 export class SourcesLabelsRoutes {

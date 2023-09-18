@@ -1,8 +1,8 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
-import { Auth } from "../data/Auth";
-import { SearchItemsData } from "../data/SearchItemsData";
-import { SourceItemsData } from "../data/SourceItemsData";
-import { SourcesData } from "../data/SourcesData";
+import { Auth } from "../users/Auth";
+import { SearchItemsData } from "./SearchItemsData";
+import { SourceItemsData } from "./SourceItemsData";
+import { SourcesData } from "./SourcesData";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";

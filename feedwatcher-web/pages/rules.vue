@@ -16,7 +16,7 @@
     <div id="sources-rules">
       <article>
         <header>Auto-Archive</header>
-        <div v-for="rule of currentRule.autoRead" v-bind:key="rule.pattern" class="rule-layout">
+        <div v-for="(rule, index) of currentRule.autoRead" v-bind:key="index" class="rule-layout">
           <i class="bi bi-trash-fill" v-on:click="removeAutoArchive(rule.pattern)"></i>
           <div class="rule-separator"></div>
           <div>
@@ -34,7 +34,7 @@
       </article>
       <article>
         <header>Auto-Delete</header>
-        <div v-for="rule of currentRule.autoDelete" v-bind:key="rule.pattern" class="rule-layout">
+        <div v-for="(rule, index) of currentRule.autoDelete" v-bind:key="index" class="rule-layout">
           <i class="bi bi-trash-fill" v-on:click="removeAutoDelete(rule.pattern)"></i>
           <div class="rule-separator"></div>
           <div>
@@ -65,7 +65,6 @@ import * as _ from "lodash";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
-import { Timeout } from "~~/services/Timeout";
 
 export default {
   data() {
@@ -228,7 +227,7 @@ export default {
     grid-column-start: 2;
     grid-column-end: span 2;
   }
-  #sources-items-list {
+  #sources-rules {
     overflow: auto;
     grid-row: 3;
     grid-column-start: 2;

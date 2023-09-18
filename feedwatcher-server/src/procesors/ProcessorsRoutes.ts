@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
-import { Auth } from "../data/Auth";
-import { Processors } from "../procesors/processors";
+import { Auth } from "../users/Auth";
+import { Processors } from "./Processors";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 
 export class ProcessorsRoutes {

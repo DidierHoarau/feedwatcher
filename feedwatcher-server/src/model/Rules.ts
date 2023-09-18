@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
+import { RulesInfo } from "./RulesInfo";
 
 export class Rules {
   //
@@ -22,8 +23,7 @@ export class Rules {
 
   public id: string;
   public userId: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public info: any;
+  public info: RulesInfo[];
 
   constructor() {
     this.id = uuidv4();

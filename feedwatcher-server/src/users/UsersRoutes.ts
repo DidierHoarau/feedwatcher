@@ -1,9 +1,9 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
-import { UserPassword } from "../data/UserPassword";
-import { Auth } from "../data/Auth";
+import { Auth } from "./Auth";
 import { User } from "../model/User";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
-import { UsersData } from "../data/UsersData";
+import { UsersData } from "./UsersData";
+import { UserPassword } from "./UserPassword";
 
 export class UsersRoutes {
   //

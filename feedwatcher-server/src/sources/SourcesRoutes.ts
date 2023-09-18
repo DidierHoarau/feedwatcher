@@ -1,8 +1,8 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
-import { Auth } from "../data/Auth";
-import { SourcesData } from "../data/SourcesData";
+import { Auth } from "../users/Auth";
+import { SourcesData } from "../sources/SourcesData";
 import { Source } from "../model/Source";
-import { Processors } from "../procesors/processors";
+import { Processors } from "../procesors/Processors";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 
 export class SourcesRoutes {
