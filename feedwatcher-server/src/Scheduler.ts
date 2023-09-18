@@ -6,6 +6,7 @@ import { SourcesData } from "./sources/SourcesData";
 import { SourceItemsData } from "./sources/SourceItemsData";
 import { RulesData } from "./rules/RulesData";
 import { RulesExecution } from "./rules/RulesExecution";
+import { Processors } from "./procesors/Processors";
 
 let config: Config;
 
@@ -28,7 +29,7 @@ export class Scheduler {
           !source.info.dateFetched ||
           new Date().getTime() - new Date(source.info.dateFetched).getTime() > config.SOURCE_FETCH_FREQUENCY
         ) {
-          // await Processors.fetchSourceItems(span, source);
+          await Processors.fetchSourceItems(span, source);
         }
       }
 
