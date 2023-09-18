@@ -21,7 +21,9 @@ module.exports = {
       let pageRaw = (await axios.get(source.info.url)).data;
       pageRaw = pageRaw.substring(pageRaw.indexOf("channel_id=") + "channel_id=".length);
       const channelId = pageRaw.substring(0, pageRaw.indexOf('"'));
-      const feed = await new Parser().parseURL(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`);
+      const feed = await new Parser({
+        timeout: 30000,
+      }).parseURL(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`);
       if (feed.title) {
         return { name: feed.title, icon: "youtube", channelId };
       }
@@ -39,7 +41,9 @@ module.exports = {
       pageRaw = pageRaw.substring(pageRaw.indexOf("channel_id=") + "channel_id=".length);
       channelId = pageRaw.substring(0, pageRaw.indexOf('"'));
     }
-    const feed = await new Parser().parseURL(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`);
+    const feed = await new Parser({
+      timeout: 30000,
+    }).parseURL(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`);
     const sourceItems = [];
     feed.items.forEach((item) => {
       const sourceItem = {};

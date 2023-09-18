@@ -18,7 +18,9 @@ module.exports = {
     let urlMatch = /.*reddit.com\/r\/(.*?)((\/\w+)+|\/?)$/.exec(source.info.url);
     if (urlMatch) {
       const subReddit = urlMatch[1];
-      const feed = await new Parser().parseURL(`https://www.reddit.com/r/${subReddit}.rss`);
+      const feed = await new Parser({
+        timeout: 30000,
+      }).parseURL(`https://www.reddit.com/r/${subReddit}.rss`);
       if (feed.title) {
         return { name: feed.title, icon: "reddit" };
       }
@@ -29,7 +31,9 @@ module.exports = {
   fetchLatest: async (source, lastSourceItemSaved) => {
     let urlMatch = /.*reddit.com\/r\/(.*?)((\/\w+)+|\/?)$/.exec(source.info.url);
     const subReddit = urlMatch[1];
-    const feed = await new Parser().parseURL(`https://www.reddit.com/r/${subReddit}.rss`);
+    const feed = await new Parser({
+      timeout: 30000,
+    }).parseURL(`https://www.reddit.com/r/${subReddit}.rss`);
     const sourceItems = [];
     feed.items.forEach((item) => {
       const sourceItem = {};

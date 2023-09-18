@@ -25,7 +25,8 @@ module.exports = {
     let urlMatch = /.*github.com\/(.*)\/(.*)/.exec(source.info.url);
     const user = urlMatch[1];
     const repo = urlMatch[2];
-    const releases = (await axios.get(`https://api.github.com/repos/${user}/${repo}/releases`)).data;
+    const releases = (await axios.get(`https://api.github.com/repos/${user}/${repo}/releases`), { timeout: 30000 })
+      .data;
     const sourceItems = [];
     for (const release of releases) {
       const sourceItem = {};

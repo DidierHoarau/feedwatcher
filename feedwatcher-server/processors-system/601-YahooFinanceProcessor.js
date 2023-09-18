@@ -15,7 +15,7 @@ module.exports = {
   test: async (source) => {
     let urlMatch = /.*finance.yahoo.com\/quote\/(.+)(\??).*/.exec(source.info.url);
     if (urlMatch) {
-      let pageRaw = (await axios.get(source.info.url)).data;
+      let pageRaw = (await axios.get(source.info.url, { timeout: 30000 })).data;
       const title = pageRaw.split("<title>")[1].split("</title>")[0].split(" Stock Price")[0];
       return { name: title, icon: "coin" };
     }
@@ -24,7 +24,7 @@ module.exports = {
 
   fetchLatest: async (source, lastSourceItemSaved) => {
     let urlMatch = /.*finance.yahoo.com\/quote\/(.*)(\??).*/.exec(source.info.url);
-    let pageRaw = (await axios.get(source.info.url)).data;
+    let pageRaw = (await axios.get(source.info.url, { timeout: 30000 })).data;
     const code = urlMatch[1];
     let value;
     const dataPoints = pageRaw.split("<fin-streamer ");
