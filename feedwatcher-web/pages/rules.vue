@@ -85,6 +85,7 @@ export default {
       .get(`${(await Config.get()).SERVER_URL}/rules`, await AuthService.getAuthHeader())
       .then((res) => {
         this.rules = res.data.rules;
+        this.onRootSelected();
       })
       .catch(handleError);
   },
