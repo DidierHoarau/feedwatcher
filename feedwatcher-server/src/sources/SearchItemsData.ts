@@ -3,7 +3,7 @@ import { SearchItemsResult } from "../model/SearchItemsResult";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SourceItem } from "../model/SourceItem";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
-import { SqlDbutils } from "./SqlDbUtils";
+import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 
 const PAGE_SIZE = 50;
@@ -44,6 +44,7 @@ export class SearchItemsData {
         "FROM sources_items, sources " +
         "WHERE sources_items.sourceId = ? " +
         "  AND sources.id = ? " +
+        getAgeFilterQuery(searchOptions) +
         getStatusFilterQuery(searchOptions) +
         "  AND sources.id = sources_items.sourceId " +
         "ORDER BY datePublished DESC " +
@@ -72,6 +73,7 @@ export class SearchItemsData {
         "    WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name LIKE ? " +
         "  ) " +
         getStatusFilterQuery(searchOptions) +
+        getAgeFilterQuery(searchOptions) +
         "  AND sources.userId = ? " +
         "  AND sources_items.sourceId = sources.id " +
         "ORDER BY datePublished DESC " +
@@ -97,6 +99,7 @@ export class SearchItemsData {
         "  AND lists_items.userId = ? " +
         "  AND sources.id = sources_items.sourceId " +
         "  AND sources.userId = ? " +
+        getAgeFilterQuery(searchOptions) +
         getStatusFilterQuery(searchOptions) +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
@@ -109,6 +112,9 @@ export class SearchItemsData {
 }
 
 function getPageQuery(searchOptions: SearchItemsOptions): string {
+  if (searchOptions.page < 0) {
+    return "";
+  }
   return `LIMIT ${PAGE_SIZE + 1} OFFSET ${(searchOptions.page - 1) * PAGE_SIZE}`;
 }
 
@@ -128,6 +134,12 @@ function getSearchResultsfromRaw(sourceItemsRaw: any): SearchItemsResult {
 function getStatusFilterQuery(searchOptions: SearchItemsOptions): string {
   if (searchOptions.filterStatus === SourceItemStatus.unread) {
     return "  AND sources_items.status = 'unread' ";
+  }
+  return "";
+}
+function getAgeFilterQuery(searchOptions: SearchItemsOptions): string {
+  if (searchOptions.maxDate) {
+    return `  AND sources_items.datePublished <= '${searchOptions.maxDate.toISOString()}' `;
   }
   return "";
 }

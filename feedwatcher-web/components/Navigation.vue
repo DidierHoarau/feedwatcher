@@ -9,6 +9,9 @@
       <li v-if="authenticationStore.isAuthenticated">
         <NuxtLink to="/sources"><i class="bi bi-rss-fill"></i></NuxtLink>
       </li>
+      <li v-if="authenticationStore.isAuthenticated">
+        <NuxtLink to="/rules"><i class="bi bi-robot"></i></NuxtLink>
+      </li>
       <li>
         <NuxtLink to="/users"><i class="bi bi-person-circle"></i></NuxtLink>
       </li>

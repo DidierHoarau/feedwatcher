@@ -15,7 +15,14 @@
       <i class="bi bi-caret-down-square sources-actions-menu-toggle" v-else v-on:click="openListMenu()"></i>
     </div>
     <div id="sources-list" :class="{ 'sources-list-closed': !menuOpened }">
-      <SourceList />
+      <SourceList
+        displayCount="true"
+        displaySaved="true"
+        @onSourceSelected="onSourceSelected"
+        @onLabelSelected="onLabelSelected"
+        @onRootSelected="onRootSelected"
+        @onSavedSelected="onSavedSelected"
+      />
     </div>
     <div id="sources-items-actions" class="actions">
       <NuxtLink v-if="sourceItemsStore.selectedSource" :to="'/sources/' + sourceItemsStore.selectedSource"
@@ -71,8 +78,44 @@ export default {
         SourceItemsStore().fetch();
       }
     });
+    this.onRootSelected();
   },
   methods: {
+    async onSourceSelected(source) {
+      const sourceItemsStore = SourceItemsStore();
+      sourceItemsStore.selectedSource = source.sourceId;
+      sourceItemsStore.page = 1;
+      sourceItemsStore.searchCriteria = "sourceId";
+      sourceItemsStore.searchCriteriaValue = source.sourceId;
+      sourceItemsStore.filterStatus = "unread";
+      sourceItemsStore.fetch();
+    },
+    async onLabelSelected(source) {
+      const sourceItemsStore = SourceItemsStore();
+      sourceItemsStore.selectedSource = null;
+      sourceItemsStore.page = 1;
+      sourceItemsStore.searchCriteria = "labelName";
+      sourceItemsStore.searchCriteriaValue = source.labelName;
+      sourceItemsStore.filterStatus = "unread";
+      sourceItemsStore.fetch();
+    },
+    async onRootSelected() {
+      const sourceItemsStore = SourceItemsStore();
+      sourceItemsStore.selectedSource = null;
+      sourceItemsStore.page = 1;
+      sourceItemsStore.searchCriteria = "all";
+      sourceItemsStore.filterStatus = "unread";
+      sourceItemsStore.fetch();
+    },
+    async onSavedSelected() {
+      SourcesStore().selectedIndex = -2;
+      const sourceItemsStore = SourceItemsStore();
+      sourceItemsStore.selectedSource = null;
+      sourceItemsStore.page = 1;
+      sourceItemsStore.searchCriteria = "lists";
+      sourceItemsStore.filterStatus = "all";
+      sourceItemsStore.fetch();
+    },
     async refreshAndFetch() {
       await axios
         .put(`${(await Config.get()).SERVER_URL}/sources/fetch`, {}, await AuthService.getAuthHeader())

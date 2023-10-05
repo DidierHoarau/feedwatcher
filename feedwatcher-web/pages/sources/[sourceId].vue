@@ -3,14 +3,21 @@
     <h1>Update Source: {{ source.info.url }}</h1>
     <label>Name</label>
     <input v-model="source.name" type="text" />
-    <label>Labels (coma separated)</label>
-    <input v-model="labels" type="text" />
+    <label>Labels</label>
+    <div class="label-list">
+      <kbd v-for="(label, index) of labels" :key="index">
+        {{ label.name }}<i class="bi bi-x" v-on:click="removeLabel(label)"></i>
+      </kbd>
+      <i class="bi bi-plus-square" v-on:click="addLabel()"></i>
+    </div>
     <button v-on:click="updateSource()">Update</button>
     <button v-on:click="deleteSource()">Delete</button>
+    <LabelSelectDialog @onLabelSelected="onLabelSelected" v-if="isSelectLabel" />
   </div>
 </template>
 
 <script>
+import * as _ from "lodash";
 import axios from "axios";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
@@ -20,7 +27,8 @@ export default {
   data() {
     return {
       source: { info: {} },
-      labels: "",
+      labels: [],
+      isSelectLabel: false,
     };
   },
   async created() {
@@ -39,30 +47,17 @@ export default {
         await AuthService.getAuthHeader()
       )
       .then((res) => {
-        this.labels = "";
-        for (const label of res.data.labels) {
-          if (this.labels) {
-            this.labels += ", ";
-          }
-          this.labels += label.name;
-        }
+        this.labels = res.data.labels;
       })
       .catch(handleError);
   },
   methods: {
     async updateSource() {
-      const labelsStr = this.labels
-        .replace(/ +(?= )/g, "")
-        .replace(/\/ /g, "/")
-        .replace(/ \//g, "/")
-        .replace(/\/+/g, "/");
-      const sourceLabels = [];
-      for (const label of labelsStr.split(",")) {
-        if (label.trim()) {
-          sourceLabels.push(label.trim());
-        }
+      const labels = [];
+      for (const label of this.labels) {
+        labels.push(label.name);
       }
-      this.source.labels = sourceLabels;
+      this.source.labels = labels;
       if (this.source.name) {
         await axios
           .put(
@@ -109,6 +104,18 @@ export default {
           .catch(handleError);
       }
     },
+    async onLabelSelected(label) {
+      this.isSelectLabel = false;
+      if (!_.find(this.labels, { name: label.name })) {
+        this.labels.push({ name: label.label });
+      }
+    },
+    async removeLabel(label) {
+      this.labels.splice(_.findIndex(this.labels, { name: label.name }), 1);
+    },
+    addLabel() {
+      this.isSelectLabel = true;
+    },
   },
 };
 </script>
@@ -116,5 +123,15 @@ export default {
 <style scoped>
 h1 {
   word-break: break-all;
+}
+kbd {
+  margin-right: 2em;
+  margin-bottom: 1em;
+}
+kbd i {
+  margin-left: 0.5em;
+}
+.label-list {
+  margin-bottom: 2em;
 }
 </style>

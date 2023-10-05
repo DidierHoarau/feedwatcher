@@ -1,6 +1,6 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
-import { SqlDbutils } from "./SqlDbUtils";
+import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
 import { SourceItem } from "../model/SourceItem";
 import { ListItem } from "../model/ListItem";
 

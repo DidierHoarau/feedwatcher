@@ -18,8 +18,9 @@ module.exports = {
     if (urlMatch) {
       const pageLanguage = urlMatch[1];
       const pageName = urlMatch[3];
-      const pageInfo = (await axios.get(`https://${pageLanguage}.wikipedia.org/w/rest.php/v1/page/${pageName}/bare`))
-        .data;
+      const pageInfo = (
+        await axios.get(`https://${pageLanguage}.wikipedia.org/w/rest.php/v1/page/${pageName}/bare`, { timeout: 30000 })
+      ).data;
       return { name: pageInfo.title, icon: "wikipedia" };
     }
     return null;
@@ -30,7 +31,11 @@ module.exports = {
     const pageLanguage = urlMatch[1];
     const pageName = urlMatch[3];
     const pageRevisions = _.sortBy(
-      (await axios.get(`https://${pageLanguage}.wikipedia.org/w/rest.php/v1/page/${pageName}/history`)).data.revisions,
+      (
+        await axios.get(`https://${pageLanguage}.wikipedia.org/w/rest.php/v1/page/${pageName}/history`, {
+          timeout: 30000,
+        })
+      ).data.revisions,
       ["timestamp"]
     );
     const sourceItems = [];

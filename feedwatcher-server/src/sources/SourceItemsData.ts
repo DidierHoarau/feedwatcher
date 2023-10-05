@@ -2,7 +2,7 @@ import { Span } from "@opentelemetry/sdk-trace-base";
 import { SourceItem } from "../model/SourceItem";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
-import { SqlDbutils } from "./SqlDbUtils";
+import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
 
 export class SourceItemsData {
   //
@@ -63,6 +63,12 @@ export class SourceItemsData {
         sourceItem.id,
       ]
     );
+    span.end();
+  }
+
+  public static async delete(context: Span, sourceItemId: string): Promise<void> {
+    const span = StandardTracer.startSpan("SourceItemsData_delete", context);
+    await SqlDbutils.execSQL(span, "DELETE FROM sources_items WHERE id = ?", [sourceItemId]);
     span.end();
   }
 

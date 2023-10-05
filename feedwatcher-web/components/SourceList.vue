@@ -11,15 +11,18 @@
           <i v-if="source.isLabel && source.isCollapsed" class="bi bi-caret-right-fill"></i>
           <i v-else-if="source.isLabel" class="bi bi-caret-down-fill"></i>
         </span>
-        <div v-on:click="loadItems(source, index)" class="source-name-name">
+        <div v-on:click="onSourceSelected(source, index)" class="source-name-name">
           <span v-if="!source.isLabel"><i :class="'bi bi-' + source.icon"></i>&nbsp;</span>
           {{ source.displayName }}
         </div>
-        <div v-on:click="loadItems(source, index)" class="source-name-count">{{ source.unreadCount }}</div>
+        <div v-if="displayCount" v-on:click="onSourceSelected(source, index)" class="source-name-count">
+          {{ source.unreadCount }}
+        </div>
       </div>
     </div>
     <div
-      v-on:click="loadSavedItems()"
+      v-if="displaySaved"
+      v-on:click="onSavedSelected()"
       class="source-name-layout"
       :class="{ 'source-active': sourcesStore.selectedIndex == -2 }"
     >
@@ -41,9 +44,12 @@ import * as _ from "lodash";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 
 export default {
+  props: {
+    displayCount: false,
+    displaySaved: false,
+  },
   async created() {
     if (!SourceItemsStore().selectedSource) {
-      this.loadAllItems();
       SourcesStore().selectedIndex = 0;
     }
     SourcesStore().fetch();
@@ -55,50 +61,19 @@ export default {
     });
   },
   methods: {
-    loadItems(source, index) {
+    onSourceSelected(source, index) {
       SourcesStore().selectedIndex = index;
       if (source.isRoot) {
-        this.loadAllItems();
+        this.$emit("onRootSelected", {});
       } else if (source.isLabel) {
-        this.loadLabelItems(source);
+        this.$emit("onLabelSelected", source);
       } else {
-        this.loadSourceItems(source);
+        this.$emit("onSourceSelected", source);
       }
     },
-    async loadSourceItems(source) {
-      const sourceItemsStore = SourceItemsStore();
-      sourceItemsStore.selectedSource = source.sourceId;
-      sourceItemsStore.page = 1;
-      sourceItemsStore.searchCriteria = "sourceId";
-      sourceItemsStore.searchCriteriaValue = source.sourceId;
-      sourceItemsStore.filterStatus = "unread";
-      sourceItemsStore.fetch();
-    },
-    async loadLabelItems(source) {
-      const sourceItemsStore = SourceItemsStore();
-      sourceItemsStore.selectedSource = null;
-      sourceItemsStore.page = 1;
-      sourceItemsStore.searchCriteria = "labelName";
-      sourceItemsStore.searchCriteriaValue = source.labelName;
-      sourceItemsStore.filterStatus = "unread";
-      sourceItemsStore.fetch();
-    },
-    async loadAllItems() {
-      const sourceItemsStore = SourceItemsStore();
-      sourceItemsStore.selectedSource = null;
-      sourceItemsStore.page = 1;
-      sourceItemsStore.searchCriteria = "all";
-      sourceItemsStore.filterStatus = "unread";
-      sourceItemsStore.fetch();
-    },
-    async loadSavedItems(index) {
-      SourcesStore().selectedIndex = -2;
-      const sourceItemsStore = SourceItemsStore();
-      sourceItemsStore.selectedSource = null;
-      sourceItemsStore.page = 1;
-      sourceItemsStore.searchCriteria = "lists";
-      sourceItemsStore.filterStatus = "all";
-      sourceItemsStore.fetch();
+    onSavedSelected() {
+      SourcesStore().selectedIndex = SourcesStore().selectedIndex.length - 1;
+      this.$emit("onSavedSelected", {});
     },
     isLabelDisplayed(index) {
       if (!SourcesStore().sourceLabels[index].labelName) {

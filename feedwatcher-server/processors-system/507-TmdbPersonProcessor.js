@@ -30,7 +30,9 @@ module.exports = {
     let urlMatch = /.*themoviedb.org\/person\/(\d+)-.*/.exec(source.info.url);
     if (urlMatch) {
       const personId = urlMatch[1];
-      const personInfo = (await axios.get(`https://api.themoviedb.org/3/person/${personId}?api_key=${API_KEY}`)).data;
+      const personInfo = (
+        await axios.get(`https://api.themoviedb.org/3/person/${personId}?api_key=${API_KEY}`, { timeout: 30000 })
+      ).data;
       if (personInfo.name) {
         return { name: personInfo.name, icon: "film" };
       }
@@ -47,7 +49,9 @@ module.exports = {
     let urlMatch = /.*themoviedb.org\/person\/(\d+)-.*/.exec(source.info.url);
     const personId = urlMatch[1];
     const personCredit = (
-      await axios.get(`https://api.themoviedb.org/3/person/${personId}/movie_credits?api_key=${API_KEY}`)
+      await axios.get(`https://api.themoviedb.org/3/person/${personId}/movie_credits?api_key=${API_KEY}`, {
+        timeout: 30000,
+      })
     ).data;
 
     const sourceItems = [];

@@ -1,7 +1,7 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Config } from "../Config";
-import { SourceItemsData } from "../data/SourceItemsData";
-import { SourcesData } from "../data/SourcesData";
+import { SourceItemsData } from "../sources/SourceItemsData";
+import { SourcesData } from "../sources/SourcesData";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { Logger } from "../utils-std-ts/Logger";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";

@@ -23,11 +23,12 @@ module.exports = {
       if (source.info.accountId) {
         return source.info;
       }
-      const accountSearch = (await axios.get(`https://${instance}/api/v2/search?q=${username}`)).data;
+      const accountSearch = (await axios.get(`https://${instance}/api/v2/search?q=${username}`, { timeout: 30000 }))
+        .data;
       const account = _.find(accountSearch.accounts, { username });
       if (account) {
         const accountId = account.id;
-        const userInfo = (await axios.get(`https://${instance}/api/v1/accounts/${accountId}`)).data;
+        const userInfo = (await axios.get(`https://${instance}/api/v1/accounts/${accountId}`, { timeout: 30000 })).data;
         if (userInfo.display_name) {
           return {
             name: `${userInfo.display_name} @${username}@${instance}`,
@@ -43,7 +44,9 @@ module.exports = {
   fetchLatest: async (source, lastSourceItemSaved) => {
     let urlMatch = /@(.*)@(.*)/.exec(source.info.url);
     const instance = urlMatch[2];
-    const posts = (await axios.get(`https://${instance}/api/v1/accounts/${source.info.accountId}/statuses`)).data;
+    const posts = (
+      await axios.get(`https://${instance}/api/v1/accounts/${source.info.accountId}/statuses`, { timeout: 30000 })
+    ).data;
     const sourceItems = [];
     for (const item of posts) {
       const sourceItem = {};

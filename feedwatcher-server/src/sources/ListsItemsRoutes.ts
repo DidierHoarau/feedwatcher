@@ -1,6 +1,6 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
-import { Auth } from "../data/Auth";
-import { ListsItemsData } from "../data/ListsItemsData";
+import { Auth } from "../users/Auth";
+import { ListsItemsData } from "../sources/ListsItemsData";
 import { ListItem } from "../model/ListItem";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 

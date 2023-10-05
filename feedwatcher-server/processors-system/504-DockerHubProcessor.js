@@ -27,7 +27,9 @@ module.exports = {
     let urlMatch = /.*hub.docker.com\/(r|_)\/(.*?)\/(.*?)((\/\w+)+|\/?)$/.exec(source.info.url);
     const repoUser = urlMatch[2] === "_" ? "library" : urlMatch[2];
     const repoImage = urlMatch[3];
-    let tags = (await axios.get(`https://hub.docker.com/v2/repositories/${repoUser}/${repoImage}/tags`)).data.results;
+    let tags = (
+      await axios.get(`https://hub.docker.com/v2/repositories/${repoUser}/${repoImage}/tags`, { timeout: 30000 })
+    ).data.results;
     const sourceItems = [];
     for (const item of tags) {
       const sourceItem = {};

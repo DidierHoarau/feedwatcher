@@ -18,7 +18,7 @@ module.exports = {
     let urlMatch = /.*coingecko.com\/en\/coins\/(.+)(\??).*/.exec(source.info.url);
     if (urlMatch) {
       const coin = urlMatch[1];
-      const info = (await axios.get(`https://api.coingecko.com/api/v3/coins/${coin}`)).data;
+      const info = (await axios.get(`https://api.coingecko.com/api/v3/coins/${coin}`, { timeout: 30000 })).data;
       if (info.name) {
         return { name: `${info.name} (${info.symbol})`, icon: "coin" };
       }
@@ -29,7 +29,9 @@ module.exports = {
   fetchLatest: async (source, lastSourceItemSaved) => {
     let urlMatch = /.*coingecko.com\/en\/coins\/(.+)(\??).*/.exec(source.info.url);
     const coin = urlMatch[1];
-    const info = (await axios.get(`https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=usd`)).data;
+    const info = (
+      await axios.get(`https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=usd`, { timeout: 30000 })
+    ).data;
     let value = info[coin].usd;
     if (lastSourceItemSaved && new Date() - new Date(lastSourceItemSaved.datePublished) < 24 * 3600 * 1000) {
       return [];

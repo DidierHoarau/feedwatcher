@@ -5,7 +5,7 @@ import { User } from "../model/User";
 import { UserSession } from "../model/UserSession";
 import { Config } from "../Config";
 import { Logger } from "../utils-std-ts/Logger";
-import { SqlDbutils } from "./SqlDbUtils";
+import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { Span } from "@opentelemetry/sdk-trace-base";
 

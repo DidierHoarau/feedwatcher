@@ -14,7 +14,9 @@ module.exports = {
 
   test: async (source) => {
     try {
-      const feed = await new Parser().parseURL(source.info.url);
+      const feed = await new Parser({
+        timeout: 30000,
+      }).parseURL(source.info.url);
       if (feed.title) {
         return { name: feed.title, icon: "rss" };
       }
@@ -25,7 +27,9 @@ module.exports = {
   },
 
   fetchLatest: async (source, lastSourceItemSaved) => {
-    const feed = await new Parser().parseURL(source.info.url);
+    const feed = await new Parser({
+      timeout: 30000,
+    }).parseURL(source.info.url);
     const sourceItems = [];
     feed.items.forEach((item) => {
       const sourceItem = {};
