@@ -45,7 +45,7 @@ module.exports = {
       timeout: 30000,
     }).parseURL(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`);
     const sourceItems = [];
-    feed.items.forEach((item) => {
+    for (let item of feed.items) {
       const sourceItem = {};
       sourceItem.url = item.link;
       sourceItem.title = item.title;
@@ -54,8 +54,19 @@ module.exports = {
         item.id.split(":")[2]
       }/' frameborder='0' allowfullscreen ></iframe >`;
       sourceItem.datePublished = new Date(item.pubDate);
+      try {
+        await axios
+          .get(`https://www.youtube.com/shorts/${item.id.split(":")[2]}`, {
+            maxRedirects: 0,
+          })
+          .then(() => {
+            sourceItem.title = `[#shorts] ${sourceItem.title}`;
+          });
+      } catch (err) {
+        // Not short
+      }
       sourceItems.push(sourceItem);
-    });
+    }
     return sourceItems;
   },
 };
