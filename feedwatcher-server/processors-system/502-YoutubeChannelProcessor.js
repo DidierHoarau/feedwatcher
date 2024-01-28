@@ -60,7 +60,7 @@ module.exports = {
             maxRedirects: 0,
           })
           .then(() => {
-            sourceItem.title = `[#shorts] ${sourceItem.title}`;
+            sourceItem.title = `${sourceItem.title} (#shorts)`;
           });
       } catch (err) {
         // Not short
