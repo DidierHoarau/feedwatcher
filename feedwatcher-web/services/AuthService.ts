@@ -1,4 +1,4 @@
-import jwtDecode from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 
 const AUTH_TOKEN_KEY = "auth_token";
 
