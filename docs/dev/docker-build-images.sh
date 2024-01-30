@@ -12,8 +12,8 @@ docker buildx build \
   --platform linux/arm64/v8,linux/amd64 \
   -f Dockerfile \
   -t didierhoarau/${SERVICE_NAME}:${SERVICE_VERSION} \
-  --builder=container .
+  --builder=docker-container .
 docker buildx build \
   --load \
   -t didierhoarau/${SERVICE_NAME}:${SERVICE_VERSION} \
-  --builder=container .
+  --builder=docker-container .
