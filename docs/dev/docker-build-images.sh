@@ -12,10 +12,10 @@ docker buildx build \
   --platform linux/arm64/v8,linux/amd64 \
   -f Dockerfile \
   -t didierhoarau/${SERVICE_NAME}:${SERVICE_VERSION} \
-  --builder $(docker buildx inspect --bootstrap --config | grep Name | cut -d' ' -f2) \
+  --builder $(docker buildx inspect | grep Name | head -n1 | tr -s " " | cut -d' ' -f2) \
   .
 docker buildx build \
   --load \
   -t didierhoarau/${SERVICE_NAME}:${SERVICE_VERSION} \
-  --builder $(docker buildx inspect --bootstrap --config | grep Name | cut -d' ' -f2) \
+  --builder $(docker buildx inspect | grep Name | head -n1 | tr -s " " | cut -d' ' -f2) \
   .
