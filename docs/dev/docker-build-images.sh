@@ -15,6 +15,7 @@ docker buildx build \
   --builder $(docker buildx inspect | grep Name | head -n1 | tr -s " " | cut -d' ' -f2) \
   .
 docker buildx build \
+  --platform linux/arm64/v8,linux/amd64 \
   --load \
   -t didierhoarau/${SERVICE_NAME}:${SERVICE_VERSION} \
   --builder $(docker buildx inspect | grep Name | head -n1 | tr -s " " | cut -d' ' -f2) \
