@@ -24,4 +24,3 @@ jobs:
           set -e
           chmod +x docs/dev/*.sh
           ./docs/dev/docker-build-images.sh
-          ./docs/dev/docker-publish-images.sh
