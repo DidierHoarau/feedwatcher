@@ -7,16 +7,17 @@ cd ${REPO_DIR}
 
 SERVICE_NAME="feedwatcher"
 SERVICE_VERSION=$(cat ${REPO_DIR}/package.json | jq -r '.version')
+SERVICE_VERSION_MAJOR=$(cat ${REPO_DIR}/package.json | grep \"version\" | cut -f4 -d"\"" | cut -f1 -d".")
+SERVICE_VERSION_MINOR=$(cat ${REPO_DIR}/package.json | grep \"version\" | cut -f4 -d"\"" | cut -f1-2 -d".")
+
 echo "Building ${SERVICE_NAME}/${SERVICE_VERSION}"
+
 docker buildx build \
   --platform linux/arm64/v8,linux/amd64 \
+   --push \
   -f Dockerfile \
+  -t didierhoarau/${SERVICE_NAME}:latest \
   -t didierhoarau/${SERVICE_NAME}:${SERVICE_VERSION} \
-  --builder $(docker buildx inspect | grep Name | head -n1 | tr -s " " | cut -d' ' -f2) \
-  .
-docker buildx build \
-  --platform linux/arm64/v8,linux/amd64 \
-  --load \
-  -t didierhoarau/${SERVICE_NAME}:${SERVICE_VERSION} \
-  --builder $(docker buildx inspect | grep Name | head -n1 | tr -s " " | cut -d' ' -f2) \
+  -t didierhoarau/${SERVICE_NAME}:${SERVICE_VERSION_MAJOR} \
+  -t didierhoarau/${SERVICE_NAME}:${SERVICE_VERSION_MINOR} \
   .

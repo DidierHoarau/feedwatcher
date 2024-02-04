@@ -45,8 +45,7 @@ jobs:
         run: |
           set -e
           chmod +x docs/dev/*.sh
-          ./docs/dev/docker-build-images.sh
-          ./docs/dev/docker-publish-images-beta.sh
+          ./docs/dev/docker-build-images-beta.sh
 
       # - name: Start Test Environment
       #   run: |
