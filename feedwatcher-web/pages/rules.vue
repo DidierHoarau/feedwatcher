@@ -61,7 +61,7 @@ const userProcessorInfoStore = UserProcessorInfoStore();
 
 <script>
 import axios from "axios";
-import * as _ from "lodash";
+import { find } from "lodash";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
@@ -102,7 +102,7 @@ export default {
         .catch(handleError);
     },
     async onRootSelected() {
-      const existingRule = _.find(this.rules.info, { isRoot: true });
+      const existingRule = find(this.rules.info, { isRoot: true });
       if (existingRule) {
         this.currentRule = existingRule;
       } else {
@@ -115,7 +115,7 @@ export default {
       }
     },
     async onLabelSelected(source) {
-      const existingRule = _.find(this.rules.info, { labelName: source.labelName });
+      const existingRule = find(this.rules.info, { labelName: source.labelName });
       if (existingRule) {
         this.currentRule = existingRule;
       } else {
@@ -128,7 +128,7 @@ export default {
       }
     },
     async onSourceSelected(source) {
-      const existingRule = _.find(this.rules.info, { sourceId: source.sourceId });
+      const existingRule = find(this.rules.info, { sourceId: source.sourceId });
       if (existingRule) {
         this.currentRule = existingRule;
       } else {
@@ -147,10 +147,10 @@ export default {
       this.currentRule.autoDelete.push({ pattern: "*", ageDays: "100" });
     },
     async removeAutoArchive(pattern) {
-      this.currentRule.autoRead.splice(_.findIndex(this.currentRule.autoRead, { pattern }), 1);
+      this.currentRule.autoRead.splice(findIndex(this.currentRule.autoRead, { pattern }), 1);
     },
     async removeAutoDelete(pattern) {
-      this.currentRule.autoDelete.splice(_.findIndex(this.currentRule.autoDelete, { pattern }), 1);
+      this.currentRule.autoDelete.splice(findIndex(this.currentRule.autoDelete, { pattern }), 1);
     },
   },
 };

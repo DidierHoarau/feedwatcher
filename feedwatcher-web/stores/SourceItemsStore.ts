@@ -3,7 +3,7 @@ import { AuthService } from "~~/services/AuthService";
 import Config from "~~/services/Config";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 import axios from "axios";
-import * as _ from "lodash";
+import { concat } from "lodash";
 
 export const SourceItemsStore = defineStore("SourceItemsStore", {
   state: () => ({
@@ -46,7 +46,7 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
         .post(`${(await Config.get()).SERVER_URL}/items/search`, searchOptions, await AuthService.getAuthHeader())
         .then((res) => {
           if (etagFetch === this.etagFetch) {
-            this.sourceItems = _.concat(this.sourceItems, res.data.sourceItems);
+            this.sourceItems = concat(this.sourceItems, res.data.sourceItems);
             this.pageHasMore = res.data.pageHasMore;
           }
         })

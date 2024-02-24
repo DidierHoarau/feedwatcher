@@ -3,7 +3,7 @@ import { AuthService } from "~~/services/AuthService";
 import Config from "~~/services/Config";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 import axios from "axios";
-import * as _ from "lodash";
+import { find, findIndex, sortBy } from "lodash";
 import { PreferencesLabels } from "~~/services/PreferencesLabels";
 
 export const SourcesStore = defineStore("SourcesStore", {
@@ -26,7 +26,7 @@ export const SourcesStore = defineStore("SourcesStore", {
         sourceItemsStore.filterStatus = "unread";
         sourceItemsStore.fetch();
       }
-      const position = _.findIndex(this.sources, { sourceId });
+      const position = findIndex(this.sources, { sourceId });
       if (position < 0) {
         return;
       }
@@ -41,7 +41,7 @@ export const SourcesStore = defineStore("SourcesStore", {
       await axios
         .get(`${(await Config.get()).SERVER_URL}/sources/labels`, await AuthService.getAuthHeader())
         .then((res) => {
-          const sourcesData = _.sortBy(res.data.sourceLabels, ["labelName", "sourceName"]);
+          const sourcesData = sortBy(res.data.sourceLabels, ["labelName", "sourceName"]);
           const soucesStr = JSON.stringify(sourcesData);
           if (this.sourcesStr === soucesStr) {
             this.checkVisibility();
@@ -135,7 +135,7 @@ export const SourcesStore = defineStore("SourcesStore", {
       }
       const source: any = this.sources[index];
       if (!source.isLabel) {
-        const foundCount = _.find(this.sourceCounts, { sourceId: source.sourceId });
+        const foundCount = find(this.sourceCounts, { sourceId: source.sourceId });
         if (foundCount) {
           source.unreadCount = foundCount.unreadCount;
         } else {
@@ -149,7 +149,7 @@ export const SourcesStore = defineStore("SourcesStore", {
       while (nextIteration < this.sources.length) {
         const sourceNext = this.sources[nextIteration] as any;
         if (!sourceNext.isLabel && sourceNext.labelName.indexOf(source.labelName) === 0) {
-          const sourceCounNext = _.find(this.sourceCounts, { sourceId: sourceNext.sourceId });
+          const sourceCounNext = find(this.sourceCounts, { sourceId: sourceNext.sourceId });
           if (sourceCounNext) {
             count += sourceCounNext.unreadCount;
           }

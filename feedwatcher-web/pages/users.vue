@@ -130,14 +130,14 @@ export default {
     },
     async gotoExport() {
       const headers = await AuthService.getAuthHeader();
-      headers.responseType = 'blob';      
+      headers.responseType = "blob";
       axios
         .get(`${(await Config.get()).SERVER_URL}/sources/import/export/opml`, headers)
         .then((response) => {
           const url = window.URL.createObjectURL(new Blob([response.data]));
-          const link = document.createElement('a');
+          const link = document.createElement("a");
           link.href = url;
-          link.setAttribute('download', `sources_export_${new Date().toISOString()}.opml`);
+          link.setAttribute("download", `sources_export_${new Date().toISOString()}.opml`);
           document.body.appendChild(link);
           link.click();
         })
@@ -150,5 +150,8 @@ export default {
 <style scoped>
 .user-page {
   width: min(100%, 50em);
+}
+button {
+  margin-right: 1em;
 }
 </style>
