@@ -73,12 +73,12 @@ export class SearchItemsData {
         "    SELECT sources.id " +
         "    FROM sources, sources_labels " +
         "    WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name LIKE ? " +
-        getSavedFilterQuery(searchOptions) +
         "  ) " +
         getStatusFilterQuery(searchOptions) +
         getAgeFilterQuery(searchOptions) +
         "  AND sources.userId = ? " +
         "  AND sources_items.sourceId = sources.id " +
+        getSavedFilterQuery(searchOptions) +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
       [userId, `${label}%`, userId]

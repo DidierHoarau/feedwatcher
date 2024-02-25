@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <h2>Source Import (OPML)</h2>
+    <h3>Source Import (OPML)</h3>
     <input type="file" id="file" name="file" @change="uploadOpml()" />
     <button v-if="sourcesImports.length > 0" v-on:click="startImport()" :disabled="processing">
       Import Selected <i class="bi bi-hourglass-split blink" v-if="processing"></i>

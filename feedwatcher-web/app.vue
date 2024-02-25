@@ -42,7 +42,7 @@ main {
 /* Common Component */
 
 .actions i {
-  font-size: 1.5em;
+  font-size: 1.3em;
   cursor: pointer;
   margin-left: 0.5em;
   margin-right: 0.5em;

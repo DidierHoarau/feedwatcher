@@ -1,7 +1,7 @@
 <template>
   <div id="sources-layout">
     <div id="sources-header">
-      <h2>Rules</h2>
+      <h3>Rules</h3>
     </div>
     <div id="sources-actions" class="actions">
       <button v-on:click="saveRules()">Save</button>
@@ -179,7 +179,7 @@ export default {
 @media (max-width: 700px) {
   #sources-layout {
     display: grid;
-    grid-template-rows: 4em auto 3em 2fr;
+    grid-template-rows: 2.7em auto 3em 2fr;
     grid-template-columns: auto auto;
     height: calc(100vh - 5em);
     column-gap: 1em;
@@ -205,7 +205,7 @@ export default {
   }
   #sources-list {
     overflow: auto;
-    height: 30vh;
+    height: 25vh;
     grid-row: 2;
     grid-column-start: 1;
     grid-column-end: span 2;
@@ -218,7 +218,7 @@ export default {
 @media (min-width: 701px) {
   #sources-layout {
     display: grid;
-    grid-template-rows: 4em 3em 1fr;
+    grid-template-rows: 2.7em 3em 1fr;
     grid-template-columns: auto 1fr 1fr;
     height: calc(100vh - 5em);
     column-gap: 1em;
