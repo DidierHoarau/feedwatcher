@@ -41,7 +41,6 @@ export class ItemsRoutes {
       searchOptions.page = req.body.page || 1;
       searchOptions.filterStatus = req.body.filterStatus || SourceItemStatus.unread;
       searchOptions.isSaved = req.body.isSaved ? true : false;
-      console.log(searchOptions);
 
       if (req.body.searchCriteria === "labelName") {
         const searchItemsResult = await SearchItemsData.listItemsForLabel(
