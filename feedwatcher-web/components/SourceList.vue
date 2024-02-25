@@ -16,20 +16,9 @@
           {{ source.displayName }}
         </div>
         <div v-if="displayCount" v-on:click="onSourceSelected(source, index)" class="source-name-count">
-          {{ source.unreadCount }}
+          {{ source[displayCount] }}
         </div>
       </div>
-    </div>
-    <div
-      v-if="displaySaved"
-      v-on:click="onSavedSelected()"
-      class="source-name-layout"
-      :class="{ 'source-active': sourcesStore.selectedIndex == -2 }"
-    >
-      <span class="source-name-indent">
-        <i class="bi bi-bookmark-plus-fill"></i>
-      </span>
-      <div class="source-name-name">Saved Items</div>
     </div>
   </div>
 </template>
@@ -70,10 +59,6 @@ export default {
       } else {
         this.$emit("onSourceSelected", source);
       }
-    },
-    onSavedSelected() {
-      SourcesStore().selectedIndex = SourcesStore().selectedIndex.length - 1;
-      this.$emit("onSavedSelected", {});
     },
     isLabelDisplayed(index) {
       if (!SourcesStore().sourceLabels[index].labelName) {

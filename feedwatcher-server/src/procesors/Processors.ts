@@ -7,7 +7,7 @@ import { Logger } from "../utils-std-ts/Logger";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import * as fs from "fs-extra";
 import * as path from "path";
-import * as _ from "lodash";
+import { find, merge, sortBy } from "lodash";
 import { Source } from "../model/Source";
 import { v4 as uuidv4 } from "uuid";
 import { ProcessorInfo } from "../model/ProcessorInfo";
@@ -41,7 +41,7 @@ export class Processors {
         });
       }
     }
-    processorFiles = _.sortBy(processorFiles, ["name"]);
+    processorFiles = sortBy(processorFiles, ["name"]);
     logger.info(`Found ${processorFiles.length} processors`);
     span.end();
   }
@@ -77,7 +77,7 @@ export class Processors {
               if (!source.info) {
                 source.info = {};
               }
-              source.info = _.merge(source.info, sourceInfo);
+              source.info = merge(source.info, sourceInfo);
               await SourcesData.update(span, source);
               processed = true;
             }
@@ -102,7 +102,7 @@ export class Processors {
   }
 
   public static async fetchSourceItems(context: Span, source: Source): Promise<void> {
-    if (!_.find(fetchSourceItemsQueue, { id: source.id })) {
+    if (!find(fetchSourceItemsQueue, { id: source.id })) {
       fetchSourceItemsQueue.push(source);
       if (fetchSourceItemsQueue.length === 1) {
         Processors.fetchSourceItemsQueued();
@@ -165,13 +165,13 @@ export class Processors {
 
   public static getUserProcessorInfo(context: Span, userId: string): UserProcessorInfo {
     const span = StandardTracer.startSpan("Processors_getUserProcessorInfo", context);
-    return _.find(userProcessorInfoStatus, { userId });
+    return find(userProcessorInfoStatus, { userId });
     span.end();
   }
 
   private static userProcessorInfoStatusStart(context: Span, userId: string): void {
     const span = StandardTracer.startSpan("Processors_userProcessorInfoStatusStart", context);
-    let userStatus = _.find(userProcessorInfoStatus, { userId });
+    let userStatus = find(userProcessorInfoStatus, { userId });
     if (!userStatus) {
       userStatus = {
         userId: userId,
@@ -185,7 +185,7 @@ export class Processors {
 
   private static userProcessorInfoStatusStop(context: Span, userId: string): void {
     const span = StandardTracer.startSpan("Processors_userProcessorInfoStatusStop", context);
-    const userStatus = _.find(userProcessorInfoStatus, { userId });
+    const userStatus = find(userProcessorInfoStatus, { userId });
     if (userStatus) {
       userStatus.status = UserProcessorInfoStatus.idle;
       userStatus.lastUpdate = new Date();

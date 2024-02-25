@@ -1,8 +1,17 @@
 <template>
   <article class="sourceitem-layout">
     <div class="sourceitem-layout-read-status">
-      <i v-if="item.status == 'read'" class="bi bi-envelope-open" v-on:click="markReadStatus('unread')"></i>
-      <i v-else class="bi bi-envelope" v-on:click="markReadStatus('read')"></i>
+      <i
+        v-if="item.status == 'read'"
+        class="bi bi-envelope-open source-action"
+        v-on:click="markReadStatus('unread')"
+      ></i>
+      <i v-else class="bi bi-envelope source-action" v-on:click="markReadStatus('read')"></i>
+
+      <br />
+
+      <i v-if="isSaved" class="bi bi-bookmark-check-fill source-action" v-on:click="unSaveItem()"></i>
+      <i v-else class="bi bi-bookmark-plus source-action" v-on:click="saveItem()"></i>
     </div>
 
     <div
@@ -13,21 +22,24 @@
       <span class="sourceitem-date">{{ relativeTime(item.datePublished) }}</span>
       {{ item.title }}
     </div>
+
     <div class="sourceitem-layout-link">
-      <a :href="item.url" target="_blank" v-on:click="markReadStatus('read')"><i class="bi bi-link"></i></a>
+      <a :href="item.url" target="_blank" v-on:click="markReadStatus('read')"
+        ><i class="bi bi-link source-action"></i
+      ></a>
     </div>
-    <div class="sourceitem-layout-save" v-if="isActive">
-      <i v-if="isSaved" class="bi bi-bookmark-check-fill" v-on:click="unSaveItem()"></i>
-      <i v-else class="bi bi-bookmark-plus" v-on:click="saveItem()"></i>
+
+    <div class="sourceitem-layout-meta">
+      {{ item.sourceName }}
     </div>
+
     <div
       :class="{ 'sourceitem-active': isActive, 'sourceitem-notactive': !isActive }"
       class="sourceitem-layout-content"
     >
-      <span v-if="isActive" v-html="item.content"></span>
-    </div>
-    <div class="sourceitem-layout-meta">
-      {{ item.sourceName }}
+      <Transition>
+        <span v-if="isActive" v-html="item.content"></span>
+      </Transition>
     </div>
   </article>
 </template>
@@ -48,20 +60,22 @@ export default {
       isSaved: false,
     };
   },
+  async created() {
+    axios
+      .get(`${(await Config.get()).SERVER_URL}/lists/items/${this.item.id}`, await AuthService.getAuthHeader())
+      .then((res) => {
+        if (res.data.id) {
+          this.isSaved = true;
+        } else {
+          this.isSaved = false;
+        }
+      })
+      .catch(handleError);
+  },
   methods: {
     async clickedItem() {
       this.isActive = !this.isActive;
       if (this.isActive) {
-        axios
-          .get(`${(await Config.get()).SERVER_URL}/lists/items/${this.item.id}`, await AuthService.getAuthHeader())
-          .then((res) => {
-            if (res.data.id) {
-              this.isSaved = true;
-            } else {
-              this.isSaved = false;
-            }
-          })
-          .catch(handleError);
         this.markReadStatus("read");
       }
     },
@@ -147,7 +161,7 @@ export default {
 }
 .sourceitem-layout {
   display: grid;
-  grid-template-rows: auto auto auto;
+  grid-template-rows: auto auto 1fr;
   grid-template-columns: auto 1fr auto;
   height: calc(100vh - 5em);
   width: 100%;
@@ -161,10 +175,12 @@ export default {
   grid-column: 2;
 }
 .sourceitem-layout-read-status {
-  grid-row: 1;
+  grid-row-start: 1;
+  grid-row-end: span 3;
   grid-column: 1;
   text-align: center;
-  padding-right: 0.5em;
+  padding: 0.5em;
+  background-color: #33333344;
 }
 .sourceitem-layout-link {
   grid-row: 1;
@@ -206,5 +222,18 @@ export default {
 .sourceitem-read,
 .sourceitem-layout-meta {
   opacity: 0.5;
+}
+.source-action {
+  font-size: 1.4em;
+}
+
+.v-enter-active,
+.v-leave-active {
+  transition: opacity 1s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
 }
 </style>

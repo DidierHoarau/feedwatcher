@@ -22,6 +22,7 @@ export class SearchItemsData {
         "FROM sources_items, sources " +
         "WHERE sources.userId = ? " +
         getStatusFilterQuery(searchOptions) +
+        getSavedFilterQuery(searchOptions) +
         "  AND sources.id = sources_items.sourceId  " +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
@@ -46,6 +47,7 @@ export class SearchItemsData {
         "  AND sources.id = ? " +
         getAgeFilterQuery(searchOptions) +
         getStatusFilterQuery(searchOptions) +
+        getSavedFilterQuery(searchOptions) +
         "  AND sources.id = sources_items.sourceId " +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
@@ -76,34 +78,10 @@ export class SearchItemsData {
         getAgeFilterQuery(searchOptions) +
         "  AND sources.userId = ? " +
         "  AND sources_items.sourceId = sources.id " +
+        getSavedFilterQuery(searchOptions) +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
       [userId, `${label}%`, userId]
-    );
-    const searchItemsResult = getSearchResultsfromRaw(sourceItemsRaw);
-    span.end();
-    return searchItemsResult;
-  }
-
-  public static async listItemsForLists(
-    context: Span,
-    userId: string,
-    searchOptions: SearchItemsOptions
-  ): Promise<SearchItemsResult> {
-    const span = StandardTracer.startSpan("ListsItemsData_listItemsForUser", context);
-    const sourceItemsRaw = await SqlDbutils.querySQL(
-      span,
-      "SELECT sources_items.*, sources.name as sourceName " +
-        "FROM sources_items, lists_items, sources " +
-        "WHERE sources_items.id = lists_items.itemId  " +
-        "  AND lists_items.userId = ? " +
-        "  AND sources.id = sources_items.sourceId " +
-        "  AND sources.userId = ? " +
-        getAgeFilterQuery(searchOptions) +
-        getStatusFilterQuery(searchOptions) +
-        "ORDER BY datePublished DESC " +
-        getPageQuery(searchOptions),
-      [userId, userId]
     );
     const searchItemsResult = getSearchResultsfromRaw(sourceItemsRaw);
     span.end();
@@ -137,9 +115,17 @@ function getStatusFilterQuery(searchOptions: SearchItemsOptions): string {
   }
   return "";
 }
+
 function getAgeFilterQuery(searchOptions: SearchItemsOptions): string {
   if (searchOptions.maxDate) {
     return `  AND sources_items.datePublished <= '${searchOptions.maxDate.toISOString()}' `;
+  }
+  return "";
+}
+
+function getSavedFilterQuery(searchOptions: SearchItemsOptions): string {
+  if (searchOptions.isSaved) {
+    return "  AND sources_items.id in (SELECT itemId FROM lists_items) ";
   }
   return "";
 }

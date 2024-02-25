@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { Auth } from "../users/Auth";
 import * as opml from "opml";
-import * as _ from "lodash";
+import { find } from "lodash";
 import { Logger } from "../utils-std-ts/Logger";
 import { Source } from "../model/Source";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
@@ -64,7 +64,7 @@ export class SourcesImportRoutes {
         if (!sourceLabel.labelName) {
           sourcesOutlines.opml.body.subs.push(newOutline);
         } else {
-          let parentSub = _.find(sourcesOutlines.opml.body.subs, { title: sourceLabel.labelName });
+          let parentSub = find(sourcesOutlines.opml.body.subs, { title: sourceLabel.labelName });
           if (!parentSub) {
             parentSub = { title: sourceLabel.labelName, subs: [] };
             sourcesOutlines.opml.body.subs.push(parentSub);

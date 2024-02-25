@@ -17,7 +17,7 @@
 </template>
 
 <script>
-import * as _ from "lodash";
+import { find, findIndex } from "lodash";
 import axios from "axios";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
@@ -106,12 +106,12 @@ export default {
     },
     async onLabelSelected(label) {
       this.isSelectLabel = false;
-      if (!_.find(this.labels, { name: label.name })) {
+      if (!find(this.labels, { name: label.name })) {
         this.labels.push({ name: label.label });
       }
     },
     async removeLabel(label) {
-      this.labels.splice(_.findIndex(this.labels, { name: label.name }), 1);
+      this.labels.splice(findIndex(this.labels, { name: label.name }), 1);
     },
     addLabel() {
       this.isSelectLabel = true;
@@ -133,5 +133,8 @@ kbd i {
 }
 .label-list {
   margin-bottom: 2em;
+}
+button {
+  margin-right: 1em;
 }
 </style>

@@ -28,5 +28,17 @@ export class SourcesLabelsRoutes {
       const counts = await SourcesData.listCountsForUser(StandardTracer.getSpanFromRequest(req), userSession.userId);
       return res.status(201).send({ counts });
     });
+
+    fastify.get("/counts/saved", async (req, res) => {
+      const userSession = await Auth.getUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      const counts = await SourcesData.listCountsSavedForUser(
+        StandardTracer.getSpanFromRequest(req),
+        userSession.userId
+      );
+      return res.status(201).send({ counts });
+    });
   }
 }

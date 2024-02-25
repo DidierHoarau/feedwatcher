@@ -45,6 +45,27 @@ export class SourcesData {
     return countsRaw;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public static async listCountsSavedForUser(context: Span, userId: string): Promise<any[]> {
+    const span = StandardTracer.startSpan("SourcesData_listCountsForUser", context);
+    const countsRaw = await SqlDbutils.querySQL(
+      span,
+      "SELECT COUNT(id) as savedCount, sourceId  " +
+        "FROM sources_items " +
+        "WHERE id IN (" +
+        "    SELECT sources_items.id " +
+        "    FROM lists_items, sources_items, sources " +
+        "    WHERE lists_items.itemId = sources_items.id " +
+        "          AND sources_items.sourceId = sources.id " +
+        "          AND sources.userId = ? " +
+        "  ) " +
+        "GROUP BY sourceId ",
+      [userId]
+    );
+    span.end();
+    return countsRaw;
+  }
+
   public static async listAll(context: Span): Promise<Source[]> {
     const span = StandardTracer.startSpan("SourcesData_listAll", context);
     const sourcesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM sources`);
