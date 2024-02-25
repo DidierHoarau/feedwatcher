@@ -12,6 +12,7 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
     page: 1,
     filterStatus: "unread",
     searchCriteria: "all",
+    filterSaved: false,
     pageHasMore: false,
     loading: false,
     searchCriteriaValue: "",
@@ -39,6 +40,7 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
       } else if (this.searchCriteria === "labelName") {
         searchOptions.labelName = this.searchCriteriaValue;
       }
+      searchOptions.isSaved = this.filterSaved;
       this.pageHasMore = false;
       this.loading = true;
       await Timeout.wait(10);

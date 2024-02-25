@@ -1,7 +1,7 @@
 <template>
   <div id="sources-layout">
     <div id="sources-header">
-      <h2>Sources</h2>
+      <h2>Bookmarks</h2>
     </div>
     <div id="sources-actions" class="actions">
       <i
@@ -16,7 +16,7 @@
     </div>
     <div id="sources-list" :class="{ 'sources-list-closed': !menuOpened }">
       <SourceList
-        displayCount="unreadCount"
+        displayCount="savedCount"
         @onSourceSelected="onSourceSelected"
         @onLabelSelected="onLabelSelected"
         @onRootSelected="onRootSelected"
@@ -62,7 +62,7 @@ export default {
     return {
       selectedSource: "",
       menuOpened: true,
-      filterStatus: "unread",
+      filterStatus: "all",
       markingUnreead: false,
     };
   },
@@ -85,7 +85,7 @@ export default {
       sourceItemsStore.searchCriteria = "sourceId";
       sourceItemsStore.searchCriteriaValue = source.sourceId;
       sourceItemsStore.filterStatus = this.filterStatus;
-      sourceItemsStore.filterSaved = false;
+      sourceItemsStore.filterSaved = true;
       sourceItemsStore.fetch();
     },
     async onLabelSelected(source) {
@@ -95,7 +95,7 @@ export default {
       sourceItemsStore.searchCriteria = "labelName";
       sourceItemsStore.searchCriteriaValue = source.labelName;
       sourceItemsStore.filterStatus = this.filterStatus;
-      sourceItemsStore.filterSaved = false;
+      sourceItemsStore.filterSaved = true;
       sourceItemsStore.fetch();
     },
     async onRootSelected() {
@@ -104,7 +104,7 @@ export default {
       sourceItemsStore.page = 1;
       sourceItemsStore.searchCriteria = "all";
       sourceItemsStore.filterStatus = this.filterStatus;
-      sourceItemsStore.filterSaved = false;
+      sourceItemsStore.filterSaved = true;
       sourceItemsStore.fetch();
     },
     async refreshAndFetch() {

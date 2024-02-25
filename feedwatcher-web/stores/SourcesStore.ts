@@ -1,4 +1,3 @@
-import { Timeout } from "~~/services/Timeout";
 import { AuthService } from "~~/services/AuthService";
 import Config from "~~/services/Config";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
@@ -12,6 +11,7 @@ export const SourcesStore = defineStore("SourcesStore", {
     sources: [],
     selectedIndex: -1,
     sourceCounts: [],
+    savedCounts: [],
   }),
 
   getters: {},
@@ -45,7 +45,8 @@ export const SourcesStore = defineStore("SourcesStore", {
           const soucesStr = JSON.stringify(sourcesData);
           if (this.sourcesStr === soucesStr) {
             this.checkVisibility();
-            this.assignCounts();
+            assignCounts(this.sources, this.sourceCounts, "unreadCount");
+            assignCounts(this.sources, this.savedCounts, "savedCount");
             return this.fetchCounts();
           }
           this.sourcesStr = soucesStr;
@@ -58,6 +59,7 @@ export const SourcesStore = defineStore("SourcesStore", {
             displayName: "All",
             labelName: "",
             unreadCount: 0,
+            savedCount: 0,
             isCollapsed: false,
             isVisible: true,
           });
@@ -83,6 +85,7 @@ export const SourcesStore = defineStore("SourcesStore", {
                     labelName: sourceData.labelName,
                     displayName: labelSplit[labelSplit.length - 1],
                     unreadCount: 0,
+                    savedCount: 0,
                     isCollapsed: PreferencesLabels.isCollapsed(sourceData.labelName),
                     isVisible: false,
                   });
@@ -93,6 +96,7 @@ export const SourcesStore = defineStore("SourcesStore", {
                     labelName: labelName,
                     displayName: labelSplit[j],
                     unreadCount: 0,
+                    savedCount: 0,
                     isCollapsed: PreferencesLabels.isCollapsed(labelName),
                     isVisible: false,
                   });
@@ -109,12 +113,14 @@ export const SourcesStore = defineStore("SourcesStore", {
               labelName: sourceData.labelName || "",
               displayName: sourceData.sourceName,
               unreadCount: 0,
+              savedCount: 0,
               isCollapsed: false,
               isVisible: false,
             });
           }
           this.sources = sourcesTmp as never[];
-          this.assignCounts();
+          assignCounts(this.sources, this.sourceCounts, "unreadCount");
+          assignCounts(this.sources, this.savedCounts, "savedCount");
           this.checkVisibility();
           return this.fetchCounts();
         })
@@ -125,40 +131,18 @@ export const SourcesStore = defineStore("SourcesStore", {
         .get(`${(await Config.get()).SERVER_URL}/sources/labels/counts/unread`, await AuthService.getAuthHeader())
         .then((res) => {
           this.sourceCounts = res.data.counts;
-          this.assignCounts();
+          assignCounts(this.sources, this.sourceCounts, "unreadCount");
+        })
+        .catch(handleError);
+      await axios
+        .get(`${(await Config.get()).SERVER_URL}/sources/labels/counts/saved`, await AuthService.getAuthHeader())
+        .then((res) => {
+          this.savedCounts = res.data.counts;
+          assignCounts(this.sources, this.savedCounts, "savedCount");
         })
         .catch(handleError);
     },
-    assignCounts(index = 0) {
-      if (index >= this.sources.length) {
-        return;
-      }
-      const source: any = this.sources[index];
-      if (!source.isLabel) {
-        const foundCount = find(this.sourceCounts, { sourceId: source.sourceId });
-        if (foundCount) {
-          source.unreadCount = foundCount.unreadCount;
-        } else {
-          source.unreadCount = 0;
-        }
-        this.assignCounts(index + 1);
-        return;
-      }
-      let nextIteration = index + 1;
-      let count = 0;
-      while (nextIteration < this.sources.length) {
-        const sourceNext = this.sources[nextIteration] as any;
-        if (!sourceNext.isLabel && sourceNext.labelName.indexOf(source.labelName) === 0) {
-          const sourceCounNext = find(this.sourceCounts, { sourceId: sourceNext.sourceId });
-          if (sourceCounNext) {
-            count += sourceCounNext.unreadCount;
-          }
-        }
-        nextIteration++;
-      }
-      source.unreadCount = count;
-      this.assignCounts(index + 1);
-    },
+
     toggleLabelCollapsed(index: number) {
       const source = this.sources[index] as any;
       if (source.isLabel && !source.isRoot) {
@@ -188,4 +172,35 @@ export const SourcesStore = defineStore("SourcesStore", {
 
 if (import.meta.hot) {
   import.meta.hot.accept(acceptHMRUpdate(SourcesStore, import.meta.hot));
+}
+
+function assignCounts(sources: any[], counts: any[], field: string, index = 0) {
+  if (index >= sources.length) {
+    return;
+  }
+  const source: any = sources[index];
+  if (!source.isLabel) {
+    const foundCount = find(counts, { sourceId: source.sourceId });
+    if (foundCount) {
+      source[field] = foundCount[field];
+    } else {
+      source[field] = 0;
+    }
+    assignCounts(sources, counts, field, index + 1);
+    return;
+  }
+  let nextIteration = index + 1;
+  let count = 0;
+  while (nextIteration < sources.length) {
+    const sourceNext = sources[nextIteration] as any;
+    if (!sourceNext.isLabel && sourceNext.labelName.indexOf(source.labelName) === 0) {
+      const sourceCounNext = find(counts, { sourceId: sourceNext.sourceId });
+      if (sourceCounNext) {
+        count += sourceCounNext[field];
+      }
+    }
+    nextIteration++;
+  }
+  source[field] = count;
+  assignCounts(sources, counts, field, index + 1);
 }

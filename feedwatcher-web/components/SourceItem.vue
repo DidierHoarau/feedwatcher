@@ -9,7 +9,6 @@
       <i v-else class="bi bi-envelope source-action" v-on:click="markReadStatus('read')"></i>
 
       <br />
-      <br />
 
       <i v-if="isSaved" class="bi bi-bookmark-check-fill source-action" v-on:click="unSaveItem()"></i>
       <i v-else class="bi bi-bookmark-plus source-action" v-on:click="saveItem()"></i>

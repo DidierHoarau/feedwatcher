@@ -134,4 +134,7 @@ kbd i {
 .label-list {
   margin-bottom: 2em;
 }
+button {
+  margin-right: 1em;
+}
 </style>

@@ -18,6 +18,7 @@ export class ItemsRoutes {
         filterStatus: SourceItemStatus;
         labelName: string;
         sourceId: string;
+        isSaved: boolean;
       };
     }
 
@@ -39,6 +40,8 @@ export class ItemsRoutes {
       const searchOptions = new SearchItemsOptions();
       searchOptions.page = req.body.page || 1;
       searchOptions.filterStatus = req.body.filterStatus || SourceItemStatus.unread;
+      searchOptions.isSaved = req.body.isSaved ? true : false;
+      console.log(searchOptions);
 
       if (req.body.searchCriteria === "labelName") {
         const searchItemsResult = await SearchItemsData.listItemsForLabel(
@@ -65,15 +68,6 @@ export class ItemsRoutes {
 
       if (req.body.searchCriteria === "all") {
         const searchItemsResult = await SearchItemsData.listForUser(
-          StandardTracer.getSpanFromRequest(req),
-          userSession.userId,
-          searchOptions
-        );
-        return res.status(200).send(searchItemsResult);
-      }
-
-      if (req.body.searchCriteria === "lists") {
-        const searchItemsResult = await SearchItemsData.listItemsForLists(
           StandardTracer.getSpanFromRequest(req),
           userSession.userId,
           searchOptions
