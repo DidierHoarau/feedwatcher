@@ -10,7 +10,7 @@ export class Config implements ConfigInterface {
   public readonly CONFIG_FILE: string = "config.json";
   public readonly SERVICE_ID = "feedwatcher-server";
   public VERSION = 1;
-  public readonly API_PORT: number = 8080;
+  public readonly API_PORT: number = 8081;
   public JWT_VALIDITY_DURATION: number = 3 * 31 * 24 * 3600;
   public CORS_POLICY_ORIGIN: string;
   public DATA_DIR = process.env.DATA_DIR || "/data";
