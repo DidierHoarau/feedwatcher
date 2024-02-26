@@ -75,8 +75,11 @@ export class SqlDbutils {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public static querySQL(context: Span, sql: string, params = []): Promise<any[]> {
+  public static querySQL(context: Span, sql: string, params = [], debug = false): Promise<any[]> {
     const span = StandardTracer.startSpan("SqlDbutils_querySQL", context);
+    if (debug) {
+      console.log(sql);
+    }
     return new Promise((resolve, reject) => {
       database.all(sql, params, (error, rows) => {
         span.end();

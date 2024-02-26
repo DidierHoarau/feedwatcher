@@ -140,7 +140,7 @@ export class SourcesData {
     span.end();
     Timeout.wait(1000).finally(() => {
       if (cacheInProgress[userId] > 1) {
-        const newSpan = StandardTracer.startSpan("Scheduler_start");
+        const newSpan = StandardTracer.startSpan("SourcesData_invalidateUserCache");
         cacheInProgress[userId] = 0;
         SourcesData.invalidateUserCache(context, userId).finally(() => {
           newSpan.end();
