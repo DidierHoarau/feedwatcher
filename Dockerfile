@@ -26,7 +26,7 @@ RUN apk add --no-cache nginx && \
     npm install -g pm2
     
 COPY docker-config/default.conf /etc/nginx/http.d/default.conf
-COPY docker-config/ecosystem.config.js /opt/app/cloudphotomanager/ecosystem.config.js
+COPY docker-config/ecosystem.config.js /opt/app/feedwatcher/ecosystem.config.js
 
 COPY --from=builder /opt/src/feedwatcher-server/node_modules /opt/app/feedwatcher/node_modules
 COPY --from=builder /opt/src/feedwatcher-server/dist /opt/app/feedwatcher/dist
