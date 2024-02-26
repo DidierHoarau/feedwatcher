@@ -2,11 +2,14 @@ import { Span } from "@opentelemetry/sdk-trace-base";
 import { Source } from "../model/Source";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
+import { Timeout } from "../utils-std-ts/Timeout";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cacheUserCounts: any = {};
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cacheUserSavedCounts: any = {};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const cacheInProgress: any = {};
 
 export class SourcesData {
   //
@@ -35,11 +38,12 @@ export class SourcesData {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static async listCountsForUser(context: Span, userId: string, skipCache = false): Promise<any[]> {
     const span = StandardTracer.startSpan("SourcesData_listCountsForUser", context);
-    if (cacheUserCounts.userId && !skipCache) {
+    if (cacheUserCounts[userId] && !skipCache) {
+      span.setAttribute("cached", true);
       span.end();
-      return cacheUserCounts.userId;
+      return cacheUserCounts[userId];
     }
-    cacheUserCounts.userId = await SqlDbutils.querySQL(
+    cacheUserCounts[userId] = await SqlDbutils.querySQL(
       span,
       "SELECT COUNT(id) as unreadCount, sourceId FROM sources_items " +
         "WHERE sourceId IN (" +
@@ -51,17 +55,18 @@ export class SourcesData {
       [userId, "unread"]
     );
     span.end();
-    return cacheUserCounts.userId;
+    return cacheUserCounts[userId];
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static async listCountsSavedForUser(context: Span, userId: string, skipCache = false): Promise<any[]> {
     const span = StandardTracer.startSpan("SourcesData_listCountsForUser", context);
-    if (cacheUserSavedCounts.userId && !skipCache) {
+    if (cacheUserSavedCounts[userId] && !skipCache) {
+      span.setAttribute("cached", true);
       span.end();
-      return cacheUserSavedCounts.userId;
+      return cacheUserSavedCounts[userId];
     }
-    cacheUserSavedCounts.userId = await SqlDbutils.querySQL(
+    cacheUserSavedCounts[userId] = await SqlDbutils.querySQL(
       span,
       "SELECT COUNT(id) as savedCount, sourceId  " +
         "FROM sources_items " +
@@ -76,7 +81,7 @@ export class SourcesData {
       [userId]
     );
     span.end();
-    return cacheUserSavedCounts.userId;
+    return cacheUserSavedCounts[userId];
   }
 
   public static async listAll(context: Span): Promise<Source[]> {
@@ -122,10 +127,28 @@ export class SourcesData {
   }
 
   public static async invalidateUserCache(context: Span, userId: string): Promise<void> {
+    if (cacheInProgress[userId]) {
+      cacheInProgress[userId] = 0;
+    }
+    if (cacheInProgress[userId] > 0) {
+      cacheInProgress[userId]++;
+      return;
+    }
     const span = StandardTracer.startSpan("SourcesData_invalidateUserCache", context);
     this.listCountsForUser(span, userId, true);
     this.listCountsSavedForUser(span, userId, true);
     span.end();
+    Timeout.wait(1000).finally(() => {
+      if (cacheInProgress[userId] > 1) {
+        const newSpan = StandardTracer.startSpan("Scheduler_start");
+        cacheInProgress[userId] = 0;
+        SourcesData.invalidateUserCache(context, userId).finally(() => {
+          newSpan.end();
+        });
+      } else {
+        cacheInProgress[userId] = 0;
+      }
+    });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

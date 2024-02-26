@@ -20,6 +20,7 @@ export class SearchItemsData {
       span,
       "SELECT sources_items.*, sources.name as sourceName " +
         "FROM sources_items, sources " +
+        getSavedFromQuery(searchOptions) +
         "WHERE sources.userId = ? " +
         getStatusFilterQuery(searchOptions) +
         getSavedFilterQuery(searchOptions) +
@@ -43,6 +44,7 @@ export class SearchItemsData {
       span,
       "SELECT sources_items.*, sources.name as sourceName " +
         "FROM sources_items, sources " +
+        getSavedFromQuery(searchOptions) +
         "WHERE sources_items.sourceId = ? " +
         "  AND sources.id = ? " +
         getAgeFilterQuery(searchOptions) +
@@ -69,16 +71,18 @@ export class SearchItemsData {
       span,
       "SELECT sources_items.*, sources.name AS sourceName " +
         "FROM sources_items, sources " +
+        getSavedFromQuery(searchOptions) +
         "WHERE sources_items.sourceId IN ( " +
         "    SELECT sources.id " +
         "    FROM sources, sources_labels " +
-        "    WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name LIKE ? " +
+        "    WHERE sources.userId = ? " +
+        "          AND sources_labels.sourceId = sources.id AND sources_labels.name LIKE ? " +
         "  ) " +
+        getSavedFilterQuery(searchOptions) +
         getStatusFilterQuery(searchOptions) +
         getAgeFilterQuery(searchOptions) +
         "  AND sources.userId = ? " +
         "  AND sources_items.sourceId = sources.id " +
-        getSavedFilterQuery(searchOptions) +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
       [userId, `${label}%`, userId]
@@ -125,7 +129,14 @@ function getAgeFilterQuery(searchOptions: SearchItemsOptions): string {
 
 function getSavedFilterQuery(searchOptions: SearchItemsOptions): string {
   if (searchOptions.isSaved) {
-    return "  AND sources_items.id in (SELECT itemId FROM lists_items) ";
+    return "  AND sources_items.id = lists_items.itemId ";
+  }
+  return "";
+}
+
+function getSavedFromQuery(searchOptions: SearchItemsOptions): string {
+  if (searchOptions.isSaved) {
+    return ", lists_items ";
   }
   return "";
 }
