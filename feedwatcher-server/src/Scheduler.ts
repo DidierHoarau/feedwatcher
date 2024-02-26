@@ -15,7 +15,7 @@ export class Scheduler {
   public static async init(context: Span, configIn: Config) {
     const span = StandardTracer.startSpan("Scheduler_init", context);
     config = configIn;
-    // Scheduler.startSchedule();
+    Scheduler.startSchedule();
     span.end();
   }
 
