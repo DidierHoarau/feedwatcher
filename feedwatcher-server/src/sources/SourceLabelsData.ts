@@ -3,6 +3,7 @@ import { Source } from "../model/Source";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
 import { v4 as uuidv4 } from "uuid";
+import { SourcesData } from "./SourcesData";
 
 export class SourceLabelsData {
   //
@@ -39,6 +40,8 @@ export class SourceLabelsData {
         JSON.stringify({}),
       ]);
     }
+    const source = await SourcesData.get(span, sourceId);
+    SourcesData.invalidateUserCache(span, source.userId);
     span.end();
   }
 

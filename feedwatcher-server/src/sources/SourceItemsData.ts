@@ -3,6 +3,7 @@ import { SourceItem } from "../model/SourceItem";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
+import { SourcesData } from "./SourcesData";
 
 export class SourceItemsData {
   //
@@ -43,6 +44,8 @@ export class SourceItemsData {
         JSON.stringify(sourceItem.info),
       ]
     );
+    const source = await SourcesData.get(span, sourceItem.sourceId);
+    SourcesData.invalidateUserCache(span, await source.userId);
     span.end();
   }
 
@@ -63,12 +66,15 @@ export class SourceItemsData {
         sourceItem.id,
       ]
     );
+    const source = await SourcesData.get(span, sourceItem.sourceId);
+    SourcesData.invalidateUserCache(span, source.userId);
     span.end();
   }
 
-  public static async delete(context: Span, sourceItemId: string): Promise<void> {
+  public static async delete(context: Span, userId: string, sourceItemId: string): Promise<void> {
     const span = StandardTracer.startSpan("SourceItemsData_delete", context);
     await SqlDbutils.execSQL(span, "DELETE FROM sources_items WHERE id = ?", [sourceItemId]);
+    SourcesData.invalidateUserCache(span, userId);
     span.end();
   }
 
@@ -99,6 +105,7 @@ export class SourceItemsData {
         " )",
       [status, userId]
     );
+    SourcesData.invalidateUserCache(span, userId);
     span.end();
   }
 

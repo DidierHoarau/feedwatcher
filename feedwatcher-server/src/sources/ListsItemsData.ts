@@ -3,6 +3,7 @@ import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
 import { SourceItem } from "../model/SourceItem";
 import { ListItem } from "../model/ListItem";
+import { SourcesData } from "./SourcesData";
 
 export class ListsItemsData {
   //
@@ -15,12 +16,14 @@ export class ListsItemsData {
       listItem.name,
       JSON.stringify(listItem.info),
     ]);
+    SourcesData.invalidateUserCache(span, listItem.userId);
     span.end();
   }
 
   public static async deleteForUser(context: Span, itemId: string, userId: string): Promise<void> {
     const span = StandardTracer.startSpan("ListsItemsData_deleteForUser", context);
     await SqlDbutils.execSQL(span, "DELETE FROM lists_items WHERE itemId = ? AND userId = ?", [itemId, userId]);
+    SourcesData.invalidateUserCache(span, userId);
     span.end();
   }
 
