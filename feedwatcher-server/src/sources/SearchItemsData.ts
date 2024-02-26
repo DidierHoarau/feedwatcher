@@ -42,7 +42,7 @@ export class SearchItemsData {
     const sourceItemsRaw = await SqlDbutils.querySQL(
       span,
       "SELECT sources_items.*, sources.name as sourceName " +
-        "FROM sources_items, " +
+        "FROM sources_items " +
         "JOIN sources ON sources_items.sourceId = sources.id " +
         getSavedFromQuery(searchOptions) +
         "WHERE sources_items.sourceId = ? " +
@@ -68,7 +68,8 @@ export class SearchItemsData {
     const sourceItemsRaw = await SqlDbutils.querySQL(
       span,
       "SELECT sources_items.*, sources.name AS sourceName " +
-        "FROM sources_items, sources " +
+        "FROM sources_items " +
+        "JOIN sources ON sources_items.sourceId = sources.id " +
         getSavedFromQuery(searchOptions) +
         "WHERE sources_items.sourceId IN ( " +
         "    SELECT sources.id " +
@@ -79,7 +80,6 @@ export class SearchItemsData {
         getStatusFilterQuery(searchOptions) +
         getAgeFilterQuery(searchOptions) +
         "  AND sources.userId = ? " +
-        "  AND sources_items.sourceId = sources.id " +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
       [userId, `${label}%`, userId]

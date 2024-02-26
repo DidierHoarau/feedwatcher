@@ -84,6 +84,7 @@ export class SqlDbutils {
       database.all(sql, params, (error, rows) => {
         span.end();
         if (error) {
+          logger.error(`SQL ERROR: ${sql}`);
           reject(error);
         } else {
           resolve(rows);
