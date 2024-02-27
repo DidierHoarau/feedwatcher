@@ -19,11 +19,11 @@ export class SearchItemsData {
     const sourceItemsRaw = await SqlDbutils.querySQL(
       span,
       "SELECT sources_items.*, sources.name as sourceName " +
-        "FROM sources_items, sources " +
+        "FROM sources_items " +
+        "JOIN sources ON sources_items.sourceId = sources.id " +
+        getSavedFromQuery(searchOptions) +
         "WHERE sources.userId = ? " +
         getStatusFilterQuery(searchOptions) +
-        getSavedFilterQuery(searchOptions) +
-        "  AND sources.id = sources_items.sourceId  " +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
       [userId]
@@ -42,13 +42,13 @@ export class SearchItemsData {
     const sourceItemsRaw = await SqlDbutils.querySQL(
       span,
       "SELECT sources_items.*, sources.name as sourceName " +
-        "FROM sources_items, sources " +
+        "FROM sources_items " +
+        "JOIN sources ON sources_items.sourceId = sources.id " +
+        getSavedFromQuery(searchOptions) +
         "WHERE sources_items.sourceId = ? " +
         "  AND sources.id = ? " +
         getAgeFilterQuery(searchOptions) +
         getStatusFilterQuery(searchOptions) +
-        getSavedFilterQuery(searchOptions) +
-        "  AND sources.id = sources_items.sourceId " +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
       [sourceId, sourceId]
@@ -68,17 +68,18 @@ export class SearchItemsData {
     const sourceItemsRaw = await SqlDbutils.querySQL(
       span,
       "SELECT sources_items.*, sources.name AS sourceName " +
-        "FROM sources_items, sources " +
+        "FROM sources_items " +
+        "JOIN sources ON sources_items.sourceId = sources.id " +
+        getSavedFromQuery(searchOptions) +
         "WHERE sources_items.sourceId IN ( " +
         "    SELECT sources.id " +
         "    FROM sources, sources_labels " +
-        "    WHERE sources.userId = ? AND sources_labels.sourceId = sources.id AND sources_labels.name LIKE ? " +
+        "    WHERE sources.userId = ? " +
+        "          AND sources_labels.sourceId = sources.id AND sources_labels.name LIKE ? " +
         "  ) " +
         getStatusFilterQuery(searchOptions) +
         getAgeFilterQuery(searchOptions) +
         "  AND sources.userId = ? " +
-        "  AND sources_items.sourceId = sources.id " +
-        getSavedFilterQuery(searchOptions) +
         "ORDER BY datePublished DESC " +
         getPageQuery(searchOptions),
       [userId, `${label}%`, userId]
@@ -123,9 +124,9 @@ function getAgeFilterQuery(searchOptions: SearchItemsOptions): string {
   return "";
 }
 
-function getSavedFilterQuery(searchOptions: SearchItemsOptions): string {
+function getSavedFromQuery(searchOptions: SearchItemsOptions): string {
   if (searchOptions.isSaved) {
-    return "  AND sources_items.id in (SELECT itemId FROM lists_items) ";
+    return " JOIN lists_items ON sources_items.id = lists_items.itemId ";
   }
   return "";
 }

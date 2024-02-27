@@ -42,7 +42,7 @@ export class RulesExecution {
           const itemList = await RulesExecution.getTargetItemList(span, rules.userId, ruleInfo, rulePattern);
           for (const item of itemList) {
             if (minimatch(item.title, rulePattern.pattern)) {
-              await SourceItemsData.delete(span, item.id);
+              await SourceItemsData.delete(span, rules.userId, item.id);
               rulesDelete++;
             }
           }
