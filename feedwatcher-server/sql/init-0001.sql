@@ -21,10 +21,3 @@ CREATE TABLE IF NOT EXISTS sources_items (
     datePublished VARCHAR(100) NOT NULL,
     info TEXT NOT NULL
 );
-
-CREATE TABLE IF NOT EXISTS sources_labels (
-    id VARCHAR(50) NOT NULL,
-    sourceId VARCHAR(50) NOT NULL,
-    name VARCHAR(200),
-    info TEXT NOT NULL
-);
