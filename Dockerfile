@@ -1,5 +1,5 @@
 # BUILD
-FROM node:20-alpine as builder
+FROM node:22-alpine as builder
 
 WORKDIR /opt/src
 
@@ -18,7 +18,7 @@ RUN cd feedwatcher-web && \
     npm run generate
 
 # RUN
-FROM node:20-alpine
+FROM node:22-alpine
 
 COPY --from=builder /opt/src/feedwatcher-server/node_modules /opt/app/feedwatcher/node_modules
 COPY --from=builder /opt/src/feedwatcher-server/dist /opt/app/feedwatcher/dist

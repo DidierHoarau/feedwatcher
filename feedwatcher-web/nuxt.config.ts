@@ -9,6 +9,10 @@ export default defineNuxtConfig({
       meta: [
         { name: "description", content: "FeedWatcher" },
         { name: "theme-color", content: "#212121" },
+        {
+          name: "viewport",
+          content: "width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no",
+        },
       ],
       link: [
         { rel: "manifest", href: "/manifest.json" },

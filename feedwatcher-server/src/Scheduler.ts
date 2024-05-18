@@ -29,7 +29,8 @@ export class Scheduler {
           !source.info.dateFetched ||
           new Date().getTime() - new Date(source.info.dateFetched).getTime() > config.SOURCE_FETCH_FREQUENCY
         ) {
-          await Processors.fetchSourceItems(span, source);
+          // TMP
+          // await Processors.fetchSourceItems(span, source);
         }
       }
 
