@@ -86,8 +86,7 @@ async function execRuleForUser(
       "WHERE sources_items.sourceId IN ( SELECT id FROM sources WHERE userId = ? ) " +
       getAgeFilterQuery(searchOptions) +
       getPatternFilterQuery(searchOptions),
-    [userId],
-    true
+    [userId]
   );
   span.end();
 }
@@ -105,8 +104,7 @@ async function execRuleForSource(
       "WHERE sourceId = ? " +
       getAgeFilterQuery(searchOptions) +
       getPatternFilterQuery(searchOptions),
-    [sourceId],
-    true
+    [sourceId]
   );
   span.end();
 }
@@ -130,8 +128,7 @@ async function execRuleForLabel(
       "  ) " +
       getAgeFilterQuery(searchOptions) +
       getPatternFilterQuery(searchOptions),
-    [userId, `${label}%`],
-    true
+    [userId, `${label}%`]
   );
   span.end();
 }
