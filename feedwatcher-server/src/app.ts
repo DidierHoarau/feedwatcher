@@ -3,7 +3,6 @@ import * as path from "path";
 import { watchFile } from "fs-extra";
 import { Config } from "./Config";
 import { Logger } from "./utils-std-ts/Logger";
-import { StandardTracer } from "./utils-std-ts/StandardTracer";
 import { UsersRoutes } from "./users/UsersRoutes";
 import { Auth } from "./users/Auth";
 import { StandardTracerApi } from "./StandardTracerApi";
@@ -18,6 +17,7 @@ import { SourcesIdRoutes } from "./sources/SourcesIdRoutes";
 import { SourcesLabelsRoutes } from "./sources/SourcesLabelsRoutes";
 import { SourcesImportRoutes } from "./sources/SourcesImportRoutes";
 import { ListsItemsRoutes } from "./sources/ListsItemsRoutes";
+import { StandardTracerInitTelemetry, StandardTracerStartSpan } from "./utils-std-ts/StandardTracer";
 
 const logger = new Logger("app");
 
@@ -32,9 +32,9 @@ Promise.resolve().then(async () => {
     config.reload();
   });
 
-  StandardTracer.initTelemetry(config);
+  StandardTracerInitTelemetry(config);
 
-  const span = StandardTracer.startSpan("init");
+  const span = StandardTracerStartSpan("init");
 
   await SqlDbutils.init(span, config);
   await Auth.init(span, config);

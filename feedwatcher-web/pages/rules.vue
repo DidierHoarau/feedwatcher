@@ -21,7 +21,7 @@
           <div class="rule-separator"></div>
           <div>
             <label for="pattern">
-              Pattern
+              Pattern (glob pattern)
               <input type="text" v-model="rule.pattern" />
             </label>
             <label for="firstname">
@@ -39,7 +39,7 @@
           <div class="rule-separator"></div>
           <div>
             <label for="pattern">
-              Pattern
+              Pattern (glob pattern)
               <input type="text" v-model="rule.pattern" />
             </label>
             <label for="firstname">

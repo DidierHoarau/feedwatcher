@@ -1,8 +1,8 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../users/Auth";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { RulesData } from "./RulesData";
 import { Rules } from "../model/Rules";
+import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
 
 export class RulesRoutes {
   //
@@ -13,7 +13,7 @@ export class RulesRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const rules = await RulesData.listForUser(StandardTracer.getSpanFromRequest(req), userSession.userId);
+      const rules = await RulesData.listForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
       return res.status(200).send({ rules });
     });
 
@@ -29,7 +29,7 @@ export class RulesRoutes {
       }
       const rules = Rules.fromJson(req.body.rules);
       rules.userId = userSession.userId;
-      await RulesData.update(StandardTracer.getSpanFromRequest(req), rules);
+      await RulesData.update(StandardTracerGetSpanFromRequest(req), rules);
       return res.status(201).send({});
     });
   }

@@ -1,14 +1,14 @@
 import { FastifyInstance } from "fastify";
 import { Auth } from "../users/Auth";
 import { Processors } from "./Processors";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
+import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
 
 export class ProcessorsRoutes {
   //
   public async getRoutes(fastify: FastifyInstance): Promise<void> {
     //
     fastify.get("/", async (req, res) => {
-      res.status(200).send(await Processors.getInfos(StandardTracer.getSpanFromRequest(req)));
+      res.status(200).send(await Processors.getInfos(StandardTracerGetSpanFromRequest(req)));
     });
 
     fastify.get("/status", async (req, res) => {
@@ -16,7 +16,7 @@ export class ProcessorsRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      res.status(200).send(Processors.getUserProcessorInfo(StandardTracer.getSpanFromRequest(req), userSession.userId));
+      res.status(200).send(Processors.getUserProcessorInfo(StandardTracerGetSpanFromRequest(req), userSession.userId));
     });
   }
 }

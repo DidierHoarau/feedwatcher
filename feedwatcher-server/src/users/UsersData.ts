@@ -1,12 +1,12 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { User } from "../model/User";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
+import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
 
 export class UsersData {
   //
   public static async get(context: Span, id: string): Promise<User> {
-    const span = StandardTracer.startSpan("UsersData_get", context);
+    const span = StandardTracerStartSpan("UsersData_get", context);
     const usersRaw = await SqlDbutils.querySQL(span, "SELECT * FROM users WHERE id=?", [id]);
     let user: User = null;
     if (usersRaw.length > 0) {
@@ -17,7 +17,7 @@ export class UsersData {
   }
 
   public static async getByName(context: Span, name: string): Promise<User> {
-    const span = StandardTracer.startSpan("UsersData_getByName", context);
+    const span = StandardTracerStartSpan("UsersData_getByName", context);
     const usersRaw = await SqlDbutils.querySQL(span, "SELECT * FROM users WHERE name=?", [name]);
     let user: User = null;
     if (usersRaw.length > 0) {
@@ -28,7 +28,7 @@ export class UsersData {
   }
 
   public static async list(context: Span): Promise<User[]> {
-    const span = StandardTracer.startSpan("UsersData_list", context);
+    const span = StandardTracerStartSpan("UsersData_list", context);
     const usersRaw = await SqlDbutils.querySQL(span, "SELECT * FROM users");
     const users = [];
     for (const userRaw of usersRaw) {
@@ -39,7 +39,7 @@ export class UsersData {
   }
 
   public static async add(context: Span, user: User): Promise<void> {
-    const span = StandardTracer.startSpan("UsersData_add", context);
+    const span = StandardTracerStartSpan("UsersData_add", context);
     await SqlDbutils.execSQL(span, "INSERT INTO users (id,name,passwordEncrypted) VALUES (?, ?, ?)", [
       user.id,
       user.name,
@@ -49,7 +49,7 @@ export class UsersData {
   }
 
   public static async update(context: Span, user: User): Promise<void> {
-    const span = StandardTracer.startSpan("UsersData_update", context);
+    const span = StandardTracerStartSpan("UsersData_update", context);
     await SqlDbutils.execSQL(span, "UPDATE users SET passwordEncrypted = ? WHERE id = ? ", [
       user.passwordEncrypted,
       user.id,

@@ -4,9 +4,9 @@ import * as opml from "opml";
 import { find } from "lodash";
 import { Logger } from "../utils-std-ts/Logger";
 import { Source } from "../model/Source";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { SourceLabelsData } from "../sources/SourceLabelsData";
+import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
 
 const logger = new Logger("SourcesImportRoutes");
 
@@ -26,7 +26,7 @@ export class SourcesImportRoutes {
         const opmlData = await opmlLoad(opmlText);
         const sourcesOpml = [];
         await opmlProcessSub(
-          StandardTracer.getSpanFromRequest(req),
+          StandardTracerGetSpanFromRequest(req),
           opmlData.opml.body.subs,
           "",
           sourcesOpml,
@@ -45,7 +45,7 @@ export class SourcesImportRoutes {
         return res.status(403).send({ error: "Access Denied" });
       }
       const sourceLabels = await SourceLabelsData.listForUser(
-        StandardTracer.getSpanFromRequest(req),
+        StandardTracerGetSpanFromRequest(req),
         userSession.userId
       );
       const sourcesOutlines = { opml: { head: { title: "Feedwatcher Source Export" }, body: { subs: [] } } };

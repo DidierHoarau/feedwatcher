@@ -3,7 +3,7 @@ import { Config } from "../Config";
 import * as fs from "fs-extra";
 import { Logger } from "./Logger";
 import { Span } from "@opentelemetry/sdk-trace-base";
-import { StandardTracer } from "./StandardTracer";
+import { StandardTracerStartSpan } from "./StandardTracer";
 
 const logger = new Logger("SqlDbutils");
 const SQL_DIR = `${__dirname}/../../sql`;
@@ -13,7 +13,7 @@ let database;
 export class SqlDbutils {
   //
   public static async init(context: Span, config: Config): Promise<void> {
-    const span = StandardTracer.startSpan("SqlDbutils_init", context);
+    const span = StandardTracerStartSpan("SqlDbutils_init", context);
     await fs.ensureDir(config.DATA_DIR);
     database = new Database(`${config.DATA_DIR}/database.db`);
     await SqlDbutils.execSQLFile(span, `${SQL_DIR}/init-0000.sql`);
@@ -46,7 +46,7 @@ export class SqlDbutils {
   }
 
   public static execSQL(context: Span, sql: string, params = []): Promise<void> {
-    const span = StandardTracer.startSpan("SqlDbutils_execSQL", context);
+    const span = StandardTracerStartSpan("SqlDbutils_execSQL", context);
     return new Promise((resolve, reject) => {
       database.run(sql, params, (error) => {
         span.end();
@@ -60,7 +60,7 @@ export class SqlDbutils {
   }
 
   public static async execSQLFile(context: Span, filename: string): Promise<void> {
-    const span = StandardTracer.startSpan("SqlDbutils_execSQLFile", context);
+    const span = StandardTracerStartSpan("SqlDbutils_execSQLFile", context);
     const sql = (await fs.readFile(filename)).toString();
     return new Promise((resolve, reject) => {
       database.exec(sql, (error) => {
@@ -76,7 +76,7 @@ export class SqlDbutils {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static querySQL(context: Span, sql: string, params = [], debug = false): Promise<any[]> {
-    const span = StandardTracer.startSpan("SqlDbutils_querySQL", context);
+    const span = StandardTracerStartSpan("SqlDbutils_querySQL", context);
     if (debug) {
       console.log(sql);
     }

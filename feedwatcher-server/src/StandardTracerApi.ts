@@ -2,12 +2,12 @@ import { FastifyInstance } from "fastify";
 import { SemanticAttributes } from "@opentelemetry/semantic-conventions";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { Config } from "./Config";
-import { StandardTracer } from "./utils-std-ts/StandardTracer";
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { defaultTextMapGetter, ROOT_CONTEXT } from "@opentelemetry/api";
 import { W3CTraceContextPropagator } from "@opentelemetry/core";
 import { api } from "@opentelemetry/sdk-node";
 import { Logger } from "./utils-std-ts/Logger";
+import { StandardTracerStartSpan } from "./utils-std-ts/StandardTracer";
 
 const propagator = new W3CTraceContextPropagator();
 const logger = new Logger("StandardTracerApi");
@@ -27,7 +27,7 @@ export class StandardTracerApi {
       }
       const callerContext = propagator.extract(ROOT_CONTEXT, req.headers, defaultTextMapGetter);
       api.context.with(callerContext, () => {
-        const span = StandardTracer.startSpan(spanName);
+        const span = StandardTracerStartSpan(spanName);
         span.setAttribute(SemanticAttributes.HTTP_METHOD, req.method);
         span.setAttribute(SemanticAttributes.HTTP_URL, urlName);
         /* eslint-disable-next-line @typescript-eslint/no-explicit-any */

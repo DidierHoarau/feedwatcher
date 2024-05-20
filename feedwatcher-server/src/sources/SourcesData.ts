@@ -1,8 +1,8 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Source } from "../model/Source";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
-import { Timeout } from "../utils-std-ts/Timeout";
+import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
+import { TimeoutWait } from "../utils-std-ts/Timeout";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cacheUserCounts: any = {};
@@ -14,7 +14,7 @@ const cacheInProgress: any = {};
 export class SourcesData {
   //
   public static async get(context: Span, sourceId: string): Promise<Source> {
-    const span = StandardTracer.startSpan("SourcesData_get", context);
+    const span = StandardTracerStartSpan("SourcesData_get", context);
     const sourceRaw = await SqlDbutils.querySQL(span, "SELECT * FROM sources WHERE id = ?", [sourceId]);
     let source: Source = null;
     if (sourceRaw.length > 0) {
@@ -25,7 +25,7 @@ export class SourcesData {
   }
 
   public static async listForUser(context: Span, userId: string): Promise<Source[]> {
-    const span = StandardTracer.startSpan("SourcesData_listForUser", context);
+    const span = StandardTracerStartSpan("SourcesData_listForUser", context);
     const sourcesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM sources WHERE userId = '${userId}'`);
     const sources = [];
     for (const sourceRaw of sourcesRaw) {
@@ -37,7 +37,7 @@ export class SourcesData {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static async listCountsForUser(context: Span, userId: string, skipCache = false): Promise<any[]> {
-    const span = StandardTracer.startSpan("SourcesData_listCountsForUser", context);
+    const span = StandardTracerStartSpan("SourcesData_listCountsForUser", context);
     if (cacheUserCounts[userId] && !skipCache) {
       span.setAttribute("cached", true);
       span.end();
@@ -60,7 +60,7 @@ export class SourcesData {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static async listCountsSavedForUser(context: Span, userId: string, skipCache = false): Promise<any[]> {
-    const span = StandardTracer.startSpan("SourcesData_listCountsForUser", context);
+    const span = StandardTracerStartSpan("SourcesData_listCountsForUser", context);
     if (cacheUserSavedCounts[userId] && !skipCache) {
       span.setAttribute("cached", true);
       span.end();
@@ -85,7 +85,7 @@ export class SourcesData {
   }
 
   public static async listAll(context: Span): Promise<Source[]> {
-    const span = StandardTracer.startSpan("SourcesData_listAll", context);
+    const span = StandardTracerStartSpan("SourcesData_listAll", context);
     const sourcesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM sources`);
     const sources = [];
     for (const sourceRaw of sourcesRaw) {
@@ -96,7 +96,7 @@ export class SourcesData {
   }
 
   public static async add(context: Span, source: Source): Promise<void> {
-    const span = StandardTracer.startSpan("SourcesData_add", context);
+    const span = StandardTracerStartSpan("SourcesData_add", context);
     await SqlDbutils.querySQL(span, "INSERT INTO sources (id,userId,name,info) VALUES (?,?,?,?)", [
       source.id,
       source.userId,
@@ -107,7 +107,7 @@ export class SourcesData {
   }
 
   public static async update(context: Span, source: Source): Promise<void> {
-    const span = StandardTracer.startSpan("SourcesData_update", context);
+    const span = StandardTracerStartSpan("SourcesData_update", context);
     await SqlDbutils.execSQL(span, "UPDATE sources SET name = ?, info = ? WHERE id = ?", [
       source.name,
       JSON.stringify(source.info),
@@ -117,7 +117,7 @@ export class SourcesData {
   }
 
   public static async delete(context: Span, sourceId: string): Promise<void> {
-    const span = StandardTracer.startSpan("SourcesData_delete", context);
+    const span = StandardTracerStartSpan("SourcesData_delete", context);
     const source = await SourcesData.get(span, sourceId);
     await SqlDbutils.execSQL(span, "DELETE FROM sources WHERE id = ?", [sourceId]);
     await SqlDbutils.execSQL(span, "DELETE FROM sources_items WHERE sourceId = ?", [sourceId]);
@@ -134,13 +134,13 @@ export class SourcesData {
       cacheInProgress[userId]++;
       return;
     }
-    const span = StandardTracer.startSpan("SourcesData_invalidateUserCache", context);
+    const span = StandardTracerStartSpan("SourcesData_invalidateUserCache", context);
     this.listCountsForUser(span, userId, true);
     this.listCountsSavedForUser(span, userId, true);
     span.end();
-    Timeout.wait(1000).finally(() => {
+    TimeoutWait(1000).finally(() => {
       if (cacheInProgress[userId] > 1) {
-        const newSpan = StandardTracer.startSpan("SourcesData_invalidateUserCache");
+        const newSpan = StandardTracerStartSpan("SourcesData_invalidateUserCache");
         cacheInProgress[userId] = 0;
         SourcesData.invalidateUserCache(context, userId).finally(() => {
           newSpan.end();

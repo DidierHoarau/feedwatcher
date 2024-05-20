@@ -1,14 +1,14 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Source } from "../model/Source";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
 import { v4 as uuidv4 } from "uuid";
 import { SourcesData } from "./SourcesData";
+import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
 
 export class SourceLabelsData {
   //
   public static async listForUser(context: Span, userId: string): Promise<Source[]> {
-    const span = StandardTracer.startSpan("SourceLabelsData_listForUser", context);
+    const span = StandardTracerStartSpan("SourceLabelsData_listForUser", context);
     const sourceLabelsRaw = await SqlDbutils.querySQL(
       span,
       "SELECT sources_labels.name as labelName, " +
@@ -30,7 +30,7 @@ export class SourceLabelsData {
   }
 
   public static async setSourceLabels(context: Span, sourceId: string, labels: string[]): Promise<void> {
-    const span = StandardTracer.startSpan("SourceLabelsData_setSourceLabels", context);
+    const span = StandardTracerStartSpan("SourceLabelsData_setSourceLabels", context);
     await SqlDbutils.execSQL(span, "DELETE FROM sources_labels WHERE sourceId = ?", [sourceId]);
     for (const label of labels) {
       await SqlDbutils.querySQL(span, "INSERT INTO sources_labels (id,sourceId,name,info) VALUES (?,?,?,?)", [
@@ -47,7 +47,7 @@ export class SourceLabelsData {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static async getSourceLabels(context: Span, sourceId: string): Promise<any[]> {
-    const span = StandardTracer.startSpan("SourceLabelsData_getSourceLabels", context);
+    const span = StandardTracerStartSpan("SourceLabelsData_getSourceLabels", context);
     const labelsRaw = await SqlDbutils.querySQL(span, "SELECT * FROM sources_labels WHERE sourceId = ?", [sourceId]);
     const labels = [];
     for (const labelRaw of labelsRaw) {

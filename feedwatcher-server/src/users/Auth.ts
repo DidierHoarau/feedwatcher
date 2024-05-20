@@ -6,8 +6,8 @@ import { UserSession } from "../model/UserSession";
 import { Config } from "../Config";
 import { Logger } from "../utils-std-ts/Logger";
 import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { Span } from "@opentelemetry/sdk-trace-base";
+import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
 
 const logger = new Logger(path.basename(__filename));
 let config: Config;
@@ -16,7 +16,7 @@ export class Auth {
   //
   public static async init(context: Span, configIn: Config) {
     config = configIn;
-    const span = StandardTracer.startSpan("Auth_init", context);
+    const span = StandardTracerStartSpan("Auth_init", context);
     const authKeyRaw = await SqlDbutils.querySQL(span, 'SELECT * FROM metadata WHERE type="auth_token"');
     if (authKeyRaw.length == 0) {
       configIn.JWT_KEY = uuidv4();

@@ -2,7 +2,7 @@ import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../users/Auth";
 import { ListsItemsData } from "../sources/ListsItemsData";
 import { ListItem } from "../model/ListItem";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
+import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
 
 export class ListsItemsRoutes {
   //
@@ -19,7 +19,7 @@ export class ListsItemsRoutes {
         return res.status(403).send({ error: "Access Denied" });
       }
       const sourceItem = await ListsItemsData.getItemForUser(
-        StandardTracer.getSpanFromRequest(req),
+        StandardTracerGetSpanFromRequest(req),
         req.params.itemId,
         userSession.userId
       );
@@ -50,7 +50,7 @@ export class ListsItemsRoutes {
         listItem.itemId = req.body.itemId;
       }
       listItem.info.dateAdded = new Date();
-      ListsItemsData.add(StandardTracer.getSpanFromRequest(req), listItem);
+      ListsItemsData.add(StandardTracerGetSpanFromRequest(req), listItem);
       return res.status(201).send({});
     });
 
@@ -64,7 +64,7 @@ export class ListsItemsRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      ListsItemsData.deleteForUser(StandardTracer.getSpanFromRequest(req), req.params.itemId, userSession.userId);
+      ListsItemsData.deleteForUser(StandardTracerGetSpanFromRequest(req), req.params.itemId, userSession.userId);
       return res.status(202).send({});
     });
   }

@@ -1,12 +1,12 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Rules } from "../model/Rules";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
+import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
 
 export class RulesData {
   //
   public static async get(context: Span, ruleId: string): Promise<Rules> {
-    const span = StandardTracer.startSpan("RulesData_get", context);
+    const span = StandardTracerStartSpan("RulesData_get", context);
     const rulesRaw = await SqlDbutils.querySQL(span, "SELECT * FROM rules WHERE id = ?", [ruleId]);
     let rules: Rules = new Rules();
     if (rulesRaw.length > 0) {
@@ -17,7 +17,7 @@ export class RulesData {
   }
 
   public static async listForUser(context: Span, userId: string): Promise<Rules> {
-    const span = StandardTracer.startSpan("RulesData_listForUser", context);
+    const span = StandardTracerStartSpan("RulesData_listForUser", context);
     const rulesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM rules WHERE userId = '${userId}'`);
     let rules = new Rules();
     rules.userId = userId;
@@ -29,7 +29,7 @@ export class RulesData {
   }
 
   public static async listAll(context: Span): Promise<Rules[]> {
-    const span = StandardTracer.startSpan("RulesData_listForUser", context);
+    const span = StandardTracerStartSpan("RulesData_listForUser", context);
     const rulesRaw = await SqlDbutils.querySQL(span, `SELECT * FROM rules`);
     const rules = [];
     for (const userRules of rulesRaw) {
@@ -40,7 +40,7 @@ export class RulesData {
   }
 
   public static async update(context: Span, rules: Rules): Promise<void> {
-    const span = StandardTracer.startSpan("RulesData_update", context);
+    const span = StandardTracerStartSpan("RulesData_update", context);
     await SqlDbutils.execSQL(span, "DELETE FROM rules WHERE userId = ?", [rules.userId]);
     await SqlDbutils.execSQL(span, "INSERT INTO rules (id,userId,info) VALUES (?,?,?)", [
       rules.id,

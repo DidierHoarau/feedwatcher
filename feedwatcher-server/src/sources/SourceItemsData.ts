@@ -1,14 +1,14 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { SourceItem } from "../model/SourceItem";
 import { SourceItemStatus } from "../model/SourceItemStatus";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
 import { SourcesData } from "./SourcesData";
+import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
 
 export class SourceItemsData {
   //
   public static async getForUser(context: Span, itemId: string, userId: string): Promise<SourceItem> {
-    const span = StandardTracer.startSpan("SourceItemsData_getForUser", context);
+    const span = StandardTracerStartSpan("SourceItemsData_getForUser", context);
     const itemRaw = await SqlDbutils.querySQL(
       span,
       "SELECT sources_items.*, sources.name as sourceName " +
@@ -27,7 +27,7 @@ export class SourceItemsData {
   }
 
   public static async add(context: Span, sourceItem: SourceItem): Promise<void> {
-    const span = StandardTracer.startSpan("SourceItemsData_add", context);
+    const span = StandardTracerStartSpan("SourceItemsData_add", context);
     await SqlDbutils.execSQL(
       span,
       "INSERT INTO sources_items " +
@@ -50,7 +50,7 @@ export class SourceItemsData {
   }
 
   public static async update(context: Span, sourceItem: SourceItem): Promise<void> {
-    const span = StandardTracer.startSpan("SourceItemsData_update", context);
+    const span = StandardTracerStartSpan("SourceItemsData_update", context);
     await SqlDbutils.execSQL(
       span,
       "UPDATE sources_items " +
@@ -72,7 +72,7 @@ export class SourceItemsData {
   }
 
   public static async delete(context: Span, userId: string, sourceItemId: string): Promise<void> {
-    const span = StandardTracer.startSpan("SourceItemsData_delete", context);
+    const span = StandardTracerStartSpan("SourceItemsData_delete", context);
     await SqlDbutils.execSQL(span, "DELETE FROM sources_items WHERE id = ?", [sourceItemId]);
     SourcesData.invalidateUserCache(span, userId);
     span.end();
@@ -84,7 +84,7 @@ export class SourceItemsData {
     status: SourceItemStatus,
     userId: string
   ): Promise<void> {
-    const span = StandardTracer.startSpan("SourceItemsData_updateMultipleStatusForUser", context);
+    const span = StandardTracerStartSpan("SourceItemsData_updateMultipleStatusForUser", context);
     let inItemsId = "";
     for (const itemId of itemIds) {
       if (inItemsId.length > 0) {
@@ -110,7 +110,7 @@ export class SourceItemsData {
   }
 
   public static async getLastForSource(context: Span, sourceId: string): Promise<SourceItem> {
-    const span = StandardTracer.startSpan("SourceItemsData_getLastForSource", context);
+    const span = StandardTracerStartSpan("SourceItemsData_getLastForSource", context);
     let sourceItem: SourceItem = null;
     const sourceItemRaw = await SqlDbutils.querySQL(
       span,
@@ -125,7 +125,7 @@ export class SourceItemsData {
   }
 
   public static async cleanupOrphans(context: Span): Promise<void> {
-    const span = StandardTracer.startSpan("SourceItemsData_cleanupOrphans", context);
+    const span = StandardTracerStartSpan("SourceItemsData_cleanupOrphans", context);
     await SqlDbutils.execSQL(span, "DELETE FROM sources_items WHERE sourceId NOT IN (SELECT id FROM sources)");
     span.end();
   }

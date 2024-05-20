@@ -1,22 +1,16 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
-import { SourceItemsData } from "../sources/SourceItemsData";
-import { SourceItemStatus } from "../model/SourceItemStatus";
 import { Logger } from "../utils-std-ts/Logger";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
 import { Rules } from "../model/Rules";
-import { minimatch } from "minimatch";
-import { SourceItem } from "../model/SourceItem";
-import { RulesInfo } from "../model/RulesInfo";
-import { RulesPattern } from "../model/RulesPattern";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
+import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
 
 const logger = new Logger("RulesExecution");
 
 export class RulesExecution {
   //
   public static async executeUserRules(context: Span, rules: Rules): Promise<void> {
-    const span = StandardTracer.startSpan("RulesExecution_executeUserRules", context);
+    const span = StandardTracerStartSpan("RulesExecution_executeUserRules", context);
 
     let rulesMarkRead = 0;
     let rulesDelete = 0;
@@ -24,21 +18,19 @@ export class RulesExecution {
       if (ruleInfo.autoRead) {
         for (const rulePattern of ruleInfo.autoRead) {
           if (ruleInfo.isRoot) {
-            if (ruleInfo.isRoot) {
-              await execRuleForUser(span, RuleAction.archive, rules.userId, {
-                maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
-                pattern: rulePattern.pattern,
-              });
-            } else if (ruleInfo.labelName) {
-              await execRuleForLabel(span, RuleAction.archive, ruleInfo.labelName, rules.userId, {
-                maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
-                pattern: rulePattern.pattern,
-              });
-            } else if (ruleInfo.sourceId) {
-              return await execRuleForSource(span, RuleAction.archive, ruleInfo.sourceId, {
-                maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
-              });
-            }
+            await execRuleForUser(span, RuleAction.archive, rules.userId, {
+              maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
+              pattern: rulePattern.pattern,
+            });
+          } else if (ruleInfo.labelName) {
+            await execRuleForLabel(span, RuleAction.archive, ruleInfo.labelName, rules.userId, {
+              maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
+              pattern: rulePattern.pattern,
+            });
+          } else if (ruleInfo.sourceId) {
+            await execRuleForSource(span, RuleAction.archive, ruleInfo.sourceId, {
+              maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
+            });
           }
         }
       }
@@ -55,15 +47,14 @@ export class RulesExecution {
               pattern: rulePattern.pattern,
             });
           } else if (ruleInfo.sourceId) {
-            return await execRuleForSource(span, RuleAction.delete, ruleInfo.sourceId, {
+            await execRuleForSource(span, RuleAction.delete, ruleInfo.sourceId, {
               maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
             });
           }
         }
       }
     }
-    logger.info(`Rules for ${rules.userId}: ${rulesMarkRead} marked read ; ${rulesDelete} deleted`);
-
+    logger.info(`Rules for user ${rules.userId} executed`);
     span.end();
   }
 }
@@ -79,8 +70,8 @@ async function execRuleForUser(
   userId: string,
   searchOptions: SearchItemsOptions
 ): Promise<void> {
-  const span = StandardTracer.startSpan("RulesExecution_execRuleForUser", context);
-  const sourceItemsRaw = await SqlDbutils.querySQL(
+  const span = StandardTracerStartSpan("RulesExecution_execRuleForUser", context);
+  await SqlDbutils.querySQL(
     span,
     getRuleActionSql(action) +
       "WHERE sources_items.sourceId IN ( SELECT id FROM sources WHERE userId = ? ) " +
@@ -97,8 +88,8 @@ async function execRuleForSource(
   sourceId: string,
   searchOptions: SearchItemsOptions
 ): Promise<void> {
-  const span = StandardTracer.startSpan("RulesExecution_execRuleForSource", context);
-  const sourceItemsRaw = await SqlDbutils.querySQL(
+  const span = StandardTracerStartSpan("RulesExecution_execRuleForSource", context);
+  await SqlDbutils.querySQL(
     span,
     getRuleActionSql(action) +
       "WHERE sourceId = ? " +
@@ -116,8 +107,8 @@ async function execRuleForLabel(
   userId: string,
   searchOptions: SearchItemsOptions
 ): Promise<void> {
-  const span = StandardTracer.startSpan("SourceItemsData_execRuleForLabel", context);
-  const sourceItemsRaw = await SqlDbutils.querySQL(
+  const span = StandardTracerStartSpan("SourceItemsData_execRuleForLabel", context);
+  await SqlDbutils.querySQL(
     span,
     getRuleActionSql(action) +
       "WHERE sources_items.sourceId IN ( " +

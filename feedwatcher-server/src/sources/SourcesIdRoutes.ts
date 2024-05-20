@@ -3,7 +3,7 @@ import { Auth } from "../users/Auth";
 import { SourceLabelsData } from "../sources/SourceLabelsData";
 import { SourcesData } from "../sources/SourcesData";
 import { Processors } from "../procesors/Processors";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
+import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
 
 export class SourcesIdRoutes {
   //
@@ -19,7 +19,7 @@ export class SourcesIdRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const source = await SourcesData.get(StandardTracer.getSpanFromRequest(req), req.params.sourceId);
+      const source = await SourcesData.get(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -36,14 +36,11 @@ export class SourcesIdRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const source = await SourcesData.get(StandardTracer.getSpanFromRequest(req), req.params.sourceId);
+      const source = await SourcesData.get(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const labels = await SourceLabelsData.getSourceLabels(
-        StandardTracer.getSpanFromRequest(req),
-        req.params.sourceId
-      );
+      const labels = await SourceLabelsData.getSourceLabels(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
       return res.status(200).send({ labels: labels });
     });
 
@@ -61,7 +58,7 @@ export class SourcesIdRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const source = await SourcesData.get(StandardTracer.getSpanFromRequest(req), req.params.sourceId);
+      const source = await SourcesData.get(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -69,12 +66,12 @@ export class SourcesIdRoutes {
         return res.status(401).send({ error: "Parameter missing: name" });
       }
       source.name = req.body.name;
-      await SourcesData.update(StandardTracer.getSpanFromRequest(req), source);
+      await SourcesData.update(StandardTracerGetSpanFromRequest(req), source);
       if (req.body.labels && req.body.labels.length > 0) {
-        await SourceLabelsData.setSourceLabels(StandardTracer.getSpanFromRequest(req), source.id, req.body.labels);
+        await SourceLabelsData.setSourceLabels(StandardTracerGetSpanFromRequest(req), source.id, req.body.labels);
       }
-      Processors.checkSource(StandardTracer.getSpanFromRequest(req), source).then(() => {
-        Processors.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);
+      Processors.checkSource(StandardTracerGetSpanFromRequest(req), source).then(() => {
+        Processors.fetchSourceItems(StandardTracerGetSpanFromRequest(req), source);
       });
       return res.status(202).send();
     });
@@ -89,11 +86,11 @@ export class SourcesIdRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const source = await SourcesData.get(StandardTracer.getSpanFromRequest(req), req.params.sourceId);
+      const source = await SourcesData.get(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      await SourcesData.delete(StandardTracer.getSpanFromRequest(req), req.params.sourceId);
+      await SourcesData.delete(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
       return res.status(203).send();
     });
 
@@ -107,11 +104,11 @@ export class SourcesIdRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const source = await SourcesData.get(StandardTracer.getSpanFromRequest(req), req.params.sourceId);
+      const source = await SourcesData.get(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      Processors.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);
+      Processors.fetchSourceItems(StandardTracerGetSpanFromRequest(req), source);
       return res.status(201).send();
     });
   }

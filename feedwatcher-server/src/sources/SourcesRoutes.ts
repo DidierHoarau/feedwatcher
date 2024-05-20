@@ -3,7 +3,7 @@ import { Auth } from "../users/Auth";
 import { SourcesData } from "../sources/SourcesData";
 import { Source } from "../model/Source";
 import { Processors } from "../procesors/Processors";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
+import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
 
 export class SourcesRoutes {
   //
@@ -14,7 +14,7 @@ export class SourcesRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const sources = await SourcesData.listForUser(StandardTracer.getSpanFromRequest(req), userSession.userId);
+      const sources = await SourcesData.listForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
       return res.status(200).send({ sources });
     });
 
@@ -32,12 +32,12 @@ export class SourcesRoutes {
       source.name = req.body.url;
       source.info = { url: req.body.url };
       source.userId = userSession.userId;
-      await Processors.checkSource(StandardTracer.getSpanFromRequest(req), source);
+      await Processors.checkSource(StandardTracerGetSpanFromRequest(req), source);
       if (!source.info.processorPath) {
         return res.status(400).send({ error: "Source Not Supported (No Processor Matching)" });
       }
-      await SourcesData.add(StandardTracer.getSpanFromRequest(req), source);
-      Processors.fetchSourceItems(StandardTracer.getSpanFromRequest(req), source);
+      await SourcesData.add(StandardTracerGetSpanFromRequest(req), source);
+      Processors.fetchSourceItems(StandardTracerGetSpanFromRequest(req), source);
       return res.status(201).send(source.toJson());
     });
 
@@ -46,7 +46,7 @@ export class SourcesRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      Processors.fetchSourceItemsForUser(StandardTracer.getSpanFromRequest(req), userSession.userId);
+      Processors.fetchSourceItemsForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
       return res.status(201).send({});
     });
   }

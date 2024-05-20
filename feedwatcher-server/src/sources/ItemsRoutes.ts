@@ -5,7 +5,7 @@ import { SourceItemsData } from "./SourceItemsData";
 import { SourcesData } from "./SourcesData";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SourceItemStatus } from "../model/SourceItemStatus";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
+import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
 
 export class ItemsRoutes {
   //
@@ -44,7 +44,7 @@ export class ItemsRoutes {
 
       if (req.body.searchCriteria === "labelName") {
         const searchItemsResult = await SearchItemsData.listItemsForLabel(
-          StandardTracer.getSpanFromRequest(req),
+          StandardTracerGetSpanFromRequest(req),
           req.body.labelName,
           userSession.userId,
           searchOptions
@@ -53,12 +53,12 @@ export class ItemsRoutes {
       }
 
       if (req.body.searchCriteria === "sourceId") {
-        const source = await SourcesData.get(StandardTracer.getSpanFromRequest(req), req.body.sourceId);
+        const source = await SourcesData.get(StandardTracerGetSpanFromRequest(req), req.body.sourceId);
         if (source.userId !== userSession.userId) {
           return res.status(403).send({ error: "Access Denied" });
         }
         const searchItemsResult = await SearchItemsData.listForSource(
-          StandardTracer.getSpanFromRequest(req),
+          StandardTracerGetSpanFromRequest(req),
           source.id,
           searchOptions
         );
@@ -67,7 +67,7 @@ export class ItemsRoutes {
 
       if (req.body.searchCriteria === "all") {
         const searchItemsResult = await SearchItemsData.listForUser(
-          StandardTracer.getSpanFromRequest(req),
+          StandardTracerGetSpanFromRequest(req),
           userSession.userId,
           searchOptions
         );
@@ -96,7 +96,7 @@ export class ItemsRoutes {
       }
 
       await SourceItemsData.updateMultipleStatusForUser(
-        StandardTracer.getSpanFromRequest(req),
+        StandardTracerGetSpanFromRequest(req),
         req.body.itemIds,
         req.body.status,
         userSession.userId
