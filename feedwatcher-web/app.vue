@@ -7,6 +7,7 @@
       <NuxtPage />
     </main>
     <AlertMessages id="page-alert-messages" />
+    <VitePwaManifest />
   </div>
 </template>
 
