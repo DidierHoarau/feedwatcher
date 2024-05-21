@@ -1,11 +1,11 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../users/Auth";
 import { SearchItemsData } from "./SearchItemsData";
-import { SourceItemsData } from "./SourceItemsData";
-import { SourcesData } from "./SourcesData";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
+import { SourcesDataGet } from "./SourcesData";
+import { SourceItemsData } from "./SourceItemsData";
 
 export class ItemsRoutes {
   //
@@ -53,7 +53,7 @@ export class ItemsRoutes {
       }
 
       if (req.body.searchCriteria === "sourceId") {
-        const source = await SourcesData.get(StandardTracerGetSpanFromRequest(req), req.body.sourceId);
+        const source = await SourcesDataGet(StandardTracerGetSpanFromRequest(req), req.body.sourceId);
         if (source.userId !== userSession.userId) {
           return res.status(403).send({ error: "Access Denied" });
         }

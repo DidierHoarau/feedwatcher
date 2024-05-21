@@ -1,15 +1,15 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { SourceItem } from "../model/SourceItem";
 import { SourceItemStatus } from "../model/SourceItemStatus";
-import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
-import { SourcesData } from "./SourcesData";
 import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
+import { SourcesDataGet, SourcesDataInvalidateUserCache } from "./SourcesData";
+import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
 
 export class SourceItemsData {
   //
   public static async getForUser(context: Span, itemId: string, userId: string): Promise<SourceItem> {
     const span = StandardTracerStartSpan("SourceItemsData_getForUser", context);
-    const itemRaw = await SqlDbutils.querySQL(
+    const itemRaw = await SqlDbUtilsQuerySQL(
       span,
       "SELECT sources_items.*, sources.name as sourceName " +
         "FROM sources_items, sources " +
@@ -28,7 +28,7 @@ export class SourceItemsData {
 
   public static async add(context: Span, sourceItem: SourceItem): Promise<void> {
     const span = StandardTracerStartSpan("SourceItemsData_add", context);
-    await SqlDbutils.execSQL(
+    await SqlDbUtilsQuerySQL(
       span,
       "INSERT INTO sources_items " +
         "(id, sourceId, title, content, url, status, datePublished, info) " +
@@ -44,14 +44,14 @@ export class SourceItemsData {
         JSON.stringify(sourceItem.info),
       ]
     );
-    const source = await SourcesData.get(span, sourceItem.sourceId);
-    SourcesData.invalidateUserCache(span, await source.userId);
+    const source = await SourcesDataGet(span, sourceItem.sourceId);
+    SourcesDataInvalidateUserCache(span, await source.userId);
     span.end();
   }
 
   public static async update(context: Span, sourceItem: SourceItem): Promise<void> {
     const span = StandardTracerStartSpan("SourceItemsData_update", context);
-    await SqlDbutils.execSQL(
+    await SqlDbUtilsQuerySQL(
       span,
       "UPDATE sources_items " +
         " SET title = ?, content = ?, url = ?, status = ?, datePublished = ?, info = ? " +
@@ -66,15 +66,15 @@ export class SourceItemsData {
         sourceItem.id,
       ]
     );
-    const source = await SourcesData.get(span, sourceItem.sourceId);
-    SourcesData.invalidateUserCache(span, source.userId);
+    const source = await SourcesDataGet(span, sourceItem.sourceId);
+    SourcesDataInvalidateUserCache(span, source.userId);
     span.end();
   }
 
   public static async delete(context: Span, userId: string, sourceItemId: string): Promise<void> {
     const span = StandardTracerStartSpan("SourceItemsData_delete", context);
-    await SqlDbutils.execSQL(span, "DELETE FROM sources_items WHERE id = ?", [sourceItemId]);
-    SourcesData.invalidateUserCache(span, userId);
+    await SqlDbUtilsQuerySQL(span, "DELETE FROM sources_items WHERE id = ?", [sourceItemId]);
+    SourcesDataInvalidateUserCache(span, userId);
     span.end();
   }
 
@@ -92,7 +92,7 @@ export class SourceItemsData {
       }
       inItemsId += `"${itemId}"`;
     }
-    await SqlDbutils.execSQL(
+    await SqlDbUtilsQuerySQL(
       span,
       "UPDATE sources_items " +
         " SET status = ? " +
@@ -105,14 +105,14 @@ export class SourceItemsData {
         " )",
       [status, userId]
     );
-    SourcesData.invalidateUserCache(span, userId);
+    SourcesDataInvalidateUserCache(span, userId);
     span.end();
   }
 
   public static async getLastForSource(context: Span, sourceId: string): Promise<SourceItem> {
     const span = StandardTracerStartSpan("SourceItemsData_getLastForSource", context);
     let sourceItem: SourceItem = null;
-    const sourceItemRaw = await SqlDbutils.querySQL(
+    const sourceItemRaw = await SqlDbUtilsQuerySQL(
       span,
       "SELECT * FROM sources_items WHERE sourceId = ? ORDER BY datePublished DESC LIMIT 1",
       [sourceId]
@@ -126,7 +126,7 @@ export class SourceItemsData {
 
   public static async cleanupOrphans(context: Span): Promise<void> {
     const span = StandardTracerStartSpan("SourceItemsData_cleanupOrphans", context);
-    await SqlDbutils.execSQL(span, "DELETE FROM sources_items WHERE sourceId NOT IN (SELECT id FROM sources)");
+    await SqlDbUtilsQuerySQL(span, "DELETE FROM sources_items WHERE sourceId NOT IN (SELECT id FROM sources)");
     span.end();
   }
 }

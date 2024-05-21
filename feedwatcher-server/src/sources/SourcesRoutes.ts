@@ -1,9 +1,13 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Auth } from "../users/Auth";
-import { SourcesData } from "../sources/SourcesData";
 import { Source } from "../model/Source";
-import { Processors } from "../procesors/Processors";
 import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
+import {
+  ProcessorsCheckSource,
+  ProcessorsFetchSourceItems,
+  ProcessorsFetchSourceItemsForUser,
+} from "../procesors/Processors";
+import { SourcesDataAdd, SourcesDataListForUser } from "./SourcesData";
 
 export class SourcesRoutes {
   //
@@ -14,7 +18,7 @@ export class SourcesRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const sources = await SourcesData.listForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
+      const sources = await SourcesDataListForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
       return res.status(200).send({ sources });
     });
 
@@ -32,12 +36,12 @@ export class SourcesRoutes {
       source.name = req.body.url;
       source.info = { url: req.body.url };
       source.userId = userSession.userId;
-      await Processors.checkSource(StandardTracerGetSpanFromRequest(req), source);
+      await ProcessorsCheckSource(StandardTracerGetSpanFromRequest(req), source);
       if (!source.info.processorPath) {
         return res.status(400).send({ error: "Source Not Supported (No Processor Matching)" });
       }
-      await SourcesData.add(StandardTracerGetSpanFromRequest(req), source);
-      Processors.fetchSourceItems(StandardTracerGetSpanFromRequest(req), source);
+      await SourcesDataAdd(StandardTracerGetSpanFromRequest(req), source);
+      ProcessorsFetchSourceItems(StandardTracerGetSpanFromRequest(req), source);
       return res.status(201).send(source.toJson());
     });
 
@@ -46,7 +50,7 @@ export class SourcesRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      Processors.fetchSourceItemsForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
+      ProcessorsFetchSourceItemsForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
       return res.status(201).send({});
     });
   }

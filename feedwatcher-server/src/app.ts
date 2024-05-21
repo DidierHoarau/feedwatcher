@@ -6,9 +6,7 @@ import { Logger } from "./utils-std-ts/Logger";
 import { UsersRoutes } from "./users/UsersRoutes";
 import { Auth } from "./users/Auth";
 import { StandardTracerApi } from "./StandardTracerApi";
-import { SqlDbutils } from "./utils-std-ts/SqlDbUtils";
 import { Scheduler } from "./Scheduler";
-import { Processors } from "./procesors/Processors";
 import { ItemsRoutes } from "./sources/ItemsRoutes";
 import { ProcessorsRoutes } from "./procesors/ProcessorsRoutes";
 import { RulesRoutes } from "./rules/RulesRoutes";
@@ -18,6 +16,8 @@ import { SourcesLabelsRoutes } from "./sources/SourcesLabelsRoutes";
 import { SourcesImportRoutes } from "./sources/SourcesImportRoutes";
 import { ListsItemsRoutes } from "./sources/ListsItemsRoutes";
 import { StandardTracerInitTelemetry, StandardTracerStartSpan } from "./utils-std-ts/StandardTracer";
+import { ProcessorsInit } from "./procesors/Processors";
+import { SqlDbUtilsInit } from "./utils-std-ts/SqlDbUtils";
 
 const logger = new Logger("app");
 
@@ -36,9 +36,9 @@ Promise.resolve().then(async () => {
 
   const span = StandardTracerStartSpan("init");
 
-  await SqlDbutils.init(span, config);
+  await SqlDbUtilsInit(span, config);
   await Auth.init(span, config);
-  await Processors.init(span, config);
+  await ProcessorsInit(span, config);
   await Scheduler.init(span, config);
 
   span.end();

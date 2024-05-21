@@ -2,8 +2,8 @@ import { Span } from "@opentelemetry/sdk-trace-base";
 import { Logger } from "../utils-std-ts/Logger";
 import { Rules } from "../model/Rules";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
-import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
 import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
+import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
 
 const logger = new Logger("RulesExecution");
 
@@ -71,7 +71,7 @@ async function execRuleForUser(
   searchOptions: SearchItemsOptions
 ): Promise<void> {
   const span = StandardTracerStartSpan("RulesExecution_execRuleForUser", context);
-  await SqlDbutils.querySQL(
+  await SqlDbUtilsQuerySQL(
     span,
     getRuleActionSql(action) +
       "WHERE sources_items.sourceId IN ( SELECT id FROM sources WHERE userId = ? ) " +
@@ -89,7 +89,7 @@ async function execRuleForSource(
   searchOptions: SearchItemsOptions
 ): Promise<void> {
   const span = StandardTracerStartSpan("RulesExecution_execRuleForSource", context);
-  await SqlDbutils.querySQL(
+  await SqlDbUtilsQuerySQL(
     span,
     getRuleActionSql(action) +
       "WHERE sourceId = ? " +
@@ -108,7 +108,7 @@ async function execRuleForLabel(
   searchOptions: SearchItemsOptions
 ): Promise<void> {
   const span = StandardTracerStartSpan("SourceItemsData_execRuleForLabel", context);
-  await SqlDbutils.querySQL(
+  await SqlDbUtilsQuerySQL(
     span,
     getRuleActionSql(action) +
       "WHERE sources_items.sourceId IN ( " +

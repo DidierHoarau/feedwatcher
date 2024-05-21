@@ -1,8 +1,8 @@
 import { FastifyInstance } from "fastify";
 import { Auth } from "../users/Auth";
 import { SourceLabelsData } from "../sources/SourceLabelsData";
-import { SourcesData } from "../sources/SourcesData";
 import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
+import { SourcesDataListCountsForUser, SourcesDataListCountsSavedForUser } from "./SourcesData";
 
 export class SourcesLabelsRoutes {
   //
@@ -25,7 +25,7 @@ export class SourcesLabelsRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const counts = await SourcesData.listCountsForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
+      const counts = await SourcesDataListCountsForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
       return res.status(201).send({ counts });
     });
 
@@ -34,10 +34,7 @@ export class SourcesLabelsRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const counts = await SourcesData.listCountsSavedForUser(
-        StandardTracerGetSpanFromRequest(req),
-        userSession.userId
-      );
+      const counts = await SourcesDataListCountsSavedForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
       return res.status(201).send({ counts });
     });
   }

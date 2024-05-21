@@ -2,9 +2,9 @@ import { Span } from "@opentelemetry/sdk-trace-base";
 import { SearchItemsResult } from "../model/SearchItemsResult";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SourceItem } from "../model/SourceItem";
-import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
+import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
 
 const PAGE_SIZE = 50;
 
@@ -16,7 +16,7 @@ export class SearchItemsData {
     searchOptions: SearchItemsOptions
   ): Promise<SearchItemsResult> {
     const span = StandardTracerStartSpan("SearchItemsData_getForUser", context);
-    const sourceItemsRaw = await SqlDbutils.querySQL(
+    const sourceItemsRaw = await SqlDbUtilsQuerySQL(
       span,
       "SELECT sources_items.*, sources.name as sourceName " +
         "FROM sources_items " +
@@ -39,7 +39,7 @@ export class SearchItemsData {
     searchOptions: SearchItemsOptions
   ): Promise<SearchItemsResult> {
     const span = StandardTracerStartSpan("SearchItemsData_getLastForSource", context);
-    const sourceItemsRaw = await SqlDbutils.querySQL(
+    const sourceItemsRaw = await SqlDbUtilsQuerySQL(
       span,
       "SELECT sources_items.*, sources.name as sourceName " +
         "FROM sources_items " +
@@ -65,7 +65,7 @@ export class SearchItemsData {
     searchOptions: SearchItemsOptions
   ): Promise<SearchItemsResult> {
     const span = StandardTracerStartSpan("SourceItemsData_listItemsForLabel", context);
-    const sourceItemsRaw = await SqlDbutils.querySQL(
+    const sourceItemsRaw = await SqlDbUtilsQuerySQL(
       span,
       "SELECT sources_items.*, sources.name AS sourceName " +
         "FROM sources_items " +

@@ -5,9 +5,9 @@ import { User } from "../model/User";
 import { UserSession } from "../model/UserSession";
 import { Config } from "../Config";
 import { Logger } from "../utils-std-ts/Logger";
-import { SqlDbutils } from "../utils-std-ts/SqlDbUtils";
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
+import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
 
 const logger = new Logger(path.basename(__filename));
 let config: Config;
@@ -17,10 +17,10 @@ export class Auth {
   public static async init(context: Span, configIn: Config) {
     config = configIn;
     const span = StandardTracerStartSpan("Auth_init", context);
-    const authKeyRaw = await SqlDbutils.querySQL(span, 'SELECT * FROM metadata WHERE type="auth_token"');
+    const authKeyRaw = await SqlDbUtilsQuerySQL(span, 'SELECT * FROM metadata WHERE type="auth_token"');
     if (authKeyRaw.length == 0) {
       configIn.JWT_KEY = uuidv4();
-      await SqlDbutils.querySQL(span, 'INSERT INTO metadata (type, value, dateCreated) VALUES ("auth_token", ?, ?)', [
+      await SqlDbUtilsQuerySQL(span, 'INSERT INTO metadata (type, value, dateCreated) VALUES ("auth_token", ?, ?)', [
         configIn.JWT_KEY,
         new Date().toISOString(),
       ]);
