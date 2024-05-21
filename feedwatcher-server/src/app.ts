@@ -6,7 +6,6 @@ import { Logger } from "./utils-std-ts/Logger";
 import { UsersRoutes } from "./users/UsersRoutes";
 import { Auth } from "./users/Auth";
 import { StandardTracerApi } from "./StandardTracerApi";
-import { Scheduler } from "./Scheduler";
 import { ItemsRoutes } from "./sources/ItemsRoutes";
 import { ProcessorsRoutes } from "./procesors/ProcessorsRoutes";
 import { RulesRoutes } from "./rules/RulesRoutes";
@@ -18,6 +17,7 @@ import { ListsItemsRoutes } from "./sources/ListsItemsRoutes";
 import { StandardTracerInitTelemetry, StandardTracerStartSpan } from "./utils-std-ts/StandardTracer";
 import { ProcessorsInit } from "./procesors/Processors";
 import { SqlDbUtilsInit } from "./utils-std-ts/SqlDbUtils";
+import { SchedulerInit } from "./Scheduler";
 
 const logger = new Logger("app");
 
@@ -39,7 +39,7 @@ Promise.resolve().then(async () => {
   await SqlDbUtilsInit(span, config);
   await Auth.init(span, config);
   await ProcessorsInit(span, config);
-  await Scheduler.init(span, config);
+  await SchedulerInit(span, config);
 
   span.end();
 

@@ -137,8 +137,8 @@ export async function SourcesDataInvalidateUserCache(context: Span, userId: stri
     return;
   }
   const span = StandardTracerStartSpan("SourcesDataInvalidateUserCache", context);
-  this.listCountsForUser(span, userId, true);
-  this.listCountsSavedForUser(span, userId, true);
+  SourcesDataListCountsForUser(span, userId, true);
+  SourcesDataListCountsSavedForUser(span, userId, true);
   span.end();
   TimeoutWait(1000).finally(() => {
     if (cacheInProgress[userId] > 1) {

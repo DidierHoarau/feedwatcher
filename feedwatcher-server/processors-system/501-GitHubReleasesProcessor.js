@@ -32,7 +32,7 @@ module.exports = {
       const sourceItem = {};
       sourceItem.url = release.html_url;
       sourceItem.title = `${user}/${repo}: ${release.name}`;
-      sourceItem.content = release.body;
+      sourceItem.content = release.body || "";
       sourceItem.datePublished = new Date(release.created_at);
       sourceItems.push(sourceItem);
     }
