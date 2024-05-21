@@ -1,5 +1,6 @@
 <template>
   <div id="page-layout">
+    <VitePwaManifest />
     <header>
       <Navigation />
     </header>
@@ -7,7 +8,6 @@
       <NuxtPage />
     </main>
     <AlertMessages id="page-alert-messages" />
-    <VitePwaManifest />
   </div>
 </template>
 
