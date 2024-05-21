@@ -140,7 +140,7 @@ function getAgeFilterQuery(searchOptions: SearchItemsOptions): string {
 
 function getPatternFilterQuery(searchOptions: SearchItemsOptions): string {
   if (searchOptions.pattern) {
-    return ` AND sources_items.title GLOB '${searchOptions.pattern}' `;
+    return ` AND sources_items.title GLOB '${searchOptions.pattern.replaceAll("'", "\\'")}' `;
   }
   return "";
 }
