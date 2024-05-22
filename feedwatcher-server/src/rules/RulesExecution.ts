@@ -7,57 +7,54 @@ import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
 
 const logger = new Logger("RulesExecution");
 
-export class RulesExecution {
-  //
-  public static async executeUserRules(context: Span, rules: Rules): Promise<void> {
-    const span = StandardTracerStartSpan("RulesExecution_executeUserRules", context);
+export async function RulesExecutionExecuteUserRules(context: Span, rules: Rules): Promise<void> {
+  const span = StandardTracerStartSpan(arguments.callee.name, context);
 
-    let rulesMarkRead = 0;
-    let rulesDelete = 0;
-    for (const ruleInfo of rules.info) {
-      if (ruleInfo.autoRead) {
-        for (const rulePattern of ruleInfo.autoRead) {
-          if (ruleInfo.isRoot) {
-            await execRuleForUser(span, RuleAction.archive, rules.userId, {
-              maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
-              pattern: rulePattern.pattern,
-            });
-          } else if (ruleInfo.labelName) {
-            await execRuleForLabel(span, RuleAction.archive, ruleInfo.labelName, rules.userId, {
-              maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
-              pattern: rulePattern.pattern,
-            });
-          } else if (ruleInfo.sourceId) {
-            await execRuleForSource(span, RuleAction.archive, ruleInfo.sourceId, {
-              maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
-            });
-          }
-        }
-      }
-      if (ruleInfo.autoDelete) {
-        for (const rulePattern of ruleInfo.autoDelete) {
-          if (ruleInfo.isRoot) {
-            await execRuleForUser(span, RuleAction.delete, rules.userId, {
-              maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
-              pattern: rulePattern.pattern,
-            });
-          } else if (ruleInfo.labelName) {
-            await execRuleForLabel(span, RuleAction.delete, ruleInfo.labelName, rules.userId, {
-              maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
-              pattern: rulePattern.pattern,
-            });
-          } else if (ruleInfo.sourceId) {
-            await execRuleForSource(span, RuleAction.delete, ruleInfo.sourceId, {
-              maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
-            });
-          }
+  for (const ruleInfo of rules.info) {
+    if (ruleInfo.autoRead) {
+      for (const rulePattern of ruleInfo.autoRead) {
+        if (ruleInfo.isRoot) {
+          await execRuleForUser(span, RuleAction.archive, rules.userId, {
+            maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
+            pattern: rulePattern.pattern,
+          });
+        } else if (ruleInfo.labelName) {
+          await execRuleForLabel(span, RuleAction.archive, ruleInfo.labelName, rules.userId, {
+            maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
+            pattern: rulePattern.pattern,
+          });
+        } else if (ruleInfo.sourceId) {
+          await execRuleForSource(span, RuleAction.archive, ruleInfo.sourceId, {
+            maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
+          });
         }
       }
     }
-    logger.info(`Rules for user ${rules.userId} executed`);
-    span.end();
+    if (ruleInfo.autoDelete) {
+      for (const rulePattern of ruleInfo.autoDelete) {
+        if (ruleInfo.isRoot) {
+          await execRuleForUser(span, RuleAction.delete, rules.userId, {
+            maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
+            pattern: rulePattern.pattern,
+          });
+        } else if (ruleInfo.labelName) {
+          await execRuleForLabel(span, RuleAction.delete, ruleInfo.labelName, rules.userId, {
+            maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
+            pattern: rulePattern.pattern,
+          });
+        } else if (ruleInfo.sourceId) {
+          await execRuleForSource(span, RuleAction.delete, ruleInfo.sourceId, {
+            maxDate: new Date(new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000),
+          });
+        }
+      }
+    }
   }
+  logger.info(`Rules for user ${rules.userId} executed`);
+  span.end();
 }
+
+// Private Fucntions
 
 enum RuleAction {
   delete = "delete",
@@ -70,7 +67,7 @@ async function execRuleForUser(
   userId: string,
   searchOptions: SearchItemsOptions
 ): Promise<void> {
-  const span = StandardTracerStartSpan("RulesExecution_execRuleForUser", context);
+  const span = StandardTracerStartSpan(arguments.callee.name, context);
   await SqlDbUtilsQuerySQL(
     span,
     getRuleActionSql(action) +
@@ -88,7 +85,7 @@ async function execRuleForSource(
   sourceId: string,
   searchOptions: SearchItemsOptions
 ): Promise<void> {
-  const span = StandardTracerStartSpan("RulesExecution_execRuleForSource", context);
+  const span = StandardTracerStartSpan(arguments.callee.name, context);
   await SqlDbUtilsQuerySQL(
     span,
     getRuleActionSql(action) +
@@ -107,7 +104,7 @@ async function execRuleForLabel(
   userId: string,
   searchOptions: SearchItemsOptions
 ): Promise<void> {
-  const span = StandardTracerStartSpan("SourceItemsData_execRuleForLabel", context);
+  const span = StandardTracerStartSpan(arguments.callee.name, context);
   await SqlDbUtilsQuerySQL(
     span,
     getRuleActionSql(action) +

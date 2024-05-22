@@ -1,12 +1,12 @@
 import { FastifyInstance } from "fastify";
-import { Auth } from "../users/Auth";
 import * as opml from "opml";
 import { find } from "lodash";
 import { Logger } from "../utils-std-ts/Logger";
 import { Source } from "../model/Source";
 import { Span } from "@opentelemetry/sdk-trace-base";
-import { SourceLabelsData } from "../sources/SourceLabelsData";
 import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
+import { SourceLabelsDataListForUser } from "./SourceLabelsData";
+import { AuthGetUserSession } from "../users/Auth";
 
 const logger = new Logger("SourcesImportRoutes");
 
@@ -15,7 +15,7 @@ export class SourcesImportRoutes {
   public async getRoutes(fastify: FastifyInstance): Promise<void> {
     //
     fastify.post("/analyze/opml", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -40,14 +40,11 @@ export class SourcesImportRoutes {
     });
 
     fastify.get("/export/opml", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const sourceLabels = await SourceLabelsData.listForUser(
-        StandardTracerGetSpanFromRequest(req),
-        userSession.userId
-      );
+      const sourceLabels = await SourceLabelsDataListForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
       const sourcesOutlines = { opml: { head: { title: "Feedwatcher Source Export" }, body: { subs: [] } } };
       for (const source of sourceLabels) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

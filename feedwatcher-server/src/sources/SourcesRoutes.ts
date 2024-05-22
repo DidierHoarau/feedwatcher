@@ -1,5 +1,4 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
-import { Auth } from "../users/Auth";
 import { Source } from "../model/Source";
 import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
 import {
@@ -8,13 +7,14 @@ import {
   ProcessorsFetchSourceItemsForUser,
 } from "../procesors/Processors";
 import { SourcesDataAdd, SourcesDataListForUser } from "./SourcesData";
+import { AuthGetUserSession } from "../users/Auth";
 
 export class SourcesRoutes {
   //
   public async getRoutes(fastify: FastifyInstance): Promise<void> {
     //
     fastify.get("/", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -28,7 +28,7 @@ export class SourcesRoutes {
       };
     }
     fastify.post<PostSource>("/", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -46,7 +46,7 @@ export class SourcesRoutes {
     });
 
     fastify.put<PostSource>("/fetch", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }

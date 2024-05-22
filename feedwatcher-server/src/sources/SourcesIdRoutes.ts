@@ -1,9 +1,9 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
-import { Auth } from "../users/Auth";
-import { SourceLabelsData } from "../sources/SourceLabelsData";
 import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
 import { ProcessorsCheckSource, ProcessorsFetchSourceItems } from "../procesors/Processors";
 import { SourcesDataDelete, SourcesDataGet, SourcesDataUpdate } from "./SourcesData";
+import { SourceLabelsDataGetSourceLabels, SourceLabelsDataSetSourceLabels } from "./SourceLabelsData";
+import { AuthGetUserSession } from "../users/Auth";
 
 export class SourcesIdRoutes {
   //
@@ -15,7 +15,7 @@ export class SourcesIdRoutes {
       };
     }
     fastify.get<GetSourceIdRequest>("/", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -32,7 +32,7 @@ export class SourcesIdRoutes {
       };
     }
     fastify.get<GetSourceIdLabelsRequest>("/labels", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -40,7 +40,7 @@ export class SourcesIdRoutes {
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const labels = await SourceLabelsData.getSourceLabels(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
+      const labels = await SourceLabelsDataGetSourceLabels(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
       return res.status(200).send({ labels: labels });
     });
 
@@ -54,7 +54,7 @@ export class SourcesIdRoutes {
       };
     }
     fastify.put<PutSourceIdRequest>("/", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -68,7 +68,7 @@ export class SourcesIdRoutes {
       source.name = req.body.name;
       await SourcesDataUpdate(StandardTracerGetSpanFromRequest(req), source);
       if (req.body.labels && req.body.labels.length > 0) {
-        await SourceLabelsData.setSourceLabels(StandardTracerGetSpanFromRequest(req), source.id, req.body.labels);
+        await SourceLabelsDataSetSourceLabels(StandardTracerGetSpanFromRequest(req), source.id, req.body.labels);
       }
       ProcessorsCheckSource(StandardTracerGetSpanFromRequest(req), source).then(() => {
         ProcessorsFetchSourceItems(StandardTracerGetSpanFromRequest(req), source);
@@ -82,7 +82,7 @@ export class SourcesIdRoutes {
       };
     }
     fastify.delete<DeleteSourceIdRequest>("/", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -100,7 +100,7 @@ export class SourcesIdRoutes {
       };
     }
     fastify.put<PutSourceIdFetchRequest>("/fetch", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }

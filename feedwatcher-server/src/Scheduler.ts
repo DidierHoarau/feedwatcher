@@ -1,17 +1,17 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Config } from "./Config";
-import { SourceItemsData } from "./sources/SourceItemsData";
-import { RulesExecution } from "./rules/RulesExecution";
 import { StandardTracerStartSpan } from "./utils-std-ts/StandardTracer";
 import { TimeoutWait } from "./utils-std-ts/Timeout";
 import { RulesDataListAll } from "./rules/RulesData";
 import { ProcessorsFetchSourceItems } from "./procesors/Processors";
 import { SourcesDataListAll } from "./sources/SourcesData";
+import { RulesExecutionExecuteUserRules } from "./rules/RulesExecution";
+import { SourceItemsDataCleanupOrphans } from "./sources/SourceItemsData";
 
 let config: Config;
 
 export async function SchedulerInit(context: Span, configIn: Config) {
-  const span = StandardTracerStartSpan("SchedulerInit", context);
+  const span = StandardTracerStartSpan(arguments.callee.name, context);
   config = configIn;
   SchedulerStartSchedule();
   span.end();
@@ -22,7 +22,7 @@ export async function SchedulerInit(context: Span, configIn: Config) {
 async function SchedulerStartSchedule() {
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const span = StandardTracerStartSpan("SchedulerStartSchedule");
+    const span = StandardTracerStartSpan(arguments.callee.name);
     const sources = await SourcesDataListAll(span);
     for (const source of sources) {
       if (
@@ -34,10 +34,10 @@ async function SchedulerStartSchedule() {
     }
 
     for (const userRules of await RulesDataListAll(span)) {
-      await RulesExecution.executeUserRules(span, userRules);
+      await RulesExecutionExecuteUserRules(span, userRules);
     }
 
-    await SourceItemsData.cleanupOrphans(span);
+    await SourceItemsDataCleanupOrphans(span);
 
     span.end();
     await TimeoutWait(config.SOURCE_FETCH_FREQUENCY / 4);

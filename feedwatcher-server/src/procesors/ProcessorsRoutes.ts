@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
-import { Auth } from "../users/Auth";
 import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
 import { ProcessorsGetInfos, ProcessorsGetUserProcessorInfo } from "./Processors";
+import { AuthGetUserSession } from "../users/Auth";
 
 export class ProcessorsRoutes {
   //
@@ -12,7 +12,7 @@ export class ProcessorsRoutes {
     });
 
     fastify.get("/status", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }

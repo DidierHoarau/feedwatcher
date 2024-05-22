@@ -1,9 +1,9 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
-import { Auth } from "./Auth";
 import { User } from "../model/User";
-import { UsersData } from "./UsersData";
-import { UserPassword } from "./UserPassword";
 import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
+import { UsersDataAdd, UsersDataGet, UsersDataGetByName, UsersDataList, UsersDataUpdate } from "./UsersData";
+import { UserPasswordCheckPassword, UserPasswordSetPassword } from "./UserPassword";
+import { AuthGenerateJWT, AuthGetUserSession } from "./Auth";
 
 export class UsersRoutes {
   //
@@ -11,7 +11,7 @@ export class UsersRoutes {
   public async getRoutes(fastify: FastifyInstance): Promise<void> {
     //
     fastify.get("/status/initialization", async (req, res) => {
-      if ((await UsersData.list(StandardTracerGetSpanFromRequest(req))).length === 0) {
+      if ((await UsersDataList(StandardTracerGetSpanFromRequest(req))).length === 0) {
         res.status(201).send({ initialized: false });
       } else {
         res.status(201).send({ initialized: true });
@@ -27,10 +27,10 @@ export class UsersRoutes {
     fastify.post<PostSession>("/session", async (req, res) => {
       let user: User;
       // From token
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (userSession.isAuthenticated) {
-        user = await UsersData.get(StandardTracerGetSpanFromRequest(req), userSession.userId);
-        return res.status(201).send({ success: true, token: await Auth.generateJWT(user) });
+        user = await UsersDataGet(StandardTracerGetSpanFromRequest(req), userSession.userId);
+        return res.status(201).send({ success: true, token: await AuthGenerateJWT(user) });
       }
 
       // From User/Pass
@@ -40,11 +40,11 @@ export class UsersRoutes {
       if (!req.body.password) {
         return res.status(400).send({ error: "Missing: Password" });
       }
-      user = await UsersData.getByName(StandardTracerGetSpanFromRequest(req), req.body.name);
+      user = await UsersDataGetByName(StandardTracerGetSpanFromRequest(req), req.body.name);
       if (!user) {
         return res.status(403).send({ error: "Authentication Failed" });
-      } else if (await UserPassword.checkPassword(StandardTracerGetSpanFromRequest(req), user, req.body.password)) {
-        return res.status(201).send({ success: true, token: await Auth.generateJWT(user) });
+      } else if (await UserPasswordCheckPassword(StandardTracerGetSpanFromRequest(req), user, req.body.password)) {
+        return res.status(201).send({ success: true, token: await AuthGenerateJWT(user) });
       } else {
         return res.status(403).send({ error: "Authentication Failed" });
       }
@@ -58,10 +58,10 @@ export class UsersRoutes {
     }
     fastify.post<PostUser>("/", async (req, res) => {
       let isInitialized = true;
-      if ((await UsersData.list(StandardTracerGetSpanFromRequest(req))).length === 0) {
+      if ((await UsersDataList(StandardTracerGetSpanFromRequest(req))).length === 0) {
         isInitialized = false;
       }
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (isInitialized && !userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -72,12 +72,12 @@ export class UsersRoutes {
       if (!req.body.password) {
         return res.status(400).send({ error: "Missing: Password" });
       }
-      if (await UsersData.getByName(StandardTracerGetSpanFromRequest(req), req.body.name)) {
+      if (await UsersDataGetByName(StandardTracerGetSpanFromRequest(req), req.body.name)) {
         return res.status(400).send({ error: "Username Already Exists" });
       }
       newUser.name = req.body.name;
-      await UserPassword.setPassword(StandardTracerGetSpanFromRequest(req), newUser, req.body.password);
-      await UsersData.add(StandardTracerGetSpanFromRequest(req), newUser);
+      await UserPasswordSetPassword(StandardTracerGetSpanFromRequest(req), newUser, req.body.password);
+      await UsersDataAdd(StandardTracerGetSpanFromRequest(req), newUser);
       res.status(201).send({});
     });
 
@@ -88,19 +88,19 @@ export class UsersRoutes {
       };
     }
     fastify.put<PutNewPassword>("/password", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const user = await UsersData.get(StandardTracerGetSpanFromRequest(req), userSession.userId);
+      const user = await UsersDataGet(StandardTracerGetSpanFromRequest(req), userSession.userId);
       if (!req.body.password || !req.body.password) {
         return res.status(400).send({ error: "Missing: Password" });
       }
-      if (!(await UserPassword.checkPassword(StandardTracerGetSpanFromRequest(req), user, req.body.passwordOld))) {
+      if (!(await UserPasswordCheckPassword(StandardTracerGetSpanFromRequest(req), user, req.body.passwordOld))) {
         return res.status(403).send({ error: "Old Password Wrong" });
       }
-      await UserPassword.setPassword(StandardTracerGetSpanFromRequest(req), user, req.body.password);
-      await UsersData.update(StandardTracerGetSpanFromRequest(req), user);
+      await UserPasswordSetPassword(StandardTracerGetSpanFromRequest(req), user, req.body.password);
+      await UsersDataUpdate(StandardTracerGetSpanFromRequest(req), user);
       res.status(201).send({});
     });
   }
