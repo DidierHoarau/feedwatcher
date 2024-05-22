@@ -5,7 +5,7 @@ import { SqlDbUtilsExecSQL, SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtil
 
 //
 export async function RulesDataGet(context: Span, ruleId: string): Promise<Rules> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("RulesDataGet", context);
   const rulesRaw = await SqlDbUtilsQuerySQL(span, "SELECT * FROM rules WHERE id = ?", [ruleId]);
   let rules: Rules = new Rules();
   if (rulesRaw.length > 0) {
@@ -16,7 +16,7 @@ export async function RulesDataGet(context: Span, ruleId: string): Promise<Rules
 }
 
 export async function RulesDataListForUser(context: Span, userId: string): Promise<Rules> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("RulesDataListForUser", context);
   const rulesRaw = await SqlDbUtilsQuerySQL(span, `SELECT * FROM rules WHERE userId = '${userId}'`);
   let rules = new Rules();
   rules.userId = userId;
@@ -28,7 +28,7 @@ export async function RulesDataListForUser(context: Span, userId: string): Promi
 }
 
 export async function RulesDataListAll(context: Span): Promise<Rules[]> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("RulesDataListAll", context);
   const rulesRaw = await SqlDbUtilsQuerySQL(span, `SELECT * FROM rules`);
   const rules = [];
   for (const userRules of rulesRaw) {
@@ -39,7 +39,7 @@ export async function RulesDataListAll(context: Span): Promise<Rules[]> {
 }
 
 export async function RulesDataUpdate(context: Span, rules: Rules): Promise<void> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("RulesDataUpdate", context);
   await SqlDbUtilsExecSQL(span, "DELETE FROM rules WHERE userId = ?", [rules.userId]);
   await SqlDbUtilsExecSQL(span, "INSERT INTO rules (id,userId,info) VALUES (?,?,?)", [
     rules.id,

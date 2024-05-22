@@ -13,7 +13,7 @@ export async function SearchItemsDataListForUser(
   userId: string,
   searchOptions: SearchItemsOptions
 ): Promise<SearchItemsResult> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SearchItemsDataListForUser", context);
   const sourceItemsRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT sources_items.*, sources.name as sourceName " +
@@ -36,7 +36,7 @@ export async function SearchItemsDataListForSource(
   sourceId: string,
   searchOptions: SearchItemsOptions
 ): Promise<SearchItemsResult> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SearchItemsDataListForSource", context);
   const sourceItemsRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT sources_items.*, sources.name as sourceName " +
@@ -62,7 +62,7 @@ export async function SearchItemsDataListItemsForLabel(
   userId: string,
   searchOptions: SearchItemsOptions
 ): Promise<SearchItemsResult> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SearchItemsDataListItemsForLabel", context);
   const sourceItemsRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT sources_items.*, sources.name AS sourceName " +

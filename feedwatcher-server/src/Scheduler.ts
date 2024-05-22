@@ -11,7 +11,7 @@ import { SourceItemsDataCleanupOrphans } from "./sources/SourceItemsData";
 let config: Config;
 
 export async function SchedulerInit(context: Span, configIn: Config) {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SchedulerInit", context);
   config = configIn;
   SchedulerStartSchedule();
   span.end();
@@ -22,7 +22,7 @@ export async function SchedulerInit(context: Span, configIn: Config) {
 async function SchedulerStartSchedule() {
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const span = StandardTracerStartSpan(arguments.callee.name);
+    const span = StandardTracerStartSpan("SchedulerStartSchedule");
     const sources = await SourcesDataListAll(span);
     for (const source of sources) {
       if (

@@ -8,7 +8,7 @@ import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
 const logger = new Logger("RulesExecution");
 
 export async function RulesExecutionExecuteUserRules(context: Span, rules: Rules): Promise<void> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("RulesExecutionExecuteUserRules", context);
 
   for (const ruleInfo of rules.info) {
     if (ruleInfo.autoRead) {
@@ -67,7 +67,7 @@ async function execRuleForUser(
   userId: string,
   searchOptions: SearchItemsOptions
 ): Promise<void> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("execRuleForUser", context);
   await SqlDbUtilsQuerySQL(
     span,
     getRuleActionSql(action) +
@@ -85,7 +85,7 @@ async function execRuleForSource(
   sourceId: string,
   searchOptions: SearchItemsOptions
 ): Promise<void> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("execRuleForSource", context);
   await SqlDbUtilsQuerySQL(
     span,
     getRuleActionSql(action) +
@@ -104,7 +104,7 @@ async function execRuleForLabel(
   userId: string,
   searchOptions: SearchItemsOptions
 ): Promise<void> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("execRuleForLabel", context);
   await SqlDbUtilsQuerySQL(
     span,
     getRuleActionSql(action) +

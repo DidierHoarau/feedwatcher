@@ -14,7 +14,7 @@ let config: Config;
 
 export async function AuthInit(context: Span, configIn: Config) {
   config = configIn;
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("AuthInit", context);
   const authKeyRaw = await SqlDbUtilsQuerySQL(span, 'SELECT * FROM metadata WHERE type="auth_token"');
   if (authKeyRaw.length == 0) {
     configIn.JWT_KEY = uuidv4();

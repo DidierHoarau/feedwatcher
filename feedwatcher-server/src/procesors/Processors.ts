@@ -21,7 +21,7 @@ const userProcessorInfoStatus: UserProcessorInfo[] = [];
 const fetchSourceItemsQueue: Source[] = [];
 
 export async function ProcessorsInit(context: Span, configIn: Config): Promise<void> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("ProcessorsInit", context);
   config = configIn;
   for (const processorsFile of await fs.readdir(config.PROCESSORS_USER)) {
     if (path.extname(processorsFile) === ".js") {
@@ -45,7 +45,7 @@ export async function ProcessorsInit(context: Span, configIn: Config): Promise<v
 }
 
 export async function ProcessorsGetInfos(context: Span): Promise<ProcessorInfo[]> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("ProcessorsGetInfos", context);
   const processorInfos = [];
   for (const processorsFile of processorsFiles) {
     try {
@@ -60,7 +60,7 @@ export async function ProcessorsGetInfos(context: Span): Promise<ProcessorInfo[]
 }
 
 export async function ProcessorsCheckSource(context: Span, source: Source) {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("ProcessorsCheckSource", context);
   if (!source.info.processorPath) {
     userProcessorInfoStatusStart(span, source.userId);
     let processed = false;
@@ -91,7 +91,7 @@ export async function ProcessorsCheckSource(context: Span, source: Source) {
 }
 
 export async function ProcessorsFetchSourceItemsForUser(context: Span, userId: string) {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("ProcessorsFetchSourceItemsForUser", context);
   const sources = await SourcesDataListForUser(span, userId);
   for (const source of sources) {
     await ProcessorsFetchSourceItems(span, source);
@@ -109,7 +109,7 @@ export async function ProcessorsFetchSourceItems(context: Span, source: Source):
 }
 
 export function ProcessorsGetUserProcessorInfo(context: Span, userId: string): UserProcessorInfo {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("ProcessorsGetUserProcessorInfo", context);
   return find(userProcessorInfoStatus, { userId });
   span.end();
 }
@@ -120,7 +120,7 @@ async function fetchSourceItemsQueued(): Promise<void> {
   if (fetchSourceItemsQueue.length === 0) {
     return;
   }
-  const span = StandardTracerStartSpan(arguments.callee.name);
+  const span = StandardTracerStartSpan("fetchSourceItemsQueued");
   const source = fetchSourceItemsQueue[0];
   userProcessorInfoStatusStart(span, source.userId);
   let processed = false;
@@ -170,7 +170,7 @@ async function fetchSourceItemsQueued(): Promise<void> {
 }
 
 function userProcessorInfoStatusStart(context: Span, userId: string): void {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("userProcessorInfoStatusStart", context);
   let userStatus = find(userProcessorInfoStatus, { userId });
   if (!userStatus) {
     userStatus = {
@@ -184,7 +184,7 @@ function userProcessorInfoStatusStart(context: Span, userId: string): void {
 }
 
 function userProcessorInfoStatusStop(context: Span, userId: string): void {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("userProcessorInfoStatusStop", context);
   const userStatus = find(userProcessorInfoStatus, { userId });
   if (userStatus) {
     userStatus.status = UserProcessorInfoStatus.idle;

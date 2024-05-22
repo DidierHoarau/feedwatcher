@@ -4,7 +4,7 @@ import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
 import { SqlDbUtilsExecSQL, SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
 
 export async function UsersDataGet(context: Span, id: string): Promise<User> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("UsersDataGet", context);
   const usersRaw = await SqlDbUtilsQuerySQL(span, "SELECT * FROM users WHERE id=?", [id]);
   let user: User = null;
   if (usersRaw.length > 0) {
@@ -15,7 +15,7 @@ export async function UsersDataGet(context: Span, id: string): Promise<User> {
 }
 
 export async function UsersDataGetByName(context: Span, name: string): Promise<User> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("UsersDataGetByName", context);
   const usersRaw = await SqlDbUtilsQuerySQL(span, "SELECT * FROM users WHERE name=?", [name]);
   let user: User = null;
   if (usersRaw.length > 0) {
@@ -26,7 +26,7 @@ export async function UsersDataGetByName(context: Span, name: string): Promise<U
 }
 
 export async function UsersDataList(context: Span): Promise<User[]> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("UsersDataList", context);
   const usersRaw = await SqlDbUtilsQuerySQL(span, "SELECT * FROM users");
   const users = [];
   for (const userRaw of usersRaw) {
@@ -37,7 +37,7 @@ export async function UsersDataList(context: Span): Promise<User[]> {
 }
 
 export async function UsersDataAdd(context: Span, user: User): Promise<void> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("UsersDataAdd", context);
   await SqlDbUtilsExecSQL(span, "INSERT INTO users (id,name,passwordEncrypted) VALUES (?, ?, ?)", [
     user.id,
     user.name,
@@ -47,7 +47,7 @@ export async function UsersDataAdd(context: Span, user: User): Promise<void> {
 }
 
 export async function UsersDataUpdate(context: Span, user: User): Promise<void> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("UsersDataUpdate", context);
   await SqlDbUtilsExecSQL(span, "UPDATE users SET passwordEncrypted = ? WHERE id = ? ", [
     user.passwordEncrypted,
     user.id,

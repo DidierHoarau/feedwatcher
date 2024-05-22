@@ -6,7 +6,7 @@ import { SourcesDataGet, SourcesDataInvalidateUserCache } from "./SourcesData";
 import { SqlDbUtilsExecSQL, SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
 
 export async function SourceLabelsDataListForUser(context: Span, userId: string): Promise<Source[]> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SourceLabelsDataListForUser", context);
   const sourceLabelsRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT sources_labels.name as labelName, " +
@@ -32,7 +32,7 @@ export async function SourceLabelsDataSetSourceLabels(
   sourceId: string,
   labels: string[]
 ): Promise<void> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SourceLabelsDataSetSourceLabels", context);
   await SqlDbUtilsExecSQL(span, "DELETE FROM sources_labels WHERE sourceId = ?", [sourceId]);
   for (const label of labels) {
     await SqlDbUtilsQuerySQL(span, "INSERT INTO sources_labels (id,sourceId,name,info) VALUES (?,?,?,?)", [
@@ -49,7 +49,7 @@ export async function SourceLabelsDataSetSourceLabels(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function SourceLabelsDataGetSourceLabels(context: Span, sourceId: string): Promise<any[]> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SourceLabelsDataGetSourceLabels", context);
   const labelsRaw = await SqlDbUtilsQuerySQL(span, "SELECT * FROM sources_labels WHERE sourceId = ?", [sourceId]);
   const labels = [];
   for (const labelRaw of labelsRaw) {

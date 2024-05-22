@@ -12,7 +12,7 @@ const cacheUserSavedCounts: any = {};
 const cacheInProgress: any = {};
 
 export async function SourcesDataGet(context: Span, sourceId: string): Promise<Source> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SourcesDataGet", context);
   const sourceRaw = await SqlDbUtilsQuerySQL(span, "SELECT * FROM sources WHERE id = ?", [sourceId]);
   let source: Source = null;
   if (sourceRaw.length > 0) {
@@ -23,7 +23,7 @@ export async function SourcesDataGet(context: Span, sourceId: string): Promise<S
 }
 
 export async function SourcesDataListForUser(context: Span, userId: string): Promise<Source[]> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SourcesDataListForUser", context);
   const sourcesRaw = await SqlDbUtilsQuerySQL(span, `SELECT * FROM sources WHERE userId = '${userId}'`);
   const sources = [];
   for (const sourceRaw of sourcesRaw) {
@@ -35,7 +35,7 @@ export async function SourcesDataListForUser(context: Span, userId: string): Pro
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function SourcesDataListCountsForUser(context: Span, userId: string, skipCache = false): Promise<any[]> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SourcesDataListCountsForUser", context);
   if (cacheUserCounts[userId] && !skipCache) {
     span.setAttribute("cached", true);
     span.end();
@@ -62,7 +62,7 @@ export async function SourcesDataListCountsSavedForUser(
   skipCache = false
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[]> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SourcesDataListCountsSavedForUser", context);
   if (cacheUserSavedCounts[userId] && !skipCache) {
     span.setAttribute("cached", true);
     span.end();
@@ -87,7 +87,7 @@ export async function SourcesDataListCountsSavedForUser(
 }
 
 export async function SourcesDataListAll(context: Span): Promise<Source[]> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SourcesDataListAll", context);
   const sourcesRaw = await SqlDbUtilsQuerySQL(span, `SELECT * FROM sources`);
   const sources = [];
   for (const sourceRaw of sourcesRaw) {
@@ -98,7 +98,7 @@ export async function SourcesDataListAll(context: Span): Promise<Source[]> {
 }
 
 export async function SourcesDataAdd(context: Span, source: Source): Promise<void> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SourcesDataAdd", context);
   await SqlDbUtilsQuerySQL(span, "INSERT INTO sources (id,userId,name,info) VALUES (?,?,?,?)", [
     source.id,
     source.userId,
@@ -109,7 +109,7 @@ export async function SourcesDataAdd(context: Span, source: Source): Promise<voi
 }
 
 export async function SourcesDataUpdate(context: Span, source: Source): Promise<void> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SourcesDataUpdate", context);
   await SqlDbUtilsExecSQL(span, "UPDATE sources SET name = ?, info = ? WHERE id = ?", [
     source.name,
     JSON.stringify(source.info),
@@ -119,7 +119,7 @@ export async function SourcesDataUpdate(context: Span, source: Source): Promise<
 }
 
 export async function SourcesDataDelete(context: Span, sourceId: string): Promise<void> {
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("SourcesDataDelete", context);
   const source = await SourcesDataGet(span, sourceId);
   await SqlDbUtilsExecSQL(span, "DELETE FROM sources WHERE id = ?", [sourceId]);
   await SqlDbUtilsExecSQL(span, "DELETE FROM sources_items WHERE sourceId = ?", [sourceId]);
@@ -136,13 +136,13 @@ export async function SourcesDataInvalidateUserCache(context: Span, userId: stri
     cacheInProgress[userId]++;
     return;
   }
-  const span = StandardTracerStartSpan(arguments.callee.name, context);
+  const span = StandardTracerStartSpan("StandardTracerStartSpan", context);
   SourcesDataListCountsForUser(span, userId, true);
   SourcesDataListCountsSavedForUser(span, userId, true);
   span.end();
   TimeoutWait(1000).finally(() => {
     if (cacheInProgress[userId] > 1) {
-      const newSpan = StandardTracerStartSpan(arguments.callee.name);
+      const newSpan = StandardTracerStartSpan("StandardTracerStartSpan");
       cacheInProgress[userId] = 0;
       SourcesDataInvalidateUserCache(context, userId).finally(() => {
         newSpan.end();
