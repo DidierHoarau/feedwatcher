@@ -1,46 +1,45 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Config } from "./Config";
-import { StandardTracer } from "./utils-std-ts/StandardTracer";
-import { Timeout } from "./utils-std-ts/Timeout";
-import { SourcesData } from "./sources/SourcesData";
-import { SourceItemsData } from "./sources/SourceItemsData";
-import { RulesData } from "./rules/RulesData";
-import { RulesExecution } from "./rules/RulesExecution";
-import { Processors } from "./procesors/Processors";
+import { StandardTracerStartSpan } from "./utils-std-ts/StandardTracer";
+import { TimeoutWait } from "./utils-std-ts/Timeout";
+import { RulesDataListAll } from "./rules/RulesData";
+import { ProcessorsFetchSourceItems } from "./procesors/Processors";
+import { SourcesDataListAll } from "./sources/SourcesData";
+import { RulesExecutionExecuteUserRules } from "./rules/RulesExecution";
+import { SourceItemsDataCleanupOrphans } from "./sources/SourceItemsData";
 
 let config: Config;
 
-export class Scheduler {
-  //
-  public static async init(context: Span, configIn: Config) {
-    const span = StandardTracer.startSpan("Scheduler_init", context);
-    config = configIn;
-    Scheduler.startSchedule();
-    span.end();
-  }
+export async function SchedulerInit(context: Span, configIn: Config) {
+  const span = StandardTracerStartSpan("SchedulerInit", context);
+  config = configIn;
+  SchedulerStartSchedule();
+  span.end();
+}
 
-  public static async startSchedule() {
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const span = StandardTracer.startSpan("Scheduler_start");
-      const sources = await SourcesData.listAll(span);
-      for (const source of sources) {
-        if (
-          !source.info.dateFetched ||
-          new Date().getTime() - new Date(source.info.dateFetched).getTime() > config.SOURCE_FETCH_FREQUENCY
-        ) {
-          await Processors.fetchSourceItems(span, source);
-        }
+// Private Functions
+
+async function SchedulerStartSchedule() {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const span = StandardTracerStartSpan("SchedulerStartSchedule");
+    const sources = await SourcesDataListAll(span);
+    for (const source of sources) {
+      if (
+        !source.info.dateFetched ||
+        new Date().getTime() - new Date(source.info.dateFetched).getTime() > config.SOURCE_FETCH_FREQUENCY
+      ) {
+        await ProcessorsFetchSourceItems(span, source);
       }
-
-      for (const userRules of await RulesData.listAll(span)) {
-        await RulesExecution.executeUserRules(span, userRules);
-      }
-
-      await SourceItemsData.cleanupOrphans(span);
-
-      span.end();
-      await Timeout.wait(config.SOURCE_FETCH_FREQUENCY / 4);
     }
+
+    for (const userRules of await RulesDataListAll(span)) {
+      await RulesExecutionExecuteUserRules(span, userRules);
+    }
+
+    await SourceItemsDataCleanupOrphans(span);
+
+    span.end();
+    await TimeoutWait(config.SOURCE_FETCH_FREQUENCY / 4);
   }
 }

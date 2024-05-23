@@ -6,4 +6,5 @@ export class SearchItemsOptions {
   public maxDate?: Date;
   public filterStatus?: SourceItemStatus;
   public isSaved?: boolean;
+  public pattern?: string;
 }

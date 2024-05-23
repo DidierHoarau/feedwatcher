@@ -1,8 +1,8 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
-import { Auth } from "../users/Auth";
-import { ListsItemsData } from "../sources/ListsItemsData";
 import { ListItem } from "../model/ListItem";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
+import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
+import { ListsItemsDataAdd, ListsItemsDataDeleteForUser, ListsItemsDataGetItemForUser } from "./ListsItemsData";
+import { AuthGetUserSession } from "../users/Auth";
 
 export class ListsItemsRoutes {
   //
@@ -14,12 +14,12 @@ export class ListsItemsRoutes {
       };
     }
     fastify.get<GetListItemsIdRequest>("/items/:itemId", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const sourceItem = await ListsItemsData.getItemForUser(
-        StandardTracer.getSpanFromRequest(req),
+      const sourceItem = await ListsItemsDataGetItemForUser(
+        StandardTracerGetSpanFromRequest(req),
         req.params.itemId,
         userSession.userId
       );
@@ -36,7 +36,7 @@ export class ListsItemsRoutes {
       };
     }
     fastify.put<PutListNameItemsRequest>("/items", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -50,7 +50,7 @@ export class ListsItemsRoutes {
         listItem.itemId = req.body.itemId;
       }
       listItem.info.dateAdded = new Date();
-      ListsItemsData.add(StandardTracer.getSpanFromRequest(req), listItem);
+      ListsItemsDataAdd(StandardTracerGetSpanFromRequest(req), listItem);
       return res.status(201).send({});
     });
 
@@ -60,11 +60,11 @@ export class ListsItemsRoutes {
       };
     }
     fastify.delete<DeleteListNameItemsRequest>("/items/:itemId", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      ListsItemsData.deleteForUser(StandardTracer.getSpanFromRequest(req), req.params.itemId, userSession.userId);
+      ListsItemsDataDeleteForUser(StandardTracerGetSpanFromRequest(req), req.params.itemId, userSession.userId);
       return res.status(202).send({});
     });
   }

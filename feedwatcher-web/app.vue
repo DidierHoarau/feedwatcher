@@ -1,5 +1,6 @@
 <template>
   <div id="page-layout">
+    <VitePwaManifest />
     <header>
       <Navigation />
     </header>

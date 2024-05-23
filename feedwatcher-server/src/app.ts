@@ -3,13 +3,7 @@ import * as path from "path";
 import { watchFile } from "fs-extra";
 import { Config } from "./Config";
 import { Logger } from "./utils-std-ts/Logger";
-import { StandardTracer } from "./utils-std-ts/StandardTracer";
 import { UsersRoutes } from "./users/UsersRoutes";
-import { Auth } from "./users/Auth";
-import { StandardTracerApi } from "./StandardTracerApi";
-import { SqlDbutils } from "./utils-std-ts/SqlDbUtils";
-import { Scheduler } from "./Scheduler";
-import { Processors } from "./procesors/Processors";
 import { ItemsRoutes } from "./sources/ItemsRoutes";
 import { ProcessorsRoutes } from "./procesors/ProcessorsRoutes";
 import { RulesRoutes } from "./rules/RulesRoutes";
@@ -18,6 +12,12 @@ import { SourcesIdRoutes } from "./sources/SourcesIdRoutes";
 import { SourcesLabelsRoutes } from "./sources/SourcesLabelsRoutes";
 import { SourcesImportRoutes } from "./sources/SourcesImportRoutes";
 import { ListsItemsRoutes } from "./sources/ListsItemsRoutes";
+import { StandardTracerInitTelemetry, StandardTracerStartSpan } from "./utils-std-ts/StandardTracer";
+import { ProcessorsInit } from "./procesors/Processors";
+import { SqlDbUtilsInit } from "./utils-std-ts/SqlDbUtils";
+import { SchedulerInit } from "./Scheduler";
+import { StandardTracerApiRegisterHooks } from "./StandardTracerApi";
+import { AuthInit } from "./users/Auth";
 
 const logger = new Logger("app");
 
@@ -32,14 +32,14 @@ Promise.resolve().then(async () => {
     config.reload();
   });
 
-  StandardTracer.initTelemetry(config);
+  StandardTracerInitTelemetry(config);
 
-  const span = StandardTracer.startSpan("init");
+  const span = StandardTracerStartSpan("init");
 
-  await SqlDbutils.init(span, config);
-  await Auth.init(span, config);
-  await Processors.init(span, config);
-  await Scheduler.init(span, config);
+  await SqlDbUtilsInit(span, config);
+  await AuthInit(span, config);
+  await ProcessorsInit(span, config);
+  await SchedulerInit(span, config);
 
   span.end();
 
@@ -60,7 +60,7 @@ Promise.resolve().then(async () => {
   /* eslint-disable-next-line */
   fastify.register(require("@fastify/multipart"));
 
-  StandardTracerApi.registerHooks(fastify, config);
+  StandardTracerApiRegisterHooks(fastify, config);
 
   fastify.register(new UsersRoutes().getRoutes, {
     prefix: "/api/users",

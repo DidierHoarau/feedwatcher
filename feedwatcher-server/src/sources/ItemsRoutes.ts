@@ -1,11 +1,15 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
-import { Auth } from "../users/Auth";
-import { SearchItemsData } from "./SearchItemsData";
-import { SourceItemsData } from "./SourceItemsData";
-import { SourcesData } from "./SourcesData";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SourceItemStatus } from "../model/SourceItemStatus";
-import { StandardTracer } from "../utils-std-ts/StandardTracer";
+import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
+import { SourcesDataGet } from "./SourcesData";
+import {
+  SearchItemsDataListForSource,
+  SearchItemsDataListForUser,
+  SearchItemsDataListItemsForLabel,
+} from "./SearchItemsData";
+import { SourceItemsDataUpdateMultipleStatusForUser } from "./SourceItemsData";
+import { AuthGetUserSession } from "../users/Auth";
 
 export class ItemsRoutes {
   //
@@ -23,7 +27,7 @@ export class ItemsRoutes {
     }
 
     fastify.post<PostSourceItemsSearchRequest>("/search", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
         //
@@ -43,8 +47,8 @@ export class ItemsRoutes {
       searchOptions.isSaved = req.body.isSaved ? true : false;
 
       if (req.body.searchCriteria === "labelName") {
-        const searchItemsResult = await SearchItemsData.listItemsForLabel(
-          StandardTracer.getSpanFromRequest(req),
+        const searchItemsResult = await SearchItemsDataListItemsForLabel(
+          StandardTracerGetSpanFromRequest(req),
           req.body.labelName,
           userSession.userId,
           searchOptions
@@ -53,12 +57,12 @@ export class ItemsRoutes {
       }
 
       if (req.body.searchCriteria === "sourceId") {
-        const source = await SourcesData.get(StandardTracer.getSpanFromRequest(req), req.body.sourceId);
+        const source = await SourcesDataGet(StandardTracerGetSpanFromRequest(req), req.body.sourceId);
         if (source.userId !== userSession.userId) {
           return res.status(403).send({ error: "Access Denied" });
         }
-        const searchItemsResult = await SearchItemsData.listForSource(
-          StandardTracer.getSpanFromRequest(req),
+        const searchItemsResult = await SearchItemsDataListForSource(
+          StandardTracerGetSpanFromRequest(req),
           source.id,
           searchOptions
         );
@@ -66,8 +70,8 @@ export class ItemsRoutes {
       }
 
       if (req.body.searchCriteria === "all") {
-        const searchItemsResult = await SearchItemsData.listForUser(
-          StandardTracer.getSpanFromRequest(req),
+        const searchItemsResult = await SearchItemsDataListForUser(
+          StandardTracerGetSpanFromRequest(req),
           userSession.userId,
           searchOptions
         );
@@ -84,7 +88,7 @@ export class ItemsRoutes {
       };
     }
     fastify.put<PutSourceItemIdStatusRequest>("/status", async (req, res) => {
-      const userSession = await Auth.getUserSession(req);
+      const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -95,8 +99,8 @@ export class ItemsRoutes {
         return res.status(400).send({ error: "Wrong status parameter" });
       }
 
-      await SourceItemsData.updateMultipleStatusForUser(
-        StandardTracer.getSpanFromRequest(req),
+      await SourceItemsDataUpdateMultipleStatusForUser(
+        StandardTracerGetSpanFromRequest(req),
         req.body.itemIds,
         req.body.status,
         userSession.userId
