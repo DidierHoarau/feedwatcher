@@ -32,8 +32,12 @@
     </div>
     <div id="sources-items-list">
       <div id="sources-items-list-page">
-        <div v-for="sourceItem in sourceItemsStore.sourceItems" v-bind:key="sourceItem.id">
-          <SourceItem class="fade-in-fast" :item="sourceItem" />
+        <div
+          class="sources-items-list-item-container"
+          v-for="sourceItem in sourceItemsStore.sourceItems"
+          v-bind:key="sourceItem.id"
+        >
+          <SourceItem class="fade-in-fast sources-items-list-item" :item="sourceItem" />
         </div>
       </div>
       <div v-on:click="pageNext()" id="sources-items-list-page-next">
@@ -183,8 +187,8 @@ export default {
 <style scoped>
 #sources-items-list-page {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(30em, 1fr));
-  gap: 1em;
+  grid-template-columns: repeat(auto-fill, minmax(18em, 1fr));
+  gap: 0.6em;
 }
 
 #sources-layout > * {
@@ -336,5 +340,11 @@ export default {
 #sources-items-list-page {
   height: 100%;
   overflow-y: auto;
+}
+
+.sources-items-list-item-container,
+.sources-items-list-item {
+  margin: 0;
+  padding: 0;
 }
 </style>
