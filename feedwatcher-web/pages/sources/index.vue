@@ -35,11 +35,11 @@
         <div v-for="sourceItem in sourceItemsStore.sourceItems" v-bind:key="sourceItem.id">
           <SourceItem class="fade-in-fast" :item="sourceItem" />
         </div>
-        <div v-on:click="pageNext()" id="sources-items-list-page-next">
-          <Loading v-if="sourceItemsStore.loading" />
-          <span v-if="sourceItemsStore.sourceItems.length == 0 && !sourceItemsStore.loading">No items</span>
-          <i v-if="sourceItemsStore.pageHasMore && !sourceItemsStore.loading" class="bi bi-caret-down"></i>
-        </div>
+      </div>
+      <div v-on:click="pageNext()" id="sources-items-list-page-next">
+        <Loading v-if="sourceItemsStore.loading" />
+        <span v-if="sourceItemsStore.sourceItems.length == 0 && !sourceItemsStore.loading">No items</span>
+        <i v-if="sourceItemsStore.pageHasMore && !sourceItemsStore.loading" class="bi bi-caret-down"></i>
       </div>
     </div>
   </div>
@@ -181,6 +181,12 @@ export default {
 </script>
 
 <style scoped>
+#sources-items-list-page {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(30em, 1fr));
+  gap: 1em;
+}
+
 #sources-layout > * {
   min-height: 0px;
 }
