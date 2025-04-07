@@ -50,7 +50,7 @@ module.exports = {
       sourceItem.content += `<iframe src='https://www.youtube.com/embed/${
         item.id.split(":")[2]
       }/' frameborder='0' allowfullscreen ></iframe >`;
-      sourceItem.datePublished = new Date(item.updated);
+      sourceItem.datePublished = new Date(item.published);
       sourceItem.thumbnail = item.image.url;
       try {
         await axios

@@ -33,7 +33,7 @@ module.exports = {
       sourceItem.url = item.url;
       sourceItem.title = item.title;
       sourceItem.content = item.content || "";
-      sourceItem.datePublished = new Date(item.updated);
+      sourceItem.datePublished = new Date(item.published);
       sourceItem.thumbnail = item.image ? item.image.url : null;
       sourceItems.push(sourceItem);
     });
