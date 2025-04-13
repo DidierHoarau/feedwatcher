@@ -187,7 +187,7 @@ export default {
 <style scoped>
 #sources-items-list-page {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(18em, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(20em, 1fr));
   gap: 0.6em;
 }
 
