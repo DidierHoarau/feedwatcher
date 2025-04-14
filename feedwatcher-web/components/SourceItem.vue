@@ -241,7 +241,7 @@ export default {
   background-position: center;
   background-repeat: no-repeat;
   height: 100%;
-  width: 10em;
+  width: min(7em, 20vw);
 }
 
 .v-enter-active,
