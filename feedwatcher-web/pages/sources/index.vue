@@ -30,15 +30,13 @@
       <i v-if="filterStatus == 'unread'" v-on:click="toggleUnreadFIlter()" class="bi bi-envelope"></i>
       <i v-else v-on:click="toggleUnreadFIlter()" class="bi bi-envelope-open"></i>
     </div>
-    <div id="sources-items-list">
-      <div id="sources-items-list-page">
-        <div
-          class="sources-items-list-item-container"
-          v-for="sourceItem in sourceItemsStore.sourceItems"
-          v-bind:key="sourceItem.id"
-        >
-          <SourceItem class="fade-in-fast sources-items-list-item" :item="sourceItem" />
-        </div>
+    <div id="sources-items-list-page">
+      <div
+        class="sources-items-list-item-container"
+        v-for="sourceItem in sourceItemsStore.sourceItems"
+        v-bind:key="sourceItem.id"
+      >
+        <SourceItem class="fade-in-fast sources-items-list-item" :item="sourceItem" />
       </div>
       <div v-on:click="pageNext()" id="sources-items-list-page-next">
         <Loading v-if="sourceItemsStore.loading" />
@@ -186,9 +184,13 @@ export default {
 
 <style scoped>
 #sources-items-list-page {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(20em, 1fr));
+  grid-row: 4;
+  grid-column: 1 / 3;
   gap: 0.6em;
+  display: flex;
+  align-items: flex-start;
+  align-content: flex-start;
+  flex-wrap: wrap;
 }
 
 #sources-layout > * {
@@ -227,10 +229,6 @@ export default {
     align-items: center;
   }
   #sources-items-list {
-    overflow: scroll;
-    grid-row: 4;
-    grid-column-start: 1;
-    grid-column-end: span 2;
   }
   #sources-header {
     grid-row: 1;
@@ -261,7 +259,7 @@ export default {
     grid-column-start: 2;
     grid-column-end: span 2;
   }
-  #sources-items-list {
+  #sources-items-list-page {
     overflow: auto;
     grid-row: 3;
     grid-column-start: 2;
@@ -277,8 +275,7 @@ export default {
     max-width: 20em;
     overflow: auto;
     height: auto;
-    grid-row-start: 2;
-    grid-row-end: span 2;
+    grid-row: 2 / 4;
     grid-column: 1;
   }
   .sources-actions-menu-toggle {
@@ -332,6 +329,8 @@ export default {
   padding-bottom: 0.6em;
   padding-top: 0.6em;
   text-align: center;
+  height: 300;
+  width: 100%;
 }
 .page-inactive {
   opacity: 0.1;
@@ -340,6 +339,12 @@ export default {
 #sources-items-list-page {
   height: 100%;
   overflow-y: auto;
+}
+
+.sources-items-list-item-container {
+  flex: 1 1 20em;
+  min-width: 20em;
+  align-self: flex-start;
 }
 
 .sources-items-list-item-container,
