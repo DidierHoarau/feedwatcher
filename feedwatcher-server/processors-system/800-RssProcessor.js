@@ -1,5 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const Parser = require("rss-parser");
+const axios = require("axios");
+const { parseFeed } = require("@rowanmanning/feed-parser");
 
 // eslint-disable-next-line no-undef
 module.exports = {
@@ -14,9 +15,7 @@ module.exports = {
 
   test: async (source) => {
     try {
-      const feed = await new Parser({
-        timeout: 30000,
-      }).parseURL(source.info.url);
+      const feed = parseFeed((await axios.get(source.info.url)).data);
       if (feed.title) {
         return { name: feed.title, icon: "rss" };
       }
@@ -27,16 +26,15 @@ module.exports = {
   },
 
   fetchLatest: async (source, lastSourceItemSaved) => {
-    const feed = await new Parser({
-      timeout: 30000,
-    }).parseURL(source.info.url);
+    const feed = parseFeed((await axios.get(source.info.url)).data);
     const sourceItems = [];
     feed.items.forEach((item) => {
       const sourceItem = {};
-      sourceItem.url = item.link;
+      sourceItem.url = item.url;
       sourceItem.title = item.title;
       sourceItem.content = item.content || "";
-      sourceItem.datePublished = new Date(item.pubDate);
+      sourceItem.datePublished = new Date(item.published);
+      sourceItem.thumbnail = item.image ? item.image.url : null;
       sourceItems.push(sourceItem);
     });
     return sourceItems;

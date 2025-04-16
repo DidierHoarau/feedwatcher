@@ -10,6 +10,7 @@ export class SourceItem {
   public datePublished: Date;
   public content: string;
   public url: string;
+  public thumbnail: string;
   public status: SourceItemStatus;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public info: any;
@@ -30,6 +31,7 @@ export class SourceItem {
     sourceItem.status = itemRaw.status;
     sourceItem.datePublished = new Date(itemRaw.datePublished);
     sourceItem.info = JSON.parse(itemRaw.info);
+    sourceItem.thumbnail = itemRaw.thumbnail;
     return sourceItem;
   }
 }

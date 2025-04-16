@@ -29,8 +29,8 @@ export async function SourceItemsDataAdd(context: Span, sourceItem: SourceItem):
   await SqlDbUtilsQuerySQL(
     span,
     "INSERT INTO sources_items " +
-      "(id, sourceId, title, content, url, status, datePublished, info) " +
-      "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "(id, sourceId, title, content, url, status, datePublished, thumbnail, info) " +
+      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     [
       sourceItem.id,
       sourceItem.sourceId,
@@ -39,6 +39,7 @@ export async function SourceItemsDataAdd(context: Span, sourceItem: SourceItem):
       sourceItem.url,
       sourceItem.status,
       sourceItem.datePublished.toISOString(),
+      sourceItem.thumbnail,
       JSON.stringify(sourceItem.info),
     ]
   );

@@ -1,41 +1,60 @@
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+import { AWSXRayIdGenerator } from "@opentelemetry/id-generator-aws-xray";
 import { BatchSpanProcessor, Span } from "@opentelemetry/sdk-trace-base";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import { Resource } from "@opentelemetry/resources";
-import { AWSXRayIdGenerator } from "@opentelemetry/id-generator-aws-xray";
-
-import { SemanticAttributes, SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
-import opentelemetry from "@opentelemetry/api";
-import * as os from "os";
-import { ConfigInterface } from "./models/ConfigInterface";
-import { defaultTextMapSetter, trace, ROOT_CONTEXT } from "@opentelemetry/api";
-import { W3CTraceContextPropagator } from "@opentelemetry/core";
+import { resourceFromAttributes } from "@opentelemetry/resources";
+import opentelemetry, {
+  defaultTextMapGetter,
+  defaultTextMapSetter,
+  ROOT_CONTEXT,
+  SpanStatusCode,
+  trace,
+} from "@opentelemetry/api";
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
+import { W3CTraceContextPropagator } from "@opentelemetry/core";
+import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
+import { MeterProvider, PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
+import { api } from "@opentelemetry/sdk-node";
+import {
+  ATTR_HTTP_REQUEST_METHOD,
+  ATTR_HTTP_RESPONSE_STATUS_CODE,
+  ATTR_HTTP_ROUTE,
+  ATTR_NETWORK_LOCAL_ADDRESS,
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
+} from "@opentelemetry/semantic-conventions";
+import { FastifyInstance } from "fastify";
+import * as os from "os";
+import { Logger } from "./Logger";
+import { Config } from "../Config";
 
 let tracerInstance;
-let config: ConfigInterface;
 const propagator = new W3CTraceContextPropagator();
+const logger = new Logger("StandardTracerApi");
+let meterProvider;
+let config;
 
 //
-export function StandardTracerInitTelemetry(initConfig: ConfigInterface) {
+export function StandardTracerInitTelemetry(initConfig: Config) {
   config = initConfig;
-  const provider = new NodeTracerProvider({
-    idGenerator: new AWSXRayIdGenerator(),
-    resource: new Resource({
-      [SemanticResourceAttributes.SERVICE_NAME]: `${config.SERVICE_ID}`,
-      [SemanticResourceAttributes.SERVICE_VERSION]: `${config.VERSION}`,
-      [SemanticResourceAttributes.SERVICE_NAMESPACE]: "feedwatcher",
-      [SemanticResourceAttributes.HOST_NAME]: os.hostname(),
-    }),
-  });
-  provider.register();
+  const spanProcessors = [];
   if (config.OPENTELEMETRY_COLLECTOR_HTTP) {
     const exporter = new OTLPTraceExporter({
       url: config.OPENTELEMETRY_COLLECTOR_HTTP,
       headers: {},
     });
-    provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+    spanProcessors.push(new BatchSpanProcessor(exporter));
   }
+  const provider = new NodeTracerProvider({
+    idGenerator: new AWSXRayIdGenerator(),
+    resource: resourceFromAttributes({
+      [ATTR_SERVICE_NAME]: `${config.SERVICE_ID}`,
+      [ATTR_SERVICE_VERSION]: `${config.VERSION}`,
+      [ATTR_NETWORK_LOCAL_ADDRESS]: os.hostname(),
+    }),
+    spanProcessors,
+  });
+  provider.register();
   const contextManager = new AsyncHooksContextManager();
   contextManager.enable();
   opentelemetry.context.setGlobalContextManager(contextManager);
@@ -59,9 +78,9 @@ export function StandardTracerStartSpan(name, parentSpan?: Span): Span {
   }
 
   const span = tracer.startSpan(name) as Span;
-  span.setAttribute(SemanticAttributes.HTTP_METHOD, `BACKEND`);
-  span.setAttribute(SemanticAttributes.HTTP_URL, `${config.SERVICE_ID}-${config.VERSION}-${name}`);
-  span.setAttribute(SemanticAttributes.HTTP_SERVER_NAME, `${config.SERVICE_ID}-${config.VERSION}`);
+  span.setAttribute(ATTR_HTTP_REQUEST_METHOD, `BACKEND`);
+  span.setAttribute(ATTR_HTTP_ROUTE, `${config.SERVICE_ID}-${config.VERSION}-${name}`);
+  span.setAttribute(ATTR_SERVICE_NAME, `${config.SERVICE_ID}-${config.VERSION}`);
 
   return span;
 }
@@ -79,7 +98,57 @@ export function StandardTracerAppendHeader(context: Span, headers = {}): any {
   if (!headers) {
     headers = {};
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  propagator.inject(trace.setSpanContext(ROOT_CONTEXT, context.spanContext()), headers as any, defaultTextMapSetter);
+  propagator.inject(
+    trace.setSpanContext(ROOT_CONTEXT, context.spanContext()),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    headers as any,
+    defaultTextMapSetter
+  );
   return headers;
+}
+
+export function StandardTracerInitFastify(fastify: FastifyInstance) {
+  fastify.addHook("onRequest", async (req) => {
+    let spanName = `${req.method}-${req.url}`;
+    let urlName = req.url;
+    if (config.OPENTELEMETRY_COLLECTOR_AWS) {
+      spanName = `${config.SERVICE_ID}-${config.VERSION}`;
+      urlName = `${config.SERVICE_ID}-${config.VERSION}-${req.method}-${req.url}`;
+    }
+    const callerContext = propagator.extract(ROOT_CONTEXT, req.headers, defaultTextMapGetter);
+    api.context.with(callerContext, () => {
+      const span = StandardTracerStartSpan(spanName);
+      span.setAttribute(ATTR_HTTP_REQUEST_METHOD, req.method);
+      span.setAttribute(ATTR_HTTP_ROUTE, urlName);
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+      (req as any).tracerSpanApi = span;
+    });
+  });
+
+  fastify.addHook("onResponse", async (req, reply) => {
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const span = (req as any).tracerSpanApi as Span;
+    if (reply.statusCode > 299) {
+      span.status.code = SpanStatusCode.ERROR;
+    } else {
+      span.status.code = SpanStatusCode.OK;
+    }
+    span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, reply.statusCode);
+    span.end();
+  });
+
+  fastify.addHook("onError", async (req, reply, error) => {
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const span = (req as any).tracerSpanApi as Span;
+    span.status.code = SpanStatusCode.ERROR;
+    span.recordException(error);
+    logger.error(error);
+  });
+}
+
+export function StandardTracerMetricAdd(key: string, value = 1): void {
+  const meter = meterProvider.getMeter("default");
+  const counter = meter.createCounter(`${config.SERVICE_ID}-${key}`);
+  counter.add(value, { key: "value" });
+  logger.info(`+ Metric: ${config.SERVICE_ID}-${key}: ${value}`);
 }

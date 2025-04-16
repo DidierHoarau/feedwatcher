@@ -14,6 +14,14 @@
       <i v-else class="bi bi-bookmark-plus source-action" v-on:click="saveItem()"></i>
     </div>
 
+    <div class="sourceitem-layout-thumbnail">
+      <div
+        v-if="item.thumbnail"
+        class="sourceitem-thumbnail"
+        :style="{ backgroundImage: `url(${item.thumbnail})` }"
+      ></div>
+    </div>
+
     <div
       class="sourceitem-layout-title"
       v-on:click="clickedItem()"
@@ -162,7 +170,7 @@ export default {
 .sourceitem-layout {
   display: grid;
   grid-template-rows: auto auto 1fr;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto auto 1fr auto;
   height: calc(100vh - 5em);
   width: 100%;
   height: auto;
@@ -172,11 +180,14 @@ export default {
 }
 .sourceitem-layout-title {
   grid-row: 1;
+  grid-column: 3;
+}
+.sourceitem-layout-thumbnail {
+  grid-row: 1 / 3;
   grid-column: 2;
 }
 .sourceitem-layout-read-status {
-  grid-row-start: 1;
-  grid-row-end: span 3;
+  grid-row: 1 / 3;
   grid-column: 1;
   text-align: center;
   padding: 0.5em;
@@ -184,14 +195,13 @@ export default {
 }
 .sourceitem-layout-link {
   grid-row: 1;
-  grid-column: 3;
+  grid-column: 4;
   text-align: right;
   padding-left: 0.5em;
 }
 .sourceitem-layout-content {
   grid-row: 3;
-  grid-column-start: 2;
-  grid-column-end: span 2;
+  grid-column: 3 / 4;
   overflow: hidden;
 }
 .sourceitem-layout-save {
@@ -208,8 +218,7 @@ export default {
 }
 .sourceitem-layout-meta {
   grid-row: 2;
-  grid-column-start: 2;
-  grid-column-end: span 2;
+  grid-column: 3 / 5;
   font-size: 0.5em;
   text-align: right;
 }
@@ -225,6 +234,14 @@ export default {
 }
 .source-action {
   font-size: 1.4em;
+}
+
+.sourceitem-thumbnail {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  height: 100%;
+  width: min(7em, 20vw);
 }
 
 .v-enter-active,
