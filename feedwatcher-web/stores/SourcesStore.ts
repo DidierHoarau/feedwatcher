@@ -60,26 +60,6 @@ export const SourcesStore = defineStore("SourcesStore", {
         return;
       }
     },
-    // async selectSource(sourceId: string) {
-    //   const sourceItemsStore = SourceItemsStore();
-    //   if (!sourceId) {
-    //     sourceItemsStore.selectedSource = "";
-    //     sourceItemsStore.page = 1;
-    //     sourceItemsStore.searchCriteria = "all";
-    //     sourceItemsStore.filterStatus = "unread";
-    //     sourceItemsStore.fetch();
-    //   }
-    //   const position = findIndex(this.sources, { sourceId });
-    //   if (position < 0) {
-    //     return;
-    //   }
-    //   this.selectedIndex = position;
-    //   sourceItemsStore.selectedSource = sourceId;
-    //   sourceItemsStore.searchCriteria = "sourceId";
-    //   sourceItemsStore.searchCriteriaValue = sourceId;
-    //   sourceItemsStore.page = 1;
-    //   sourceItemsStore.fetch();
-    // },
     async fetch() {
       await axios
         .get(`${(await Config.get()).SERVER_URL}/sources/labels`, await AuthService.getAuthHeader())
