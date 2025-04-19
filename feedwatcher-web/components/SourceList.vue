@@ -5,6 +5,7 @@
         v-if="source.isVisible"
         class="source-name-layout"
         :class="{ 'source-active': sourcesStore.selectedIndex == index }"
+        :ref="'source-' + index"
       >
         <span v-on:click="toggleLabelCollapsed(source, index)" class="source-name-indent">
           <span v-html="getIndentation(source)"></span>
@@ -24,7 +25,6 @@
 </template>
 
 <script setup>
-const sourceItemsStore = SourceItemsStore();
 const sourcesStore = SourcesStore();
 </script>
 
@@ -36,6 +36,11 @@ export default {
   props: {
     displayCount: false,
     displaySaved: false,
+  },
+  data() {
+    return {
+      knownSelectedIndex: -1,
+    };
   },
   async created() {
     if (!SourceItemsStore().selectedSource) {
@@ -51,9 +56,17 @@ export default {
     EventBus.on(EventTypes.SOURCES_UPDATED, (message) => {
       SourcesStore().fetch();
     });
+    watch(
+      () => SourcesStore().selectedIndex,
+      () => {
+        this.scrollToSelectedIndex();
+      }
+    );
+    this.scrollToSelectedIndex();
   },
   methods: {
     onSourceSelected(source, index) {
+      this.knownSelectedIndex = index;
       SourcesStore().selectedIndex = index;
       if (source.isRoot) {
         this.$emit("onRootSelected", {});
@@ -84,6 +97,19 @@ export default {
     },
     toggleLabelCollapsed(label, index) {
       SourcesStore().toggleLabelCollapsed(index);
+    },
+    scrollToSelectedIndex() {
+      if (this.knownSelectedIndex === SourcesStore().selectedIndex) {
+        return;
+      }
+      setTimeout(() => {
+        const element = this.$refs["source-" + SourcesStore().selectedIndex];
+        if (element && element[0]) {
+          element[0].scrollIntoView({
+            behavior: "smooth",
+          });
+        }
+      }, 500);
     },
   },
 };

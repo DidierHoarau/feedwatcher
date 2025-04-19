@@ -13,6 +13,7 @@ import axios from "axios";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
+import SourceId from "./[sourceId].vue";
 
 export default {
   data() {
@@ -34,9 +35,8 @@ export default {
               text: "Source added",
             });
             await SourcesStore().fetch();
-            SourcesStore().selectSource(res.data.id);
             const router = useRouter();
-            router.push({ path: "/sources" });
+            router.push({ path: "/sources", query: { sourceId: res.data.id } });
           })
           .catch(handleError);
         this.loading = false;

@@ -78,6 +78,19 @@ export default {
       }
     });
     this.onRootSelected();
+    if (useRoute().query.filterStatus) {
+      this.filterStatus = useRoute().query.filterStatus;
+    }
+    if (useRoute().query.filterStatus) {
+      this.filterStatus = useRoute().query.filterStatus;
+    }
+    if (useRoute().query.sourceId) {
+      this.onSourceSelected({ sourceId: useRoute().query.sourceId });
+    } else if (useRoute().query.labelName) {
+      this.onLabelSelected({ labelName: useRoute().query.labelName });
+    } else {
+      this.onRootSelected();
+    }
   },
   methods: {
     async onSourceSelected(source) {
@@ -89,6 +102,8 @@ export default {
       sourceItemsStore.filterStatus = this.filterStatus;
       sourceItemsStore.filterSaved = false;
       sourceItemsStore.fetch();
+      SourcesStore().setSelectedSourceId(source.sourceId);
+      this.updateRouteQuery();
     },
     async onLabelSelected(source) {
       const sourceItemsStore = SourceItemsStore();
@@ -99,6 +114,8 @@ export default {
       sourceItemsStore.filterStatus = this.filterStatus;
       sourceItemsStore.filterSaved = false;
       sourceItemsStore.fetch();
+      SourcesStore().setSelectedLabel(source.labelName);
+      this.updateRouteQuery();
     },
     async onRootSelected() {
       const sourceItemsStore = SourceItemsStore();
@@ -108,6 +125,22 @@ export default {
       sourceItemsStore.filterStatus = this.filterStatus;
       sourceItemsStore.filterSaved = false;
       sourceItemsStore.fetch();
+      SourcesStore().setSelectedRoot();
+      this.updateRouteQuery();
+    },
+    updateRouteQuery() {
+      const sourceItemsStore = SourceItemsStore();
+      const query = {};
+      if (sourceItemsStore.searchCriteria !== "all") {
+        query[sourceItemsStore.searchCriteria] = sourceItemsStore.searchCriteriaValue;
+      }
+      if (sourceItemsStore.filterStatus !== "unread") {
+        query.filterStatus = sourceItemsStore.filterStatus;
+      }
+      if (sourceItemsStore.filterSaved) {
+        query.filterSaved = sourceItemsStore.filterSaved;
+      }
+      useRouter().push({ query });
     },
     async refreshAndFetch() {
       await axios

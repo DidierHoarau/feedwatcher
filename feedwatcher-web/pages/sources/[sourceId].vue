@@ -73,13 +73,11 @@ export default {
             return SourcesStore().fetch();
           })
           .then(() => {
-            SourcesStore().selectSource(this.source.id);
+            SourcesStore().setSelectedSourceId(this.source.id);
             setTimeout(() => {
               UserProcessorInfoStore().check();
-              useRouter().push({ path: "/sources" });
+              useRouter().push({ path: "/sources", query: { sourceId: this.source.id } });
             }, 100);
-            UserProcessorInfoStore().check();
-            useRouter().push({ path: "/sources" });
           })
           .catch(handleError);
       } else {
@@ -97,7 +95,6 @@ export default {
             EventBus.emit(EventTypes.ALERT_MESSAGE, {
               text: "Source deleted",
             });
-            SourcesStore().selectSource("");
             SourcesStore().selectedIndex = 0;
             useRouter().push({ path: "/sources" });
           })
