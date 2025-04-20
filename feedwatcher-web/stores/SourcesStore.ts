@@ -12,30 +12,53 @@ export const SourcesStore = defineStore("SourcesStore", {
     selectedIndex: -1,
     sourceCounts: [],
     savedCounts: [],
+    selectedSourceId: "",
+    selectedLabel: "",
+    selectedRoot: true,
   }),
 
   getters: {},
 
   actions: {
-    async selectSource(sourceId: string) {
-      const sourceItemsStore = SourceItemsStore();
-      if (!sourceId) {
-        sourceItemsStore.selectedSource = "";
-        sourceItemsStore.page = 1;
-        sourceItemsStore.searchCriteria = "all";
-        sourceItemsStore.filterStatus = "unread";
-        sourceItemsStore.fetch();
-      }
-      const position = findIndex(this.sources, { sourceId });
-      if (position < 0) {
+    setSelectedSourceId(sourceId: string) {
+      this.selectedSourceId = sourceId;
+      this.selectedLabel = "";
+      this.selectedRoot = false;
+      this.updateSelectedIndex();
+    },
+    setSelectedLabel(labelName: string) {
+      this.selectedSourceId = "";
+      this.selectedLabel = labelName;
+      this.selectedRoot = false;
+      this.updateSelectedIndex();
+    },
+    setSelectedRoot() {
+      this.selectedSourceId = "";
+      this.selectedLabel = "";
+      this.selectedRoot = true;
+      this.updateSelectedIndex();
+    },
+    updateSelectedIndex() {
+      if (this.selectedRoot === true) {
+        this.selectedIndex = 0;
         return;
       }
-      this.selectedIndex = position;
-      sourceItemsStore.selectedSource = sourceId;
-      sourceItemsStore.searchCriteria = "sourceId";
-      sourceItemsStore.searchCriteriaValue = sourceId;
-      sourceItemsStore.page = 1;
-      sourceItemsStore.fetch();
+      if (this.selectedSourceId !== "") {
+        const position = findIndex(this.sources, { sourceId: this.selectedSourceId });
+        if (position < 0) {
+          return;
+        }
+        this.selectedIndex = position;
+        return;
+      }
+      if (this.selectedLabel !== "") {
+        const position = findIndex(this.sources, { labelName: this.selectedLabel, isLabel: true });
+        if (position < 0) {
+          return;
+        }
+        this.selectedIndex = position;
+        return;
+      }
     },
     async fetch() {
       await axios
@@ -122,6 +145,7 @@ export const SourcesStore = defineStore("SourcesStore", {
           assignCounts(this.sources, this.sourceCounts, "unreadCount");
           assignCounts(this.sources, this.savedCounts, "savedCount");
           this.checkVisibility();
+          this.updateSelectedIndex();
           return this.fetchCounts();
         })
         .catch(handleError);
