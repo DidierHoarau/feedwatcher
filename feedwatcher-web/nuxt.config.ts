@@ -19,7 +19,7 @@ export default defineNuxtConfig({
       ],
     },
   },
-  modules: ["@pinia/nuxt", "@vite-pwa/nuxt"],
+  modules: ["@pinia/nuxt", "@vite-pwa/nuxt", "~/assets/css/main.css"],
   imports: {
     dirs: ["./stores"],
   },
