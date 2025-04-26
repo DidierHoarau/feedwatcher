@@ -21,6 +21,7 @@ export class Config implements ConfigInterface {
   public OPENTELEMETRY_COLLECTOR_AWS = process.env.OPENTELEMETRY_COLLECTOR_AWS === "true";
   public PROCESSORS_SYSTEM = "processors-system";
   public PROCESSORS_USER = "processors-user";
+  public OPENTELEMETRY_COLLECTOR_CONSOLE = false;
 
   public async reload(): Promise<void> {
     const content = await fse.readJson(this.CONFIG_FILE);
@@ -44,5 +45,6 @@ export class Config implements ConfigInterface {
     setIfSet("SOURCE_FETCH_FREQUENCY");
     setIfSet("OPENTELEMETRY_COLLECTOR_HTTP");
     setIfSet("OPENTELEMETRY_COLLECTOR_AWS");
+    setIfSet("OPENTELEMETRY_COLLECTOR_CONSOLE");
   }
 }
