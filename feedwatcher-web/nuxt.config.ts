@@ -17,7 +17,8 @@ export default defineNuxtConfig({
       ],
     },
   },
-  modules: ["@pinia/nuxt", "@vite-pwa/nuxt", "~/assets/css/main.css"],
+  css: ["~/assets/css/main.css"],
+  modules: ["@pinia/nuxt", "@vite-pwa/nuxt"],
   imports: {
     dirs: ["./stores"],
   },
