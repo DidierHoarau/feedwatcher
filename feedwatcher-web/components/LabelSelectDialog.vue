@@ -10,7 +10,8 @@
             :class="{ 'source-active': sourcesStore.selectedIndex == index }"
           >
             <span class="source-name-indent">
-              <span v-html="getIndentation(source)"></span>
+              <span v-html="getIndentation(source)"></span
+                console.log(source)>
             </span>
             <div v-on:click="onSourceSelected(source, index)" class="source-name-name">
               <span v-if="!source.isLabel"><i :class="'bi bi-' + source.icon"></i>&nbsp;</span>
@@ -32,7 +33,8 @@
       </article>
       <label>Label Name</label>
       <input v-model="label" type="text" />
-      <button v-on:click="selectLabel()">Select</button>
+      <button v-on:click="selectLabel()">Select</button><br/>
+      <button v-on:click="cancelSelectLabel()">Cancel</button>
     </article>
   </dialog>
 </template>
@@ -78,9 +80,12 @@ export default {
       SourcesStore().selectedIndex = SourcesStore().selectedIndex.length - 1;
       this.$emit("onLabelSelected", { label: this.label });
     },
+    cancelSelectLabel() {
+      this.$emit("onLabelSelectCancel", { });
+    },
     getIndentation(source) {
       let indent = "";
-      for (let i = 0; i < source.depth; i++) {
+      for (let i = 1; i < source.depth; i++) {
         indent += "&nbsp;&nbsp;&nbsp;&nbsp;";
       }
       return indent;

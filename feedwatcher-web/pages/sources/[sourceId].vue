@@ -12,7 +12,11 @@
     </div>
     <button v-on:click="updateSource()">Update</button>
     <button v-on:click="deleteSource()">Delete</button>
-    <LabelSelectDialog @onLabelSelected="onLabelSelected" v-if="isSelectLabel" />
+    <LabelSelectDialog
+      @onLabelSelectCancel="onLabelSelectCancel"
+      @onLabelSelected="onLabelSelected"
+      v-if="isSelectLabel"
+    />
   </div>
 </template>
 
@@ -106,6 +110,9 @@ export default {
       if (!find(this.labels, { name: label.name })) {
         this.labels.push({ name: label.label });
       }
+    },
+    async onLabelSelectCancel() {
+      this.isSelectLabel = false;
     },
     async removeLabel(label) {
       this.labels.splice(findIndex(this.labels, { name: label.name }), 1);

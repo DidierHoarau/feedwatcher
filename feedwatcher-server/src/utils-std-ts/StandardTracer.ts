@@ -1,8 +1,3 @@
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import { AWSXRayIdGenerator } from "@opentelemetry/id-generator-aws-xray";
-import { BatchSpanProcessor, Span } from "@opentelemetry/sdk-trace-base";
-import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
-import { resourceFromAttributes } from "@opentelemetry/resources";
 import opentelemetry, {
   defaultTextMapGetter,
   defaultTextMapSetter,
@@ -12,9 +7,12 @@ import opentelemetry, {
 } from "@opentelemetry/api";
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
 import { W3CTraceContextPropagator } from "@opentelemetry/core";
-import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
-import { MeterProvider, PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+import { AWSXRayIdGenerator } from "@opentelemetry/id-generator-aws-xray";
+import { resourceFromAttributes } from "@opentelemetry/resources";
 import { api } from "@opentelemetry/sdk-node";
+import { BatchSpanProcessor, ConsoleSpanExporter, Span } from "@opentelemetry/sdk-trace-base";
+import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import {
   ATTR_HTTP_REQUEST_METHOD,
   ATTR_HTTP_RESPONSE_STATUS_CODE,
@@ -25,8 +23,8 @@ import {
 } from "@opentelemetry/semantic-conventions";
 import { FastifyInstance } from "fastify";
 import * as os from "os";
-import { Logger } from "./Logger";
 import { Config } from "../Config";
+import { Logger } from "./Logger";
 
 let tracerInstance;
 const propagator = new W3CTraceContextPropagator();
@@ -43,6 +41,10 @@ export function StandardTracerInitTelemetry(initConfig: Config) {
       url: config.OPENTELEMETRY_COLLECTOR_HTTP,
       headers: {},
     });
+    spanProcessors.push(new BatchSpanProcessor(exporter));
+  }
+  if (config.OPENTELEMETRY_COLLECTOR_CONSOLE) {
+    const exporter = new CustomConsoleSpanExporter();
     spanProcessors.push(new BatchSpanProcessor(exporter));
   }
   const provider = new NodeTracerProvider({
@@ -151,4 +153,18 @@ export function StandardTracerMetricAdd(key: string, value = 1): void {
   const counter = meter.createCounter(`${config.SERVICE_ID}-${key}`);
   counter.add(value, { key: "value" });
   logger.info(`+ Metric: ${config.SERVICE_ID}-${key}: ${value}`);
+}
+
+class CustomConsoleSpanExporter extends ConsoleSpanExporter {
+  export(spans, resultCallback) {
+    spans.forEach((span) => {
+      const { _spanContext, parentSpanContext, name, attributes, status, duration } = span;
+      console.log(
+        `${parentSpanContext ? parentSpanContext.spanId + " > " : ""}${_spanContext.spanId} ${name}` +
+          ` ${attributes && Object.keys(attributes).length > 0 ? JSON.stringify(attributes) + " " : ""}` +
+          `${status.code === 0 ? "OK" : "ERROR"} ${duration}ns`
+      );
+    });
+    resultCallback({ code: 0 });
+  }
 }
