@@ -6,12 +6,24 @@
         class="bi bi-envelope-open source-action"
         v-on:click="markReadStatus('unread')"
       ></i>
-      <i v-else class="bi bi-envelope source-action" v-on:click="markReadStatus('read')"></i>
+      <i
+        v-else
+        class="bi bi-envelope source-action"
+        v-on:click="markReadStatus('read')"
+      ></i>
 
       <br />
 
-      <i v-if="isSaved" class="bi bi-bookmark-check-fill source-action" v-on:click="unSaveItem()"></i>
-      <i v-else class="bi bi-bookmark-plus source-action" v-on:click="saveItem()"></i>
+      <i
+        v-if="isSaved"
+        class="bi bi-bookmark-check-fill source-action"
+        v-on:click="unSaveItem()"
+      ></i>
+      <i
+        v-else
+        class="bi bi-bookmark-plus source-action"
+        v-on:click="saveItem()"
+      ></i>
     </div>
 
     <div class="sourceitem-layout-thumbnail">
@@ -27,7 +39,9 @@
       v-on:click="clickedItem()"
       :class="{ 'sourceitem-read': item.status == 'read' }"
     >
-      <span class="sourceitem-date">{{ relativeTime(item.datePublished) }}</span>
+      <span class="sourceitem-date">{{
+        relativeTime(item.datePublished)
+      }}</span>
       {{ item.title }}
     </div>
 
@@ -42,7 +56,10 @@
     </div>
 
     <div
-      :class="{ 'sourceitem-active': isActive, 'sourceitem-notactive': !isActive }"
+      :class="{
+        'sourceitem-active': isActive,
+        'sourceitem-notactive': !isActive,
+      }"
       class="sourceitem-layout-content"
     >
       <Transition>
@@ -70,7 +87,10 @@ export default {
   },
   async created() {
     axios
-      .get(`${(await Config.get()).SERVER_URL}/lists/items/${this.item.id}`, await AuthService.getAuthHeader())
+      .get(
+        `${(await Config.get()).SERVER_URL}/lists/items/${this.item.id}`,
+        await AuthService.getAuthHeader()
+      )
       .then((res) => {
         if (res.data.id) {
           this.isSaved = true;
@@ -101,7 +121,10 @@ export default {
     },
     async unSaveItem() {
       axios
-        .delete(`${(await Config.get()).SERVER_URL}/lists/items/${this.item.id}`, await AuthService.getAuthHeader())
+        .delete(
+          `${(await Config.get()).SERVER_URL}/lists/items/${this.item.id}`,
+          await AuthService.getAuthHeader()
+        )
         .then((res) => {
           this.isSaved = false;
         })
@@ -181,6 +204,8 @@ export default {
 .sourceitem-layout-title {
   grid-row: 1;
   grid-column: 3;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .sourceitem-layout-thumbnail {
   grid-row: 1 / 3;
