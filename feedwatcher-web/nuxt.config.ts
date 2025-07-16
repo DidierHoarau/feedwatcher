@@ -14,34 +14,16 @@ export default defineNuxtConfig({
       link: [
         { rel: "icon", href: "/icon.png" },
         { rel: "stylesheet", href: "/styles.css" },
+        { rel: "manifest", href: "/manifest.json" },
       ],
     },
   },
   css: ["~/assets/css/main.css"],
-  modules: ["@pinia/nuxt", "@vite-pwa/nuxt"],
+  modules: ["@pinia/nuxt"],
   imports: {
     dirs: ["./stores"],
   },
   pinia: {
     autoImports: ["defineStore", "acceptHMRUpdate"],
-  },
-  pwa: {
-    // PWA options
-    manifest: {
-      name: "FeedWatcher",
-      short_name: "FeedWatcher",
-      lang: "en-US",
-      start_url: "/sources",
-      display: "standalone",
-      background_color: "#12191f",
-      theme_color: "#12191f",
-      icons: [
-        {
-          src: "images/icon-512.png",
-          sizes: "512x512",
-          type: "image/png",
-        },
-      ],
-    },
   },
 });

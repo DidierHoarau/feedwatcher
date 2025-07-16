@@ -16,8 +16,15 @@
     <div id="sources-rules">
       <article>
         <header>Auto-Archive</header>
-        <div v-for="(rule, index) of currentRule.autoRead" v-bind:key="index" class="rule-layout">
-          <i class="bi bi-trash-fill" v-on:click="removeAutoArchive(rule.pattern)"></i>
+        <div
+          v-for="(rule, index) of currentRule.autoRead"
+          v-bind:key="index"
+          class="rule-layout"
+        >
+          <i
+            class="bi bi-trash-fill"
+            v-on:click="removeAutoArchive(rule.pattern)"
+          ></i>
           <div class="rule-separator"></div>
           <div>
             <label for="pattern">
@@ -34,8 +41,15 @@
       </article>
       <article>
         <header>Auto-Delete</header>
-        <div v-for="(rule, index) of currentRule.autoDelete" v-bind:key="index" class="rule-layout">
-          <i class="bi bi-trash-fill" v-on:click="removeAutoDelete(rule.pattern)"></i>
+        <div
+          v-for="(rule, index) of currentRule.autoDelete"
+          v-bind:key="index"
+          class="rule-layout"
+        >
+          <i
+            class="bi bi-trash-fill"
+            v-on:click="removeAutoDelete(rule.pattern)"
+          ></i>
           <div class="rule-separator"></div>
           <div>
             <label for="pattern">
@@ -82,7 +96,10 @@ export default {
       useRouter().push({ path: "/users" });
     }
     axios
-      .get(`${(await Config.get()).SERVER_URL}/rules`, await AuthService.getAuthHeader())
+      .get(
+        `${(await Config.get()).SERVER_URL}/rules`,
+        await AuthService.getAuthHeader()
+      )
       .then((res) => {
         this.rules = res.data.rules;
         this.onRootSelected();
@@ -92,7 +109,11 @@ export default {
   methods: {
     async saveRules() {
       axios
-        .put(`${(await Config.get()).SERVER_URL}/rules`, { rules: this.rules }, await AuthService.getAuthHeader())
+        .put(
+          `${(await Config.get()).SERVER_URL}/rules`,
+          { rules: this.rules },
+          await AuthService.getAuthHeader()
+        )
         .then((res) => {
           EventBus.emit(EventTypes.ALERT_MESSAGE, {
             type: "info",
@@ -115,7 +136,9 @@ export default {
       }
     },
     async onLabelSelected(source) {
-      const existingRule = find(this.rules.info, { labelName: source.labelName });
+      const existingRule = find(this.rules.info, {
+        labelName: source.labelName,
+      });
       if (existingRule) {
         this.currentRule = existingRule;
       } else {
@@ -147,10 +170,16 @@ export default {
       this.currentRule.autoDelete.push({ pattern: "*", ageDays: "100" });
     },
     async removeAutoArchive(pattern) {
-      this.currentRule.autoRead.splice(findIndex(this.currentRule.autoRead, { pattern }), 1);
+      this.currentRule.autoRead.splice(
+        findIndex(this.currentRule.autoRead, { pattern }),
+        1
+      );
     },
     async removeAutoDelete(pattern) {
-      this.currentRule.autoDelete.splice(findIndex(this.currentRule.autoDelete, { pattern }), 1);
+      this.currentRule.autoDelete.splice(
+        findIndex(this.currentRule.autoDelete, { pattern }),
+        1
+      );
     },
   },
 };
@@ -181,7 +210,7 @@ export default {
     display: grid;
     grid-template-rows: 2.7em auto 3em 2fr;
     grid-template-columns: auto auto;
-    height: calc(100vh - 5em);
+    height: 100%;
     column-gap: 1em;
   }
   #sources-items-actions {
@@ -220,7 +249,7 @@ export default {
     display: grid;
     grid-template-rows: 2.7em 3em 1fr;
     grid-template-columns: auto 1fr 1fr;
-    height: calc(100vh - 5em);
+    height: 100%;
     column-gap: 1em;
   }
   #sources-items-actions {

@@ -1,6 +1,5 @@
 <template>
   <div id="page-layout">
-    <VitePwaManifest />
     <header>
       <Navigation />
     </header>
@@ -19,13 +18,13 @@
   height: 100vh;
   height: 100dvh;
   display: grid;
-  overflow: hidden;
   grid-template-rows: 4em 1fr;
 }
 
 header,
 main {
   padding: 0.5em;
+  overflow: hidden;
 }
 
 #page-alert-messages {
