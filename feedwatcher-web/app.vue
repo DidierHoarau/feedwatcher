@@ -14,15 +14,10 @@
 <style>
 /* Layout */
 
-.page {
-  overflow-y: auto;
-  height: calc(100vh - 5em);
-  padding: 0em 1em;
-}
-
 #page-layout {
   width: auto;
   height: 100vh;
+  height: 100dvh;
   display: grid;
   overflow: hidden;
   grid-template-rows: 4em 1fr;
