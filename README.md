@@ -20,11 +20,84 @@ FeedWatcher is designed to be deployed as a container.
 - This image exposes port `8080`
 - The volume is located in `/data`
 
+## Docker
+
 You can for example run the following command to run feedwatcher in docker:
 
 ```bash
 mkdir -p data
 docker run --name feedwatcher -p 8080:8080 -v "$(pwd)/data:/data" -d didierhoarau/feedwatcher
+```
+
+## Kubernetes
+
+The following manifest can be used to deploy in Kubernetes:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feedwatcher
+  labels:
+    app: feedwatcher
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: feedwatcher
+  template:
+    metadata:
+      labels:
+        app: feedwatcher
+    spec:
+      containers:
+        - image: feedwatcher
+          name: feedwatcher
+          resources:
+            limits:
+              memory: 500Mi
+              cpu: 1
+            requests:
+              memory: 200Mi
+              cpu: 100m
+          volumeMounts:
+            - mountPath: /data
+              name: pod-volume
+          imagePullPolicy: Always
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: pod-volume
+          persistentVolumeClaim:
+            claimName: feedwatcher
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: feedwatcher
+spec:
+  ports:
+    - name: tcp
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: feedwatcher
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: feedwatcher
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
 ```
 
 Check the [docs/deployments](docs/deployments) for more examples of deployments.

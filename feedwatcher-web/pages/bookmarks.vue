@@ -11,8 +11,16 @@
       ></i>
       <i class="bi bi-arrow-clockwise" v-on:click="refresh()"></i>
       <NuxtLink to="/sources/new"><i class="bi bi-plus-square"></i></NuxtLink>
-      <i class="bi bi-caret-up-square sources-actions-menu-toggle" v-if="menuOpened" v-on:click="openListMenu()"></i>
-      <i class="bi bi-caret-down-square sources-actions-menu-toggle" v-else v-on:click="openListMenu()"></i>
+      <i
+        class="bi bi-caret-up-square sources-actions-menu-toggle"
+        v-if="menuOpened"
+        v-on:click="openListMenu()"
+      ></i>
+      <i
+        class="bi bi-caret-down-square sources-actions-menu-toggle"
+        v-else
+        v-on:click="openListMenu()"
+      ></i>
     </div>
     <div id="sources-list" :class="{ 'sources-list-closed': !menuOpened }">
       <SourceList
@@ -23,22 +31,48 @@
       />
     </div>
     <div id="sources-items-actions" class="actions">
-      <NuxtLink v-if="sourceItemsStore.selectedSource" :to="'/sources/' + sourceItemsStore.selectedSource"
+      <NuxtLink
+        v-if="sourceItemsStore.selectedSource"
+        :to="'/sources/' + sourceItemsStore.selectedSource"
         ><i class="bi bi-pencil-square"></i
       ></NuxtLink>
-      <i v-if="sourceItemsStore.sourceItems.length > 0" v-on:click="markAllRead()" class="bi bi-archive"></i>
-      <i v-if="filterStatus == 'unread'" v-on:click="toggleUnreadFIlter()" class="bi bi-envelope"></i>
-      <i v-else v-on:click="toggleUnreadFIlter()" class="bi bi-envelope-open"></i>
+      <i
+        v-if="sourceItemsStore.sourceItems.length > 0"
+        v-on:click="markAllRead()"
+        class="bi bi-archive"
+      ></i>
+      <i
+        v-if="filterStatus == 'unread'"
+        v-on:click="toggleUnreadFIlter()"
+        class="bi bi-envelope"
+      ></i>
+      <i
+        v-else
+        v-on:click="toggleUnreadFIlter()"
+        class="bi bi-envelope-open"
+      ></i>
     </div>
     <div id="sources-items-list">
       <div id="sources-items-list-page">
-        <div v-for="sourceItem in sourceItemsStore.sourceItems" v-bind:key="sourceItem.id">
+        <div
+          v-for="sourceItem in sourceItemsStore.sourceItems"
+          v-bind:key="sourceItem.id"
+        >
           <SourceItem class="fade-in-fast" :item="sourceItem" />
         </div>
         <div v-on:click="pageNext()" id="sources-items-list-page-next">
           <Loading v-if="sourceItemsStore.loading" />
-          <span v-if="sourceItemsStore.sourceItems.length == 0 && !sourceItemsStore.loading">No items</span>
-          <i v-if="sourceItemsStore.pageHasMore && !sourceItemsStore.loading" class="bi bi-caret-down"></i>
+          <span
+            v-if="
+              sourceItemsStore.sourceItems.length == 0 &&
+              !sourceItemsStore.loading
+            "
+            >No items</span
+          >
+          <i
+            v-if="sourceItemsStore.pageHasMore && !sourceItemsStore.loading"
+            class="bi bi-caret-down"
+          ></i>
         </div>
       </div>
     </div>
@@ -71,7 +105,10 @@ export default {
       useRouter().push({ path: "/users" });
     }
     EventBus.on(EventTypes.ITEMS_UPDATED, (message) => {
-      if (SourceItemsStore().sourceItems.length === 0 && UserProcessorInfoStore().status === "idle") {
+      if (
+        SourceItemsStore().sourceItems.length === 0 &&
+        UserProcessorInfoStore().status === "idle"
+      ) {
         SourceItemsStore().fetch();
       }
     });
@@ -109,7 +146,11 @@ export default {
     },
     async refreshAndFetch() {
       await axios
-        .put(`${(await Config.get()).SERVER_URL}/sources/fetch`, {}, await AuthService.getAuthHeader())
+        .put(
+          `${(await Config.get()).SERVER_URL}/sources/fetch`,
+          {},
+          await AuthService.getAuthHeader()
+        )
         .then((res) => {})
         .catch(handleError);
       UserProcessorInfoStore().check();
@@ -205,7 +246,7 @@ export default {
     display: grid;
     grid-template-rows: 2.5em auto 3em 2fr;
     grid-template-columns: auto auto;
-    height: calc(100vh - 5em);
+    height: 100%;
     column-gap: 1em;
   }
   #sources-items-actions {
@@ -243,7 +284,7 @@ export default {
     display: grid;
     grid-template-rows: 2.7em 3em 1fr;
     grid-template-columns: auto 1fr 1fr;
-    height: calc(100vh - 5em);
+    height: 100%;
     column-gap: 1em;
   }
   #sources-items-actions {
