@@ -12,7 +12,10 @@ import { SourcesIdRoutes } from "./sources/SourcesIdRoutes";
 import { SourcesLabelsRoutes } from "./sources/SourcesLabelsRoutes";
 import { SourcesImportRoutes } from "./sources/SourcesImportRoutes";
 import { ListsItemsRoutes } from "./sources/ListsItemsRoutes";
-import { StandardTracerInitTelemetry, StandardTracerStartSpan } from "./utils-std-ts/StandardTracer";
+import {
+  StandardTracerInitTelemetry,
+  StandardTracerStartSpan,
+} from "./utils-std-ts/StandardTracer";
 import { ProcessorsInit } from "./procesors/Processors";
 import { SqlDbUtilsInit } from "./utils-std-ts/SqlDbUtils";
 import { SchedulerInit } from "./Scheduler";
@@ -88,6 +91,9 @@ Promise.resolve().then(async () => {
   });
   fastify.register(new RulesRoutes().getRoutes, {
     prefix: "/api/rules",
+  });
+  fastify.get("/api/status", async () => {
+    return { started: true };
   });
 
   /* eslint-disable-next-line */
