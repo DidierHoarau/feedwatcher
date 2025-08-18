@@ -30,4 +30,4 @@ COPY feedwatcher-server/processors-user /opt/app/feedwatcher/processors-user
 
 WORKDIR /opt/app/feedwatcher
 
-CMD [ "dist/app.js" ]
+CMD [ "dist/App.js" ]

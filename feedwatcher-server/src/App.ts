@@ -15,7 +15,7 @@ import { SourcesRoutes } from "./sources/SourcesRoutes";
 import { StandardTracerApiRegisterHooks } from "./StandardTracerApi";
 import { AuthInit } from "./users/Auth";
 import { UsersRoutes } from "./users/UsersRoutes";
-import { Logger } from "./utils-std-ts/Logger";
+import { Logger, LoggerInit } from "./utils-std-ts/Logger";
 import { SqlDbUtilsInit } from "./utils-std-ts/SqlDbUtils";
 import { StandardMeterInitTelemetry } from "./utils-std-ts/StandardMeter";
 import {
@@ -41,6 +41,7 @@ Promise.resolve().then(async () => {
 
   const span = StandardTracerStartSpan("init");
 
+  LoggerInit(span, config);
   await SqlDbUtilsInit(span, config);
   await AuthInit(span, config);
   await ProcessorsInit(span, config);
@@ -109,6 +110,6 @@ Promise.resolve().then(async () => {
       logger.error(err);
       process.exit(1);
     }
-    logger.info("API Listerning");
+    logger.info("API Listening");
   });
 });
