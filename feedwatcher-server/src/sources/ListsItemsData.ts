@@ -3,29 +3,51 @@ import { SourceItem } from "../model/SourceItem";
 import { ListItem } from "../model/ListItem";
 import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
 import { SourcesDataInvalidateUserCache } from "./SourcesData";
-import { SqlDbUtilsExecSQL, SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
+import {
+  SqlDbUtilsExecSQL,
+  SqlDbUtilsQuerySQL,
+} from "../utils-std-ts/SqlDbUtils";
 
-export async function ListsItemsDataAdd(context: Span, listItem: ListItem): Promise<void> {
+export async function ListsItemsDataAdd(
+  context: Span,
+  listItem: ListItem
+): Promise<void> {
   const span = StandardTracerStartSpan("ListsItemsDataAdd", context);
-  await SqlDbUtilsExecSQL(span, "INSERT INTO lists_items (id, itemId, userId, name, info) VALUES (?, ?, ?, ?, ?)", [
-    listItem.id,
-    listItem.itemId,
-    listItem.userId,
-    listItem.name,
-    JSON.stringify(listItem.info),
-  ]);
+  await SqlDbUtilsExecSQL(
+    span,
+    "INSERT INTO lists_items (id, itemId, userId, name, info) VALUES (?, ?, ?, ?, ?)",
+    [
+      listItem.id,
+      listItem.itemId,
+      listItem.userId,
+      listItem.name,
+      JSON.stringify(listItem.info),
+    ]
+  );
   SourcesDataInvalidateUserCache(span, listItem.userId);
   span.end();
 }
 
-export async function ListsItemsDataDeleteForUser(context: Span, itemId: string, userId: string): Promise<void> {
+export async function ListsItemsDataDeleteForUser(
+  context: Span,
+  itemId: string,
+  userId: string
+): Promise<void> {
   const span = StandardTracerStartSpan("ListsItemsDataDeleteForUser", context);
-  await SqlDbUtilsExecSQL(span, "DELETE FROM lists_items WHERE itemId = ? AND userId = ?", [itemId, userId]);
+  await SqlDbUtilsExecSQL(
+    span,
+    "DELETE FROM lists_items WHERE itemId = ? AND userId = ?",
+    [itemId, userId]
+  );
   SourcesDataInvalidateUserCache(span, userId);
   span.end();
 }
 
-export async function ListsItemsDataGetItemForUser(context: Span, itemId: string, userId: string): Promise<SourceItem> {
+export async function ListsItemsDataGetItemForUser(
+  context: Span,
+  itemId: string,
+  userId: string
+): Promise<SourceItem> {
   const span = StandardTracerStartSpan("ListsItemsDataGetItemForUser", context);
   const sourceItemRaw = await SqlDbUtilsQuerySQL(
     span,

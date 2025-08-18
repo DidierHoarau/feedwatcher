@@ -5,7 +5,11 @@ import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
 import { SourcesDataGet, SourcesDataInvalidateUserCache } from "./SourcesData";
 import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
 
-export async function SourceItemsDataGetForUser(context: Span, itemId: string, userId: string): Promise<SourceItem> {
+export async function SourceItemsDataGetForUser(
+  context: Span,
+  itemId: string,
+  userId: string
+): Promise<SourceItem> {
   const span = StandardTracerStartSpan("SourceItemsDataGetForUser", context);
   const itemRaw = await SqlDbUtilsQuerySQL(
     span,
@@ -24,7 +28,10 @@ export async function SourceItemsDataGetForUser(context: Span, itemId: string, u
   return sourceItem;
 }
 
-export async function SourceItemsDataAdd(context: Span, sourceItem: SourceItem): Promise<void> {
+export async function SourceItemsDataAdd(
+  context: Span,
+  sourceItem: SourceItem
+): Promise<void> {
   const span = StandardTracerStartSpan("SourceItemsDataAdd", context);
   await SqlDbUtilsQuerySQL(
     span,
@@ -48,7 +55,10 @@ export async function SourceItemsDataAdd(context: Span, sourceItem: SourceItem):
   span.end();
 }
 
-export async function SourceItemsDataUpdate(context: Span, sourceItem: SourceItem): Promise<void> {
+export async function SourceItemsDataUpdate(
+  context: Span,
+  sourceItem: SourceItem
+): Promise<void> {
   const span = StandardTracerStartSpan("SourceItemsDataUpdate", context);
   await SqlDbUtilsQuerySQL(
     span,
@@ -70,9 +80,15 @@ export async function SourceItemsDataUpdate(context: Span, sourceItem: SourceIte
   span.end();
 }
 
-export async function SourceItemsDataDelete(context: Span, userId: string, sourceItemId: string): Promise<void> {
+export async function SourceItemsDataDelete(
+  context: Span,
+  userId: string,
+  sourceItemId: string
+): Promise<void> {
   const span = StandardTracerStartSpan("SourceItemsDataDelete", context);
-  await SqlDbUtilsQuerySQL(span, "DELETE FROM sources_items WHERE id = ?", [sourceItemId]);
+  await SqlDbUtilsQuerySQL(span, "DELETE FROM sources_items WHERE id = ?", [
+    sourceItemId,
+  ]);
   SourcesDataInvalidateUserCache(span, userId);
   span.end();
 }
@@ -83,7 +99,10 @@ export async function SourceItemsDataUpdateMultipleStatusForUser(
   status: SourceItemStatus,
   userId: string
 ): Promise<void> {
-  const span = StandardTracerStartSpan("SourceItemsDataUpdateMultipleStatusForUser", context);
+  const span = StandardTracerStartSpan(
+    "SourceItemsDataUpdateMultipleStatusForUser",
+    context
+  );
   let inItemsId = "";
   for (const itemId of itemIds) {
     if (inItemsId.length > 0) {
@@ -108,8 +127,14 @@ export async function SourceItemsDataUpdateMultipleStatusForUser(
   span.end();
 }
 
-export async function SourceItemsDataGetLastForSource(context: Span, sourceId: string): Promise<SourceItem> {
-  const span = StandardTracerStartSpan("SourceItemsDataGetLastForSource", context);
+export async function SourceItemsDataGetLastForSource(
+  context: Span,
+  sourceId: string
+): Promise<SourceItem> {
+  const span = StandardTracerStartSpan(
+    "SourceItemsDataGetLastForSource",
+    context
+  );
   let sourceItem: SourceItem = null;
   const sourceItemRaw = await SqlDbUtilsQuerySQL(
     span,
@@ -123,8 +148,34 @@ export async function SourceItemsDataGetLastForSource(context: Span, sourceId: s
   return sourceItem;
 }
 
-export async function SourceItemsDataCleanupOrphans(context: Span): Promise<void> {
-  const span = StandardTracerStartSpan("SourceItemsDataCleanupOrphans", context);
-  await SqlDbUtilsQuerySQL(span, "DELETE FROM sources_items WHERE sourceId NOT IN (SELECT id FROM sources)");
+export async function SourceItemsDataCleanupOrphans(
+  context: Span
+): Promise<void> {
+  const span = StandardTracerStartSpan(
+    "SourceItemsDataCleanupOrphans",
+    context
+  );
+  await SqlDbUtilsQuerySQL(
+    span,
+    "DELETE FROM sources_items WHERE sourceId NOT IN (SELECT id FROM sources)"
+  );
   span.end();
+}
+
+export async function SourceItemsDataGetCount(
+  context: Span,
+  status: SourceItemStatus
+): Promise<number> {
+  const span = StandardTracerStartSpan("SourceItemsDataGetCount", context);
+  const countRaw = await SqlDbUtilsQuerySQL(
+    span,
+    "SELECT COUNT(*) as count FROM sources_items WHERE status = ?",
+    [status]
+  );
+  let count = 0;
+  if (countRaw.length > 0) {
+    count = countRaw[0].count;
+  }
+  span.end();
+  return count;
 }
