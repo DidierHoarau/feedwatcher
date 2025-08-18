@@ -17,7 +17,6 @@ export class Config implements ConfigInterface {
   public JWT_KEY: string = uuidv4();
   public LOG_LEVEL = "info";
   public SOURCE_FETCH_FREQUENCY = 30 * 60 * 1000;
-
   public OPENTELEMETRY_COLLECTOR_HTTP_TRACES: string =
     process.env.OPENTELEMETRY_COLLECTOR_HTTP_TRACES || "";
   public OPENTELEMETRY_COLLECTOR_HTTP_METRICS: string =
@@ -28,9 +27,9 @@ export class Config implements ConfigInterface {
   public OPENTELEMETRY_COLLECTOR_EXPORT_METRICS_INTERVAL_SECONDS = 120;
   public OPENTELEMETRY_COLLECTOR_AWS =
     process.env.OPENTELEMETRY_COLLECTOR_AWS === "true";
+  public OPENTELEMETRY_COLLECTOR_CONSOLE = false;
   public PROCESSORS_SYSTEM = "processors-system";
   public PROCESSORS_USER = "processors-user";
-  public OPENTELEMETRY_COLLECTOR_CONSOLE = false;
 
   public async reload(): Promise<void> {
     const content = await fse.readJson(this.CONFIG_FILE);
