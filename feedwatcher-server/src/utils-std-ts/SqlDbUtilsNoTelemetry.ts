@@ -1,4 +1,4 @@
-import { Logger } from "./Logger";
+import { OTelLogger } from "../OTelContext";
 import { SqlDbUtilsInitGetDatabase } from "./SqlDbUtils";
 
 const logger = OTelLogger().createModuleLogger("SqlDbUtilsNoTelemetry");
