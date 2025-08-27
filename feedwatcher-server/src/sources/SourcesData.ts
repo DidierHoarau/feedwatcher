@@ -1,11 +1,11 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Source } from "../model/Source";
-import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
-import { TimeoutWait } from "../utils-std-ts/Timeout";
+import { OTelTracer } from "../OTelContext";
 import {
   SqlDbUtilsExecSQL,
   SqlDbUtilsQuerySQL,
 } from "../utils-std-ts/SqlDbUtils";
+import { TimeoutWait } from "../utils-std-ts/Timeout";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cacheUserCounts: any = {};
@@ -18,7 +18,7 @@ export async function SourcesDataGet(
   context: Span,
   sourceId: string
 ): Promise<Source> {
-  const span = StandardTracerStartSpan("SourcesDataGet", context);
+  const span = OTelTracer().startSpan("SourcesDataGet", context);
   const sourceRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT * FROM sources WHERE id = ?",
@@ -36,7 +36,7 @@ export async function SourcesDataListForUser(
   context: Span,
   userId: string
 ): Promise<Source[]> {
-  const span = StandardTracerStartSpan("SourcesDataListForUser", context);
+  const span = OTelTracer().startSpan("SourcesDataListForUser", context);
   const sourcesRaw = await SqlDbUtilsQuerySQL(
     span,
     `SELECT * FROM sources WHERE userId = '${userId}'`
@@ -54,8 +54,9 @@ export async function SourcesDataListCountsForUser(
   context: Span,
   userId: string,
   skipCache = false
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[]> {
-  const span = StandardTracerStartSpan("SourcesDataListCountsForUser", context);
+  const span = OTelTracer().startSpan("SourcesDataListCountsForUser", context);
   if (cacheUserCounts[userId] && !skipCache) {
     span.setAttribute("cached", true);
     span.end();
@@ -82,7 +83,7 @@ export async function SourcesDataListCountsSavedForUser(
   skipCache = false
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[]> {
-  const span = StandardTracerStartSpan(
+  const span = OTelTracer().startSpan(
     "SourcesDataListCountsSavedForUser",
     context
   );
@@ -110,7 +111,7 @@ export async function SourcesDataListCountsSavedForUser(
 }
 
 export async function SourcesDataListAll(context: Span): Promise<Source[]> {
-  const span = StandardTracerStartSpan("SourcesDataListAll", context);
+  const span = OTelTracer().startSpan("SourcesDataListAll", context);
   const sourcesRaw = await SqlDbUtilsQuerySQL(span, `SELECT * FROM sources`);
   const sources = [];
   for (const sourceRaw of sourcesRaw) {
@@ -124,7 +125,7 @@ export async function SourcesDataAdd(
   context: Span,
   source: Source
 ): Promise<void> {
-  const span = StandardTracerStartSpan("SourcesDataAdd", context);
+  const span = OTelTracer().startSpan("SourcesDataAdd", context);
   await SqlDbUtilsQuerySQL(
     span,
     "INSERT INTO sources (id,userId,name,info) VALUES (?,?,?,?)",
@@ -137,7 +138,7 @@ export async function SourcesDataUpdate(
   context: Span,
   source: Source
 ): Promise<void> {
-  const span = StandardTracerStartSpan("SourcesDataUpdate", context);
+  const span = OTelTracer().startSpan("SourcesDataUpdate", context);
   await SqlDbUtilsExecSQL(
     span,
     "UPDATE sources SET name = ?, info = ? WHERE id = ?",
@@ -150,7 +151,7 @@ export async function SourcesDataDelete(
   context: Span,
   sourceId: string
 ): Promise<void> {
-  const span = StandardTracerStartSpan("SourcesDataDelete", context);
+  const span = OTelTracer().startSpan("SourcesDataDelete", context);
   const source = await SourcesDataGet(span, sourceId);
   await SqlDbUtilsExecSQL(span, "DELETE FROM sources WHERE id = ?", [sourceId]);
   await SqlDbUtilsExecSQL(
@@ -178,13 +179,13 @@ export async function SourcesDataInvalidateUserCache(
     cacheInProgress[userId]++;
     return;
   }
-  const span = StandardTracerStartSpan("StandardTracerStartSpan", context);
+  const span = OTelTracer().startSpan("StandardTracerStartSpan", context);
   SourcesDataListCountsForUser(span, userId, true);
   SourcesDataListCountsSavedForUser(span, userId, true);
   span.end();
   TimeoutWait(1000).finally(() => {
     if (cacheInProgress[userId] > 1) {
-      const newSpan = StandardTracerStartSpan("StandardTracerStartSpan");
+      const newSpan = OTelTracer().startSpan("StandardTracerStartSpan");
       cacheInProgress[userId] = 0;
       SourcesDataInvalidateUserCache(context, userId).finally(() => {
         newSpan.end();
@@ -198,7 +199,7 @@ export async function SourcesDataInvalidateUserCache(
 export async function SourcesDataListCountsSaved(
   context: Span
 ): Promise<number> {
-  const span = StandardTracerStartSpan("SourcesDataListCountsSaved", context);
+  const span = OTelTracer().startSpan("SourcesDataListCountsSaved", context);
   const countRaw = await SqlDbUtilsQuerySQL(
     span,
     "    SELECT COUNT(sources_items.id) as count " +

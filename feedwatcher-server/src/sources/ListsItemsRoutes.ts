@@ -1,8 +1,12 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { ListItem } from "../model/ListItem";
-import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
-import { ListsItemsDataAdd, ListsItemsDataDeleteForUser, ListsItemsDataGetItemForUser } from "./ListsItemsData";
+import { OTelRequestSpan } from "../OTelContext";
 import { AuthGetUserSession } from "../users/Auth";
+import {
+  ListsItemsDataAdd,
+  ListsItemsDataDeleteForUser,
+  ListsItemsDataGetItemForUser,
+} from "./ListsItemsData";
 
 export class ListsItemsRoutes {
   //
@@ -19,7 +23,7 @@ export class ListsItemsRoutes {
         return res.status(403).send({ error: "Access Denied" });
       }
       const sourceItem = await ListsItemsDataGetItemForUser(
-        StandardTracerGetSpanFromRequest(req),
+        OTelRequestSpan(req),
         req.params.itemId,
         userSession.userId
       );
@@ -50,7 +54,7 @@ export class ListsItemsRoutes {
         listItem.itemId = req.body.itemId;
       }
       listItem.info.dateAdded = new Date();
-      ListsItemsDataAdd(StandardTracerGetSpanFromRequest(req), listItem);
+      ListsItemsDataAdd(OTelRequestSpan(req), listItem);
       return res.status(201).send({});
     });
 
@@ -59,13 +63,20 @@ export class ListsItemsRoutes {
         itemId: string;
       };
     }
-    fastify.delete<DeleteListNameItemsRequest>("/items/:itemId", async (req, res) => {
-      const userSession = await AuthGetUserSession(req);
-      if (!userSession.isAuthenticated) {
-        return res.status(403).send({ error: "Access Denied" });
+    fastify.delete<DeleteListNameItemsRequest>(
+      "/items/:itemId",
+      async (req, res) => {
+        const userSession = await AuthGetUserSession(req);
+        if (!userSession.isAuthenticated) {
+          return res.status(403).send({ error: "Access Denied" });
+        }
+        ListsItemsDataDeleteForUser(
+          OTelRequestSpan(req),
+          req.params.itemId,
+          userSession.userId
+        );
+        return res.status(202).send({});
       }
-      ListsItemsDataDeleteForUser(StandardTracerGetSpanFromRequest(req), req.params.itemId, userSession.userId);
-      return res.status(202).send({});
-    });
+    );
   }
 }

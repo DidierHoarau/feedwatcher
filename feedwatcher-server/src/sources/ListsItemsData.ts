@@ -1,18 +1,18 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
-import { SourceItem } from "../model/SourceItem";
 import { ListItem } from "../model/ListItem";
-import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
-import { SourcesDataInvalidateUserCache } from "./SourcesData";
+import { SourceItem } from "../model/SourceItem";
+import { OTelTracer } from "../OTelContext";
 import {
   SqlDbUtilsExecSQL,
   SqlDbUtilsQuerySQL,
 } from "../utils-std-ts/SqlDbUtils";
+import { SourcesDataInvalidateUserCache } from "./SourcesData";
 
 export async function ListsItemsDataAdd(
   context: Span,
   listItem: ListItem
 ): Promise<void> {
-  const span = StandardTracerStartSpan("ListsItemsDataAdd", context);
+  const span = OTelTracer().startSpan("ListsItemsDataAdd", context);
   await SqlDbUtilsExecSQL(
     span,
     "INSERT INTO lists_items (id, itemId, userId, name, info) VALUES (?, ?, ?, ?, ?)",
@@ -33,7 +33,7 @@ export async function ListsItemsDataDeleteForUser(
   itemId: string,
   userId: string
 ): Promise<void> {
-  const span = StandardTracerStartSpan("ListsItemsDataDeleteForUser", context);
+  const span = OTelTracer().startSpan("ListsItemsDataDeleteForUser", context);
   await SqlDbUtilsExecSQL(
     span,
     "DELETE FROM lists_items WHERE itemId = ? AND userId = ?",
@@ -48,7 +48,7 @@ export async function ListsItemsDataGetItemForUser(
   itemId: string,
   userId: string
 ): Promise<SourceItem> {
-  const span = StandardTracerStartSpan("ListsItemsDataGetItemForUser", context);
+  const span = OTelTracer().startSpan("ListsItemsDataGetItemForUser", context);
   const sourceItemRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT sources_items.* " +

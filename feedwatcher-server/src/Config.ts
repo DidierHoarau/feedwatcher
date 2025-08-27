@@ -1,15 +1,16 @@
+import { ConfigOTelInterface } from "@devopsplaybook.io/otel-utils";
 import * as fse from "fs-extra";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "./utils-std-ts/Logger";
-import { ConfigInterface } from "./utils-std-ts/models/ConfigInterface";
+import { OTelLogger } from "./OTelContext";
+import path from "path";
 
-const logger = new Logger("config");
+const logger = OTelLogger().createModuleLogger("config");
 
-export class Config implements ConfigInterface {
+export class Config implements ConfigOTelInterface {
   //
   public readonly CONFIG_FILE: string = "config.json";
   public readonly SERVICE_ID = "feedwatcher-server";
-  public VERSION = 1;
+  public VERSION = "1";
   public readonly API_PORT: number = 8080;
   public JWT_VALIDITY_DURATION: number = 3 * 31 * 24 * 3600;
   public CORS_POLICY_ORIGIN: string;
@@ -27,16 +28,30 @@ export class Config implements ConfigInterface {
   public PROCESSORS_SYSTEM = "processors-system";
   public PROCESSORS_USER = "processors-user";
 
+  constructor() {
+    let version = "1";
+    try {
+      const pkg = fse.readJsonSync(path.resolve(__dirname, "../package.json"));
+      if (pkg && pkg.version) {
+        version = pkg.version;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e) {
+      // fallback to default "1"
+    }
+    this.VERSION = version;
+  }
+
   public async reload(): Promise<void> {
     const content = await fse.readJson(this.CONFIG_FILE);
     const setIfSet = (field: string, displayLog = true) => {
-      let fromEnv = "Defaults";
+      let fromEnv = "defaults";
       if (process.env[field]) {
         this[field] = process.env[field];
-        fromEnv = "Environment";
+        fromEnv = "environment";
       } else if (content[field]) {
         this[field] = content[field];
-        fromEnv = "Config";
+        fromEnv = "config";
       }
       if (displayLog) {
         logger.info(

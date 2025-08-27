@@ -1,7 +1,6 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Config } from "../Config";
 import { SourceItemStatus } from "../model/SourceItemStatus";
-import { Logger } from "../utils-std-ts/Logger";
 import * as fs from "fs-extra";
 import * as path from "path";
 import { find, merge, sortBy } from "lodash";
@@ -10,18 +9,27 @@ import { v4 as uuidv4 } from "uuid";
 import { ProcessorInfo } from "../model/ProcessorInfo";
 import { UserProcessorInfoStatus } from "../model/UserProcessorInfoStatus";
 import { UserProcessorInfo } from "../model/UserProcessorInfo";
-import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
-import { SourcesDataListForUser, SourcesDataUpdate } from "../sources/SourcesData";
-import { SourceItemsDataAdd, SourceItemsDataGetLastForSource } from "../sources/SourceItemsData";
+import {
+  SourcesDataListForUser,
+  SourcesDataUpdate,
+} from "../sources/SourcesData";
+import {
+  SourceItemsDataAdd,
+  SourceItemsDataGetLastForSource,
+} from "../sources/SourceItemsData";
+import { OTelLogger, OTelTracer } from "../OTelContext";
 
-const logger = new Logger("Processor");
+const logger = OTelLogger().createModuleLogger("Processor");
 let config: Config;
 let processorsFiles = [];
 const userProcessorInfoStatus: UserProcessorInfo[] = [];
 const fetchSourceItemsQueue: Source[] = [];
 
-export async function ProcessorsInit(context: Span, configIn: Config): Promise<void> {
-  const span = StandardTracerStartSpan("ProcessorsInit", context);
+export async function ProcessorsInit(
+  context: Span,
+  configIn: Config
+): Promise<void> {
+  const span = OTelTracer().startSpan("ProcessorsInit", context);
   config = configIn;
   for (const processorsFile of await fs.readdir(config.PROCESSORS_USER)) {
     if (path.extname(processorsFile) === ".js") {
@@ -44,13 +52,16 @@ export async function ProcessorsInit(context: Span, configIn: Config): Promise<v
   span.end();
 }
 
-export async function ProcessorsGetInfos(context: Span): Promise<ProcessorInfo[]> {
-  const span = StandardTracerStartSpan("ProcessorsGetInfos", context);
+export async function ProcessorsGetInfos(
+  context: Span
+): Promise<ProcessorInfo[]> {
+  const span = OTelTracer().startSpan("ProcessorsGetInfos", context);
   const processorInfos = [];
   for (const processorsFile of processorsFiles) {
     try {
       const processor = await import(processorsFile.path);
       processorInfos.push(processor.getInfo());
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       // Nothing
     }
@@ -60,7 +71,7 @@ export async function ProcessorsGetInfos(context: Span): Promise<ProcessorInfo[]
 }
 
 export async function ProcessorsCheckSource(context: Span, source: Source) {
-  const span = StandardTracerStartSpan("ProcessorsCheckSource", context);
+  const span = OTelTracer().startSpan("ProcessorsCheckSource", context);
   if (!source.info.processorPath) {
     userProcessorInfoStatusStart(span, source.userId);
     let processed = false;
@@ -79,9 +90,9 @@ export async function ProcessorsCheckSource(context: Span, source: Source) {
             await SourcesDataUpdate(span, source);
             processed = true;
           }
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (err) {
           // Nothing to do
-          // logger.error(err);
         }
       }
       userProcessorInfoStatusStop(span, source.userId);
@@ -90,8 +101,14 @@ export async function ProcessorsCheckSource(context: Span, source: Source) {
   span.end();
 }
 
-export async function ProcessorsFetchSourceItemsForUser(context: Span, userId: string) {
-  const span = StandardTracerStartSpan("ProcessorsFetchSourceItemsForUser", context);
+export async function ProcessorsFetchSourceItemsForUser(
+  context: Span,
+  userId: string
+) {
+  const span = OTelTracer().startSpan(
+    "ProcessorsFetchSourceItemsForUser",
+    context
+  );
   const sources = await SourcesDataListForUser(span, userId);
   for (const source of sources) {
     await ProcessorsFetchSourceItems(span, source);
@@ -99,7 +116,10 @@ export async function ProcessorsFetchSourceItemsForUser(context: Span, userId: s
   span.end();
 }
 
-export async function ProcessorsFetchSourceItems(context: Span, source: Source): Promise<void> {
+export async function ProcessorsFetchSourceItems(
+  context: Span,
+  source: Source
+): Promise<void> {
   if (!find(fetchSourceItemsQueue, { id: source.id })) {
     fetchSourceItemsQueue.push(source);
     if (fetchSourceItemsQueue.length === 1) {
@@ -108,8 +128,14 @@ export async function ProcessorsFetchSourceItems(context: Span, source: Source):
   }
 }
 
-export function ProcessorsGetUserProcessorInfo(context: Span, userId: string): UserProcessorInfo {
-  const span = StandardTracerStartSpan("ProcessorsGetUserProcessorInfo", context);
+export function ProcessorsGetUserProcessorInfo(
+  context: Span,
+  userId: string
+): UserProcessorInfo {
+  const span = OTelTracer().startSpan(
+    "ProcessorsGetUserProcessorInfo",
+    context
+  );
   return find(userProcessorInfoStatus, { userId });
   span.end();
 }
@@ -120,20 +146,29 @@ async function fetchSourceItemsQueued(): Promise<void> {
   if (fetchSourceItemsQueue.length === 0) {
     return;
   }
-  const span = StandardTracerStartSpan("fetchSourceItemsQueued");
+  const span = OTelTracer().startSpan("fetchSourceItemsQueued");
   const source = fetchSourceItemsQueue[0];
   userProcessorInfoStatusStart(span, source.userId);
   let processed = false;
-  const lastSourceItemSaved = await SourceItemsDataGetLastForSource(span, source.id);
+  const lastSourceItemSaved = await SourceItemsDataGetLastForSource(
+    span,
+    source.id
+  );
   for (const processorsFile of processorsFiles) {
     if (!processed) {
       try {
         const processor = await import(processorsFile.path);
         if (await processor.test(source)) {
           let nbNewItem = 0;
-          const newSourceItems = await processor.fetchLatest(source, lastSourceItemSaved);
+          const newSourceItems = await processor.fetchLatest(
+            source,
+            lastSourceItemSaved
+          );
           for (const newSourceItem of newSourceItems) {
-            if (!lastSourceItemSaved || newSourceItem.datePublished > lastSourceItemSaved.datePublished) {
+            if (
+              !lastSourceItemSaved ||
+              newSourceItem.datePublished > lastSourceItemSaved.datePublished
+            ) {
               nbNewItem++;
               newSourceItem.sourceId = source.id;
               newSourceItem.status = SourceItemStatus.unread;
@@ -170,7 +205,7 @@ async function fetchSourceItemsQueued(): Promise<void> {
 }
 
 function userProcessorInfoStatusStart(context: Span, userId: string): void {
-  const span = StandardTracerStartSpan("userProcessorInfoStatusStart", context);
+  const span = OTelTracer().startSpan("userProcessorInfoStatusStart", context);
   let userStatus = find(userProcessorInfoStatus, { userId });
   if (!userStatus) {
     userStatus = {
@@ -184,7 +219,7 @@ function userProcessorInfoStatusStart(context: Span, userId: string): void {
 }
 
 function userProcessorInfoStatusStop(context: Span, userId: string): void {
-  const span = StandardTracerStartSpan("userProcessorInfoStatusStop", context);
+  const span = OTelTracer().startSpan("userProcessorInfoStatusStop", context);
   const userStatus = find(userProcessorInfoStatus, { userId });
   if (userStatus) {
     userStatus.status = UserProcessorInfoStatus.idle;

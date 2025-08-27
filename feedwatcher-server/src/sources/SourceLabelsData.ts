@@ -1,12 +1,18 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Source } from "../model/Source";
 import { v4 as uuidv4 } from "uuid";
-import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
 import { SourcesDataGet, SourcesDataInvalidateUserCache } from "./SourcesData";
-import { SqlDbUtilsExecSQL, SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
+import {
+  SqlDbUtilsExecSQL,
+  SqlDbUtilsQuerySQL,
+} from "../utils-std-ts/SqlDbUtils";
+import { OTelTracer } from "../OTelContext";
 
-export async function SourceLabelsDataListForUser(context: Span, userId: string): Promise<Source[]> {
-  const span = StandardTracerStartSpan("SourceLabelsDataListForUser", context);
+export async function SourceLabelsDataListForUser(
+  context: Span,
+  userId: string
+): Promise<Source[]> {
+  const span = OTelTracer().startSpan("SourceLabelsDataListForUser", context);
   const sourceLabelsRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT sources_labels.name as labelName, " +
@@ -32,25 +38,41 @@ export async function SourceLabelsDataSetSourceLabels(
   sourceId: string,
   labels: string[]
 ): Promise<void> {
-  const span = StandardTracerStartSpan("SourceLabelsDataSetSourceLabels", context);
-  await SqlDbUtilsExecSQL(span, "DELETE FROM sources_labels WHERE sourceId = ?", [sourceId]);
+  const span = OTelTracer().startSpan(
+    "SourceLabelsDataSetSourceLabels",
+    context
+  );
+  await SqlDbUtilsExecSQL(
+    span,
+    "DELETE FROM sources_labels WHERE sourceId = ?",
+    [sourceId]
+  );
   for (const label of labels) {
-    await SqlDbUtilsQuerySQL(span, "INSERT INTO sources_labels (id,sourceId,name,info) VALUES (?,?,?,?)", [
-      uuidv4(),
-      sourceId,
-      label.trim(),
-      JSON.stringify({}),
-    ]);
+    await SqlDbUtilsQuerySQL(
+      span,
+      "INSERT INTO sources_labels (id,sourceId,name,info) VALUES (?,?,?,?)",
+      [uuidv4(), sourceId, label.trim(), JSON.stringify({})]
+    );
   }
   const source = await SourcesDataGet(span, sourceId);
   SourcesDataInvalidateUserCache(span, source.userId);
   span.end();
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function SourceLabelsDataGetSourceLabels(context: Span, sourceId: string): Promise<any[]> {
-  const span = StandardTracerStartSpan("SourceLabelsDataGetSourceLabels", context);
-  const labelsRaw = await SqlDbUtilsQuerySQL(span, "SELECT * FROM sources_labels WHERE sourceId = ?", [sourceId]);
+export async function SourceLabelsDataGetSourceLabels(
+  context: Span,
+  sourceId: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any[]> {
+  const span = OTelTracer().startSpan(
+    "SourceLabelsDataGetSourceLabels",
+    context
+  );
+  const labelsRaw = await SqlDbUtilsQuerySQL(
+    span,
+    "SELECT * FROM sources_labels WHERE sourceId = ?",
+    [sourceId]
+  );
   const labels = [];
   for (const labelRaw of labelsRaw) {
     labelRaw.info = JSON.parse(labelRaw.info) || {};
