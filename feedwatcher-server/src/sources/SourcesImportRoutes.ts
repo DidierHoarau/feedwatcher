@@ -1,14 +1,13 @@
 import { FastifyInstance } from "fastify";
 import * as opml from "opml";
 import { find } from "lodash";
-import { Logger } from "../utils-std-ts/Logger";
 import { Source } from "../model/Source";
 import { Span } from "@opentelemetry/sdk-trace-base";
-import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
 import { SourceLabelsDataListForUser } from "./SourceLabelsData";
 import { AuthGetUserSession } from "../users/Auth";
+import { OTelLogger, OTelRequestSpan } from "../OTelContext";
 
-const logger = new Logger("SourcesImportRoutes");
+const logger = OTelLogger().createModuleLogger("SourcesImportRoutes");
 
 export class SourcesImportRoutes {
   //
@@ -26,7 +25,7 @@ export class SourcesImportRoutes {
         const opmlData = await opmlLoad(opmlText);
         const sourcesOpml = [];
         await opmlProcessSub(
-          StandardTracerGetSpanFromRequest(req),
+          OTelRequestSpan(req),
           opmlData.opml.body.subs,
           "",
           sourcesOpml,
@@ -44,8 +43,16 @@ export class SourcesImportRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const sourceLabels = await SourceLabelsDataListForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
-      const sourcesOutlines = { opml: { head: { title: "Feedwatcher Source Export" }, body: { subs: [] } } };
+      const sourceLabels = await SourceLabelsDataListForUser(
+        OTelRequestSpan(req),
+        userSession.userId
+      );
+      const sourcesOutlines = {
+        opml: {
+          head: { title: "Feedwatcher Source Export" },
+          body: { subs: [] },
+        },
+      };
       for (const source of sourceLabels) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sourceLabel = source as any;
@@ -61,7 +68,9 @@ export class SourcesImportRoutes {
         if (!sourceLabel.labelName) {
           sourcesOutlines.opml.body.subs.push(newOutline);
         } else {
-          let parentSub = find(sourcesOutlines.opml.body.subs, { title: sourceLabel.labelName });
+          let parentSub = find(sourcesOutlines.opml.body.subs, {
+            title: sourceLabel.labelName,
+          });
           if (!parentSub) {
             parentSub = { title: sourceLabel.labelName, subs: [] };
             sourcesOutlines.opml.body.subs.push(parentSub);

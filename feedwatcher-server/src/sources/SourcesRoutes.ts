@@ -1,13 +1,13 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Source } from "../model/Source";
-import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
+import { OTelRequestSpan } from "../OTelContext";
 import {
   ProcessorsCheckSource,
   ProcessorsFetchSourceItems,
   ProcessorsFetchSourceItemsForUser,
 } from "../procesors/Processors";
-import { SourcesDataAdd, SourcesDataListForUser } from "./SourcesData";
 import { AuthGetUserSession } from "../users/Auth";
+import { SourcesDataAdd, SourcesDataListForUser } from "./SourcesData";
 
 export class SourcesRoutes {
   //
@@ -18,7 +18,10 @@ export class SourcesRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const sources = await SourcesDataListForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
+      const sources = await SourcesDataListForUser(
+        OTelRequestSpan(req),
+        userSession.userId
+      );
       return res.status(200).send({ sources });
     });
 
@@ -36,12 +39,14 @@ export class SourcesRoutes {
       source.name = req.body.url;
       source.info = { url: req.body.url };
       source.userId = userSession.userId;
-      await ProcessorsCheckSource(StandardTracerGetSpanFromRequest(req), source);
+      await ProcessorsCheckSource(OTelRequestSpan(req), source);
       if (!source.info.processorPath) {
-        return res.status(400).send({ error: "Source Not Supported (No Processor Matching)" });
+        return res
+          .status(400)
+          .send({ error: "Source Not Supported (No Processor Matching)" });
       }
-      await SourcesDataAdd(StandardTracerGetSpanFromRequest(req), source);
-      ProcessorsFetchSourceItems(StandardTracerGetSpanFromRequest(req), source);
+      await SourcesDataAdd(OTelRequestSpan(req), source);
+      ProcessorsFetchSourceItems(OTelRequestSpan(req), source);
       return res.status(201).send(source.toJson());
     });
 
@@ -50,7 +55,10 @@ export class SourcesRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      ProcessorsFetchSourceItemsForUser(StandardTracerGetSpanFromRequest(req), userSession.userId);
+      ProcessorsFetchSourceItemsForUser(
+        OTelRequestSpan(req),
+        userSession.userId
+      );
       return res.status(201).send({});
     });
   }

@@ -3,8 +3,8 @@ import { SearchItemsResult } from "../model/SearchItemsResult";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SourceItem } from "../model/SourceItem";
 import { SourceItemStatus } from "../model/SourceItemStatus";
-import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
 import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
+import { OTelTracer } from "../OTelContext";
 
 const PAGE_SIZE = 50;
 
@@ -13,7 +13,7 @@ export async function SearchItemsDataListForUser(
   userId: string,
   searchOptions: SearchItemsOptions
 ): Promise<SearchItemsResult> {
-  const span = StandardTracerStartSpan("SearchItemsDataListForUser", context);
+  const span = OTelTracer().startSpan("SearchItemsDataListForUser", context);
   const sourceItemsRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT sources_items.*, sources.name as sourceName " +
@@ -36,7 +36,7 @@ export async function SearchItemsDataListForSource(
   sourceId: string,
   searchOptions: SearchItemsOptions
 ): Promise<SearchItemsResult> {
-  const span = StandardTracerStartSpan("SearchItemsDataListForSource", context);
+  const span = OTelTracer().startSpan("SearchItemsDataListForSource", context);
   const sourceItemsRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT sources_items.*, sources.name as sourceName " +
@@ -62,7 +62,10 @@ export async function SearchItemsDataListItemsForLabel(
   userId: string,
   searchOptions: SearchItemsOptions
 ): Promise<SearchItemsResult> {
-  const span = StandardTracerStartSpan("SearchItemsDataListItemsForLabel", context);
+  const span = OTelTracer().startSpan(
+    "SearchItemsDataListItemsForLabel",
+    context
+  );
   const sourceItemsRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT sources_items.*, sources.name AS sourceName " +
@@ -93,7 +96,9 @@ function getPageQuery(searchOptions: SearchItemsOptions): string {
   if (searchOptions.page < 0) {
     return "";
   }
-  return `LIMIT ${PAGE_SIZE + 1} OFFSET ${(searchOptions.page - 1) * PAGE_SIZE}`;
+  return `LIMIT ${PAGE_SIZE + 1} OFFSET ${
+    (searchOptions.page - 1) * PAGE_SIZE
+  }`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

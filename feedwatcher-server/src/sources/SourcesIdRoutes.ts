@@ -1,9 +1,19 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
-import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
-import { ProcessorsCheckSource, ProcessorsFetchSourceItems } from "../procesors/Processors";
-import { SourcesDataDelete, SourcesDataGet, SourcesDataUpdate } from "./SourcesData";
-import { SourceLabelsDataGetSourceLabels, SourceLabelsDataSetSourceLabels } from "./SourceLabelsData";
+import {
+  ProcessorsCheckSource,
+  ProcessorsFetchSourceItems,
+} from "../procesors/Processors";
+import {
+  SourcesDataDelete,
+  SourcesDataGet,
+  SourcesDataUpdate,
+} from "./SourcesData";
+import {
+  SourceLabelsDataGetSourceLabels,
+  SourceLabelsDataSetSourceLabels,
+} from "./SourceLabelsData";
 import { AuthGetUserSession } from "../users/Auth";
+import { OTelRequestSpan } from "../OTelContext";
 
 export class SourcesIdRoutes {
   //
@@ -19,7 +29,10 @@ export class SourcesIdRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const source = await SourcesDataGet(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
+      const source = await SourcesDataGet(
+        OTelRequestSpan(req),
+        req.params.sourceId
+      );
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -36,11 +49,17 @@ export class SourcesIdRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const source = await SourcesDataGet(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
+      const source = await SourcesDataGet(
+        OTelRequestSpan(req),
+        req.params.sourceId
+      );
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const labels = await SourceLabelsDataGetSourceLabels(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
+      const labels = await SourceLabelsDataGetSourceLabels(
+        OTelRequestSpan(req),
+        req.params.sourceId
+      );
       return res.status(200).send({ labels: labels });
     });
 
@@ -58,7 +77,10 @@ export class SourcesIdRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const source = await SourcesDataGet(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
+      const source = await SourcesDataGet(
+        OTelRequestSpan(req),
+        req.params.sourceId
+      );
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
@@ -66,12 +88,16 @@ export class SourcesIdRoutes {
         return res.status(401).send({ error: "Parameter missing: name" });
       }
       source.name = req.body.name;
-      await SourcesDataUpdate(StandardTracerGetSpanFromRequest(req), source);
+      await SourcesDataUpdate(OTelRequestSpan(req), source);
       if (req.body.labels && req.body.labels.length > 0) {
-        await SourceLabelsDataSetSourceLabels(StandardTracerGetSpanFromRequest(req), source.id, req.body.labels);
+        await SourceLabelsDataSetSourceLabels(
+          OTelRequestSpan(req),
+          source.id,
+          req.body.labels
+        );
       }
-      ProcessorsCheckSource(StandardTracerGetSpanFromRequest(req), source).then(() => {
-        ProcessorsFetchSourceItems(StandardTracerGetSpanFromRequest(req), source);
+      ProcessorsCheckSource(OTelRequestSpan(req), source).then(() => {
+        ProcessorsFetchSourceItems(OTelRequestSpan(req), source);
       });
       return res.status(202).send();
     });
@@ -86,11 +112,14 @@ export class SourcesIdRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const source = await SourcesDataGet(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
+      const source = await SourcesDataGet(
+        OTelRequestSpan(req),
+        req.params.sourceId
+      );
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      await SourcesDataDelete(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
+      await SourcesDataDelete(OTelRequestSpan(req), req.params.sourceId);
       return res.status(203).send();
     });
 
@@ -104,11 +133,14 @@ export class SourcesIdRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const source = await SourcesDataGet(StandardTracerGetSpanFromRequest(req), req.params.sourceId);
+      const source = await SourcesDataGet(
+        OTelRequestSpan(req),
+        req.params.sourceId
+      );
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      ProcessorsFetchSourceItems(StandardTracerGetSpanFromRequest(req), source);
+      ProcessorsFetchSourceItems(OTelRequestSpan(req), source);
       return res.status(201).send();
     });
   }

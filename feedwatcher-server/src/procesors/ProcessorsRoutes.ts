@@ -1,14 +1,17 @@
 import { FastifyInstance } from "fastify";
-import { StandardTracerGetSpanFromRequest } from "../utils-std-ts/StandardTracer";
-import { ProcessorsGetInfos, ProcessorsGetUserProcessorInfo } from "./Processors";
+import {
+  ProcessorsGetInfos,
+  ProcessorsGetUserProcessorInfo,
+} from "./Processors";
 import { AuthGetUserSession } from "../users/Auth";
+import { OTelRequestSpan } from "../OTelContext";
 
 export class ProcessorsRoutes {
   //
   public async getRoutes(fastify: FastifyInstance): Promise<void> {
     //
     fastify.get("/", async (req, res) => {
-      res.status(200).send(await ProcessorsGetInfos(StandardTracerGetSpanFromRequest(req)));
+      res.status(200).send(await ProcessorsGetInfos(OTelRequestSpan(req)));
     });
 
     fastify.get("/status", async (req, res) => {
@@ -16,7 +19,14 @@ export class ProcessorsRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      res.status(200).send(ProcessorsGetUserProcessorInfo(StandardTracerGetSpanFromRequest(req), userSession.userId));
+      res
+        .status(200)
+        .send(
+          ProcessorsGetUserProcessorInfo(
+            OTelRequestSpan(req),
+            userSession.userId
+          )
+        );
     });
   }
 }

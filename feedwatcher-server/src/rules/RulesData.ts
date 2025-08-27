@@ -1,12 +1,22 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Rules } from "../model/Rules";
-import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
-import { SqlDbUtilsExecSQL, SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
+import {
+  SqlDbUtilsExecSQL,
+  SqlDbUtilsQuerySQL,
+} from "../utils-std-ts/SqlDbUtils";
+import { OTelTracer } from "../OTelContext";
 
 //
-export async function RulesDataGet(context: Span, ruleId: string): Promise<Rules> {
-  const span = StandardTracerStartSpan("RulesDataGet", context);
-  const rulesRaw = await SqlDbUtilsQuerySQL(span, "SELECT * FROM rules WHERE id = ?", [ruleId]);
+export async function RulesDataGet(
+  context: Span,
+  ruleId: string
+): Promise<Rules> {
+  const span = OTelTracer().startSpan("RulesDataGet", context);
+  const rulesRaw = await SqlDbUtilsQuerySQL(
+    span,
+    "SELECT * FROM rules WHERE id = ?",
+    [ruleId]
+  );
   let rules: Rules = new Rules();
   if (rulesRaw.length > 0) {
     rules = fromRaw(rulesRaw[0]);
@@ -15,9 +25,15 @@ export async function RulesDataGet(context: Span, ruleId: string): Promise<Rules
   return rules;
 }
 
-export async function RulesDataListForUser(context: Span, userId: string): Promise<Rules> {
-  const span = StandardTracerStartSpan("RulesDataListForUser", context);
-  const rulesRaw = await SqlDbUtilsQuerySQL(span, `SELECT * FROM rules WHERE userId = '${userId}'`);
+export async function RulesDataListForUser(
+  context: Span,
+  userId: string
+): Promise<Rules> {
+  const span = OTelTracer().startSpan("RulesDataListForUser", context);
+  const rulesRaw = await SqlDbUtilsQuerySQL(
+    span,
+    `SELECT * FROM rules WHERE userId = '${userId}'`
+  );
   let rules = new Rules();
   rules.userId = userId;
   for (const userRules of rulesRaw) {
@@ -28,7 +44,7 @@ export async function RulesDataListForUser(context: Span, userId: string): Promi
 }
 
 export async function RulesDataListAll(context: Span): Promise<Rules[]> {
-  const span = StandardTracerStartSpan("RulesDataListAll", context);
+  const span = OTelTracer().startSpan("RulesDataListAll", context);
   const rulesRaw = await SqlDbUtilsQuerySQL(span, `SELECT * FROM rules`);
   const rules = [];
   for (const userRules of rulesRaw) {
@@ -38,14 +54,19 @@ export async function RulesDataListAll(context: Span): Promise<Rules[]> {
   return rules;
 }
 
-export async function RulesDataUpdate(context: Span, rules: Rules): Promise<void> {
-  const span = StandardTracerStartSpan("RulesDataUpdate", context);
-  await SqlDbUtilsExecSQL(span, "DELETE FROM rules WHERE userId = ?", [rules.userId]);
-  await SqlDbUtilsExecSQL(span, "INSERT INTO rules (id,userId,info) VALUES (?,?,?)", [
-    rules.id,
+export async function RulesDataUpdate(
+  context: Span,
+  rules: Rules
+): Promise<void> {
+  const span = OTelTracer().startSpan("RulesDataUpdate", context);
+  await SqlDbUtilsExecSQL(span, "DELETE FROM rules WHERE userId = ?", [
     rules.userId,
-    JSON.stringify(rules.info),
   ]);
+  await SqlDbUtilsExecSQL(
+    span,
+    "INSERT INTO rules (id,userId,info) VALUES (?,?,?)",
+    [rules.id, rules.userId, JSON.stringify(rules.info)]
+  );
   span.end();
 }
 

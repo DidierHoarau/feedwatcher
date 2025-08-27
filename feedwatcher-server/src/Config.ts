@@ -1,15 +1,16 @@
+import { ConfigOTelInterface } from "@devopsplaybook.io/otel-utils";
 import * as fse from "fs-extra";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "./utils-std-ts/Logger";
-import { ConfigInterface } from "./utils-std-ts/models/ConfigInterface";
+import { OTelLogger } from "./OTelContext";
+import path from "path";
 
-const logger = new Logger("config");
+const logger = OTelLogger().createModuleLogger("config");
 
-export class Config implements ConfigInterface {
+export class Config implements ConfigOTelInterface {
   //
   public readonly CONFIG_FILE: string = "config.json";
   public readonly SERVICE_ID = "feedwatcher-server";
-  public VERSION = 1;
+  public VERSION = "1";
   public readonly API_PORT: number = 8080;
   public JWT_VALIDITY_DURATION: number = 3 * 31 * 24 * 3600;
   public CORS_POLICY_ORIGIN: string;
@@ -17,22 +18,49 @@ export class Config implements ConfigInterface {
   public JWT_KEY: string = uuidv4();
   public LOG_LEVEL = "info";
   public SOURCE_FETCH_FREQUENCY = 30 * 60 * 1000;
-  public OPENTELEMETRY_COLLECTOR_HTTP: string = process.env.OPENTELEMETRY_COLLECTOR_HTTP || "";
-  public OPENTELEMETRY_COLLECTOR_AWS = process.env.OPENTELEMETRY_COLLECTOR_AWS === "true";
+  public OPENTELEMETRY_COLLECTOR_HTTP_TRACES = "";
+  public OPENTELEMETRY_COLLECTOR_HTTP_METRICS = "";
+  public OPENTELEMETRY_COLLECTOR_HTTP_LOGS = "";
+  public OPENTELEMETRY_COLLECTOR_AWS = false;
+  public OPENTELEMETRY_COLLECTOR_EXPORT_LOGS_INTERVAL_SECONDS = 60;
+  public OPENTELEMETRY_COLLECTOR_EXPORT_METRICS_INTERVAL_SECONDS = 60;
+  public OPENTELEMETRY_COLLECT_AUTHORIZATION_HEADER = "";
   public PROCESSORS_SYSTEM = "processors-system";
   public PROCESSORS_USER = "processors-user";
-  public OPENTELEMETRY_COLLECTOR_CONSOLE = false;
+
+  constructor() {
+    let version = "1";
+    try {
+      const pkg = fse.readJsonSync(path.resolve(__dirname, "../package.json"));
+      if (pkg && pkg.version) {
+        version = pkg.version;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e) {
+      // fallback to default "1"
+    }
+    this.VERSION = version;
+  }
 
   public async reload(): Promise<void> {
     const content = await fse.readJson(this.CONFIG_FILE);
     const setIfSet = (field: string, displayLog = true) => {
-      if (content[field]) {
+      let fromEnv = "defaults";
+      if (process.env[field]) {
+        this[field] = process.env[field];
+        fromEnv = "environment";
+      } else if (content[field]) {
         this[field] = content[field];
+        fromEnv = "config";
       }
       if (displayLog) {
-        logger.info(`Configuration Value: ${field}: ${this[field]}`);
+        logger.info(
+          `Configuration Value: ${field}: ${this[field]} (from ${fromEnv})`
+        );
       } else {
-        logger.info(`Configuration Value: ${field}: ********************`);
+        logger.info(
+          `Configuration Value: ${field}: ******************** (from ${fromEnv})`
+        );
       }
     };
     logger.info(`Configuration Value: CONFIG_FILE: ${this.CONFIG_FILE}`);
@@ -43,8 +71,12 @@ export class Config implements ConfigInterface {
     setIfSet("JWT_KEY", false);
     setIfSet("LOG_LEVEL");
     setIfSet("SOURCE_FETCH_FREQUENCY");
-    setIfSet("OPENTELEMETRY_COLLECTOR_HTTP");
+    setIfSet("OPENTELEMETRY_COLLECTOR_HTTP_TRACES");
+    setIfSet("OPENTELEMETRY_COLLECTOR_HTTP_METRICS");
+    setIfSet("OPENTELEMETRY_COLLECTOR_HTTP_LOGS");
+    setIfSet("OPENTELEMETRY_COLLECTOR_EXPORT_LOGS_INTERVAL_SECONDS");
+    setIfSet("OPENTELEMETRY_COLLECTOR_EXPORT_METRICS_INTERVAL_SECONDS");
     setIfSet("OPENTELEMETRY_COLLECTOR_AWS");
-    setIfSet("OPENTELEMETRY_COLLECTOR_CONSOLE");
+    setIfSet("OPENTELEMETRY_COLLECT_AUTHORIZATION_HEADER", false);
   }
 }

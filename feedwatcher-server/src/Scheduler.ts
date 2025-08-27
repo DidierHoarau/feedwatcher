@@ -1,19 +1,56 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Config } from "./Config";
-import { StandardTracerStartSpan } from "./utils-std-ts/StandardTracer";
 import { TimeoutWait } from "./utils-std-ts/Timeout";
 import { RulesDataListAll } from "./rules/RulesData";
 import { ProcessorsFetchSourceItems } from "./procesors/Processors";
-import { SourcesDataListAll } from "./sources/SourcesData";
+import {
+  SourcesDataListAll,
+  SourcesDataListCountsSaved,
+} from "./sources/SourcesData";
 import { RulesExecutionExecuteUserRules } from "./rules/RulesExecution";
-import { SourceItemsDataCleanupOrphans } from "./sources/SourceItemsData";
+import {
+  SourceItemsDataCleanupOrphans,
+  SourceItemsDataGetCount,
+} from "./sources/SourceItemsData";
 import { PromisePool } from "./utils-std-ts/PromisePool";
+import { SourceItemStatus } from "./model/SourceItemStatus";
+import { OTelMeter, OTelTracer } from "./OTelContext";
 
 let config: Config;
+const statsSourceItms = {
+  itemsTotal: 0,
+  itemsRead: 0,
+  itemsUnread: 0,
+  itemsBookmarked: 0,
+};
 
 export async function SchedulerInit(context: Span, configIn: Config) {
-  const span = StandardTracerStartSpan("SchedulerInit", context);
+  const span = OTelTracer().startSpan("SchedulerInit", context);
   config = configIn;
+  await SchedulerUpdateStats(span);
+
+  OTelMeter().createObservableGauge(
+    "feeds.items.queue",
+    (observableResult) => {
+      observableResult.observe(statsSourceItms.itemsUnread, { item: "unread" });
+      observableResult.observe(statsSourceItms.itemsBookmarked, {
+        item: "bookmarked",
+      });
+    },
+    { description: "Items left to read" }
+  );
+
+  OTelMeter().createObservableGauge(
+    "feeds.items.total",
+    (observableResult) => {
+      observableResult.observe(statsSourceItms.itemsRead, { item: "read" });
+      observableResult.observe(statsSourceItms.itemsTotal, {
+        item: "total",
+      });
+    },
+    { description: "Items in the database" }
+  );
+
   SchedulerStartSchedule();
   span.end();
 }
@@ -24,14 +61,15 @@ async function SchedulerStartSchedule() {
   const promisePool = new PromisePool(5, config.SOURCE_FETCH_FREQUENCY / 6);
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const span0 = StandardTracerStartSpan("SchedulerStartSchedule");
+    const span0 = OTelTracer().startSpan("SchedulerStartSchedule");
     for (const source of await SourcesDataListAll(span0)) {
       if (
         !source.info.dateFetched ||
-        new Date().getTime() - new Date(source.info.dateFetched).getTime() > config.SOURCE_FETCH_FREQUENCY
+        new Date().getTime() - new Date(source.info.dateFetched).getTime() >
+          config.SOURCE_FETCH_FREQUENCY
       ) {
         promisePool.add(async () => {
-          const span = StandardTracerStartSpan("SchedulerStartSchedule");
+          const span = OTelTracer().startSpan("SchedulerStartSchedule");
           await ProcessorsFetchSourceItems(span, source);
           span.end();
         });
@@ -40,19 +78,39 @@ async function SchedulerStartSchedule() {
 
     for (const userRules of await RulesDataListAll(span0)) {
       promisePool.add(async () => {
-        const span = StandardTracerStartSpan("SchedulerStartSchedule");
+        const span = OTelTracer().startSpan("SchedulerStartSchedule");
         return RulesExecutionExecuteUserRules(span, userRules);
         span.end();
       });
     }
 
     promisePool.add(async () => {
-      const span = StandardTracerStartSpan("SchedulerStartSchedule");
+      const span = OTelTracer().startSpan("SchedulerStartSchedule");
       await SourceItemsDataCleanupOrphans(span);
       span.end();
     });
+
+    await SchedulerUpdateStats(span0);
+
     span0.end();
 
     await TimeoutWait(config.SOURCE_FETCH_FREQUENCY / 4);
   }
+}
+
+// privaae
+
+async function SchedulerUpdateStats(context: Span) {
+  const span = OTelTracer().startSpan("SchedulerUpdateStats", context);
+  const nbReadItem = await SourceItemsDataGetCount(span, SourceItemStatus.read);
+  const nbUnreadItem = await SourceItemsDataGetCount(
+    span,
+    SourceItemStatus.unread
+  );
+  const nbSavedItem = await SourcesDataListCountsSaved(span);
+  statsSourceItms.itemsTotal = nbReadItem + nbUnreadItem;
+  statsSourceItms.itemsRead = nbReadItem;
+  statsSourceItms.itemsUnread = nbUnreadItem;
+  statsSourceItms.itemsBookmarked = nbSavedItem;
+  span.end();
 }

@@ -27,7 +27,8 @@ COPY feedwatcher-server/config.json /opt/app/feedwatcher/config.json
 COPY feedwatcher-server/sql /opt/app/feedwatcher/sql
 COPY feedwatcher-server/processors-system /opt/app/feedwatcher/processors-system
 COPY feedwatcher-server/processors-user /opt/app/feedwatcher/processors-user
+COPY package.json /opt/app/feedwatcher/package.json
 
 WORKDIR /opt/app/feedwatcher
 
-CMD [ "dist/app.js" ]
+CMD [ "dist/App.js" ]

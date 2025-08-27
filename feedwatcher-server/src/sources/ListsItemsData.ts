@@ -1,32 +1,54 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
-import { SourceItem } from "../model/SourceItem";
 import { ListItem } from "../model/ListItem";
-import { StandardTracerStartSpan } from "../utils-std-ts/StandardTracer";
+import { SourceItem } from "../model/SourceItem";
+import { OTelTracer } from "../OTelContext";
+import {
+  SqlDbUtilsExecSQL,
+  SqlDbUtilsQuerySQL,
+} from "../utils-std-ts/SqlDbUtils";
 import { SourcesDataInvalidateUserCache } from "./SourcesData";
-import { SqlDbUtilsExecSQL, SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
 
-export async function ListsItemsDataAdd(context: Span, listItem: ListItem): Promise<void> {
-  const span = StandardTracerStartSpan("ListsItemsDataAdd", context);
-  await SqlDbUtilsExecSQL(span, "INSERT INTO lists_items (id, itemId, userId, name, info) VALUES (?, ?, ?, ?, ?)", [
-    listItem.id,
-    listItem.itemId,
-    listItem.userId,
-    listItem.name,
-    JSON.stringify(listItem.info),
-  ]);
+export async function ListsItemsDataAdd(
+  context: Span,
+  listItem: ListItem
+): Promise<void> {
+  const span = OTelTracer().startSpan("ListsItemsDataAdd", context);
+  await SqlDbUtilsExecSQL(
+    span,
+    "INSERT INTO lists_items (id, itemId, userId, name, info) VALUES (?, ?, ?, ?, ?)",
+    [
+      listItem.id,
+      listItem.itemId,
+      listItem.userId,
+      listItem.name,
+      JSON.stringify(listItem.info),
+    ]
+  );
   SourcesDataInvalidateUserCache(span, listItem.userId);
   span.end();
 }
 
-export async function ListsItemsDataDeleteForUser(context: Span, itemId: string, userId: string): Promise<void> {
-  const span = StandardTracerStartSpan("ListsItemsDataDeleteForUser", context);
-  await SqlDbUtilsExecSQL(span, "DELETE FROM lists_items WHERE itemId = ? AND userId = ?", [itemId, userId]);
+export async function ListsItemsDataDeleteForUser(
+  context: Span,
+  itemId: string,
+  userId: string
+): Promise<void> {
+  const span = OTelTracer().startSpan("ListsItemsDataDeleteForUser", context);
+  await SqlDbUtilsExecSQL(
+    span,
+    "DELETE FROM lists_items WHERE itemId = ? AND userId = ?",
+    [itemId, userId]
+  );
   SourcesDataInvalidateUserCache(span, userId);
   span.end();
 }
 
-export async function ListsItemsDataGetItemForUser(context: Span, itemId: string, userId: string): Promise<SourceItem> {
-  const span = StandardTracerStartSpan("ListsItemsDataGetItemForUser", context);
+export async function ListsItemsDataGetItemForUser(
+  context: Span,
+  itemId: string,
+  userId: string
+): Promise<SourceItem> {
+  const span = OTelTracer().startSpan("ListsItemsDataGetItemForUser", context);
   const sourceItemRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT sources_items.* " +

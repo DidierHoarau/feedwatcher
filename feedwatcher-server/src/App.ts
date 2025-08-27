@@ -1,28 +1,30 @@
+import { StandardMeter, StandardTracer } from "@devopsplaybook.io/otel-utils";
+import { StandardTracerFastifyRegisterHooks } from "@devopsplaybook.io/otel-utils-fastify";
 import Fastify from "fastify";
-import * as path from "path";
 import { watchFile } from "fs-extra";
+import * as path from "path";
 import { Config } from "./Config";
-import { Logger } from "./utils-std-ts/Logger";
-import { UsersRoutes } from "./users/UsersRoutes";
-import { ItemsRoutes } from "./sources/ItemsRoutes";
+import {
+  OTelLogger,
+  OTelSetMeter,
+  OTelSetTracer,
+  OTelTracer,
+} from "./OTelContext";
+import { ProcessorsInit } from "./procesors/Processors";
 import { ProcessorsRoutes } from "./procesors/ProcessorsRoutes";
 import { RulesRoutes } from "./rules/RulesRoutes";
-import { SourcesRoutes } from "./sources/SourcesRoutes";
-import { SourcesIdRoutes } from "./sources/SourcesIdRoutes";
-import { SourcesLabelsRoutes } from "./sources/SourcesLabelsRoutes";
-import { SourcesImportRoutes } from "./sources/SourcesImportRoutes";
-import { ListsItemsRoutes } from "./sources/ListsItemsRoutes";
-import {
-  StandardTracerInitTelemetry,
-  StandardTracerStartSpan,
-} from "./utils-std-ts/StandardTracer";
-import { ProcessorsInit } from "./procesors/Processors";
-import { SqlDbUtilsInit } from "./utils-std-ts/SqlDbUtils";
 import { SchedulerInit } from "./Scheduler";
-import { StandardTracerApiRegisterHooks } from "./StandardTracerApi";
+import { ItemsRoutes } from "./sources/ItemsRoutes";
+import { ListsItemsRoutes } from "./sources/ListsItemsRoutes";
+import { SourcesIdRoutes } from "./sources/SourcesIdRoutes";
+import { SourcesImportRoutes } from "./sources/SourcesImportRoutes";
+import { SourcesLabelsRoutes } from "./sources/SourcesLabelsRoutes";
+import { SourcesRoutes } from "./sources/SourcesRoutes";
 import { AuthInit } from "./users/Auth";
+import { UsersRoutes } from "./users/UsersRoutes";
+import { SqlDbUtilsInit } from "./utils-std-ts/SqlDbUtils";
 
-const logger = new Logger("app");
+const logger = OTelLogger().createModuleLogger("app");
 
 logger.info("====== Starting FeedWatcher Server ======");
 
@@ -35,9 +37,11 @@ Promise.resolve().then(async () => {
     config.reload();
   });
 
-  StandardTracerInitTelemetry(config);
+  OTelSetTracer(new StandardTracer(config));
+  OTelSetMeter(new StandardMeter(config));
+  OTelLogger().initOTel(config);
 
-  const span = StandardTracerStartSpan("init");
+  const span = OTelTracer().startSpan("init");
 
   await SqlDbUtilsInit(span, config);
   await AuthInit(span, config);
@@ -48,10 +52,7 @@ Promise.resolve().then(async () => {
 
   // API
 
-  const fastify = Fastify({
-    logger: config.LOG_LEVEL === "debug_tmp",
-    ignoreTrailingSlash: true,
-  });
+  const fastify = Fastify({});
 
   if (config.CORS_POLICY_ORIGIN) {
     /* eslint-disable-next-line */
@@ -63,7 +64,7 @@ Promise.resolve().then(async () => {
   /* eslint-disable-next-line */
   fastify.register(require("@fastify/multipart"));
 
-  StandardTracerApiRegisterHooks(fastify, config);
+  StandardTracerFastifyRegisterHooks(fastify, OTelTracer(), OTelLogger());
 
   fastify.register(new UsersRoutes().getRoutes, {
     prefix: "/api/users",
@@ -105,9 +106,8 @@ Promise.resolve().then(async () => {
   fastify.listen({ port: config.API_PORT, host: "0.0.0.0" }, (err) => {
     if (err) {
       logger.error(err);
-      fastify.log.error(err);
       process.exit(1);
     }
-    logger.info("API Listerning");
+    logger.info("API Listening");
   });
 });
