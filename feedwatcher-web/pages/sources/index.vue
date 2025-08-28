@@ -58,7 +58,7 @@
         v-for="sourceItem in sourceItemsStore.sourceItems"
         v-bind:key="sourceItem.id"
       >
-        <SourceItem
+        <LazySourceItem
           class="fade-in-fast sources-items-list-item"
           :item="sourceItem"
         />

@@ -7,22 +7,30 @@
     </ul>
     <ul class="menu-links">
       <li v-if="authenticationStore.isAuthenticated">
-        <NuxtLink to="/sources" :class="activeRoute == 'sources' ? 'active' : 'inactive'"
+        <NuxtLink
+          to="/sources"
+          :class="activeRoute == 'sources' ? 'active' : 'inactive'"
           ><i class="bi bi-rss-fill"></i
         ></NuxtLink>
       </li>
       <li v-if="authenticationStore.isAuthenticated">
-        <NuxtLink to="/bookmarks" :class="activeRoute == 'bookmarks' ? 'active' : 'inactive'"
+        <NuxtLink
+          to="/bookmarks"
+          :class="activeRoute == 'bookmarks' ? 'active' : 'inactive'"
           ><i class="bi bi-bookmark-check-fill"></i
         ></NuxtLink>
       </li>
       <li v-if="authenticationStore.isAuthenticated">
-        <NuxtLink to="/rules" :class="activeRoute == 'rules' ? 'active' : 'inactive'"
+        <NuxtLink
+          to="/rules"
+          :class="activeRoute == 'rules' ? 'active' : 'inactive'"
           ><i class="bi bi-robot"></i
         ></NuxtLink>
       </li>
       <li>
-        <NuxtLink to="/users" :class="activeRoute == 'users' ? 'active' : 'inactive'"
+        <NuxtLink
+          to="/users"
+          :class="activeRoute == 'users' ? 'active' : 'inactive'"
           ><i class="bi bi-person-circle"></i
         ></NuxtLink>
       </li>
@@ -32,6 +40,7 @@
 
 <script setup>
 import { AuthService } from "~~/services/AuthService";
+import { PreferencesService } from "~/services/PreferencesService";
 const authenticationStore = AuthenticationStore();
 </script>
 
@@ -56,13 +65,18 @@ export default {
       setTimeout(async () => {
         // Renew session tocken
         axios
-          .post(`${(await Config.get()).SERVER_URL}/users/session`, {}, await AuthService.getAuthHeader())
+          .post(
+            `${(await Config.get()).SERVER_URL}/users/session`,
+            {},
+            await AuthService.getAuthHeader()
+          )
           .then((res) => {
             AuthService.saveToken(res.data.token);
           });
       }, 10000);
     }
     UserProcessorInfoStore().check();
+    PreferencesService.applyTheme();
   },
   methods: {
     routeUpdated(newRoute) {

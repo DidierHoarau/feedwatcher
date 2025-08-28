@@ -23,7 +23,7 @@
       ></i>
     </div>
     <div id="sources-list" :class="{ 'sources-list-closed': !menuOpened }">
-      <SourceList
+      <LazySourceList
         displayCount="savedCount"
         @onSourceSelected="onSourceSelected"
         @onLabelSelected="onLabelSelected"
@@ -58,7 +58,7 @@
           v-for="sourceItem in sourceItemsStore.sourceItems"
           v-bind:key="sourceItem.id"
         >
-          <SourceItem class="fade-in-fast" :item="sourceItem" />
+          <LazySourceItem class="fade-in-fast" :item="sourceItem" />
         </div>
         <div v-on:click="pageNext()" id="sources-items-list-page-next">
           <Loading v-if="sourceItemsStore.loading" />

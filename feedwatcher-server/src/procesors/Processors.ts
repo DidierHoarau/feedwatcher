@@ -196,7 +196,7 @@ async function fetchSourceItemsQueued(): Promise<void> {
     }
   }
   if (!processed) {
-    logger.warn(`No processor found for ${source.id}`);
+    logger.warn(`No processor found for ${source.id} (${source.name})`);
   }
   userProcessorInfoStatusStop(span, source.userId);
   span.end();
