@@ -1,22 +1,41 @@
 <template>
   <div>
-    <div v-for="(source, index) in sourcesStore.sources" v-bind:key="source.name">
+    HELLO
+    <div
+      v-for="(source, index) in sourcesStore.sources"
+      v-bind:key="source.name"
+    >
       <div
         v-if="source.isVisible"
         class="source-name-layout"
         :class="{ 'source-active': sourcesStore.selectedIndex == index }"
         :ref="'source-' + index"
       >
-        <span v-on:click="toggleLabelCollapsed(source, index)" class="source-name-indent">
+        <span
+          v-on:click="toggleLabelCollapsed(source, index)"
+          class="source-name-indent"
+        >
           <span v-html="getIndentation(source)"></span>
-          <i v-if="source.isLabel && source.isCollapsed" class="bi bi-caret-right-fill"></i>
+          <i
+            v-if="source.isLabel && source.isCollapsed"
+            class="bi bi-caret-right-fill"
+          ></i>
           <i v-else-if="source.isLabel" class="bi bi-caret-down-fill"></i>
         </span>
-        <div v-on:click="onSourceSelected(source, index)" class="source-name-name">
-          <span v-if="!source.isLabel"><i :class="'bi bi-' + source.icon"></i>&nbsp;</span>
+        <div
+          v-on:click="onSourceSelected(source, index)"
+          class="source-name-name"
+        >
+          <span v-if="!source.isLabel"
+            ><i :class="'bi bi-' + source.icon"></i>&nbsp;</span
+          >
           {{ source.displayName }}
         </div>
-        <div v-if="displayCount" v-on:click="onSourceSelected(source, index)" class="source-name-count">
+        <div
+          v-if="displayCount"
+          v-on:click="onSourceSelected(source, index)"
+          class="source-name-count"
+        >
           {{ source[displayCount] }}
         </div>
       </div>
@@ -83,7 +102,10 @@ export default {
       if (index === 0) {
         return true;
       }
-      if (SourcesStore().sourceLabels[index].labelName === SourcesStore().sourceLabels[index - 1].labelName) {
+      if (
+        SourcesStore().sourceLabels[index].labelName ===
+        SourcesStore().sourceLabels[index - 1].labelName
+      ) {
         return false;
       }
       return true;
@@ -116,15 +138,12 @@ export default {
 </script>
 
 <style scoped>
-@media (prefers-color-scheme: dark) {
-  .source-active {
-    background-color: #333;
-  }
+:root[data-theme="dark"] .source-active {
+  background-color: #333;
 }
-@media (prefers-color-scheme: light) {
-  .source-active {
-    background-color: #bbb;
-  }
+
+:root[data-theme="light"] .source-active {
+  background-color: #bbb;
 }
 
 .source-name-layout {
