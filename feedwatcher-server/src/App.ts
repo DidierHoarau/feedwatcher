@@ -103,6 +103,18 @@ Promise.resolve().then(async () => {
   fastify.register(fastifyStatic, {
     root: path.join(__dirname, "../web"),
     prefix: "/",
+    wildcard: false,
+  });
+
+  fastify.setNotFoundHandler((request, reply) => {
+    if (
+      request.raw.url &&
+      !request.raw.url.startsWith("/api/") &&
+      !path.extname(request.raw.url)
+    ) {
+      return reply.sendFile("index.html");
+    }
+    reply.status(404).send({ error: "Not Found" });
   });
 
   fastify.listen({ port: config.API_PORT, host: "0.0.0.0" }, (err) => {
