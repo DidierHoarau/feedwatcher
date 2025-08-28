@@ -58,7 +58,7 @@
         v-for="sourceItem in sourceItemsStore.sourceItems"
         v-bind:key="sourceItem.id"
       >
-        <SourceItem
+        <LazySourceItem
           class="fade-in-fast sources-items-list-item"
           :item="sourceItem"
         />
@@ -361,21 +361,18 @@ export default {
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  .source-active {
-    background-color: #333;
-  }
-  #sources-list {
-    background-color: #33333333;
-  }
+:root[data-theme="dark"] .source-active {
+  background-color: #333;
 }
-@media (prefers-color-scheme: light) {
-  .source-active {
-    background-color: #bbb;
-  }
-  #sources-list {
-    background-color: #aaaaaa33;
-  }
+:root[data-theme="dark"] #sources-list {
+  background-color: #33333333;
+}
+
+:root[data-theme="light"] .source-active {
+  background-color: #bbb;
+}
+:root[data-theme="light"] #sources-list {
+  background-color: #aaaaaa33;
 }
 
 .source-name-layout {

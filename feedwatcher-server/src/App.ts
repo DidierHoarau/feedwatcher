@@ -1,5 +1,8 @@
 import { StandardMeter, StandardTracer } from "@devopsplaybook.io/otel-utils";
 import { StandardTracerFastifyRegisterHooks } from "@devopsplaybook.io/otel-utils-fastify";
+import cors from "@fastify/cors";
+import fastifyMultipart from "@fastify/multipart";
+import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
 import { watchFile } from "fs-extra";
 import * as path from "path";
@@ -55,16 +58,16 @@ Promise.resolve().then(async () => {
   const fastify = Fastify({});
 
   if (config.CORS_POLICY_ORIGIN) {
-    /* eslint-disable-next-line */
-    fastify.register(require("@fastify/cors"), {
+    fastify.register(cors, {
       origin: config.CORS_POLICY_ORIGIN,
       methods: "GET,PUT,POST,DELETE",
     });
   }
-  /* eslint-disable-next-line */
-  fastify.register(require("@fastify/multipart"));
+  fastify.register(fastifyMultipart);
 
-  StandardTracerFastifyRegisterHooks(fastify, OTelTracer(), OTelLogger());
+  StandardTracerFastifyRegisterHooks(fastify, OTelTracer(), OTelLogger(), {
+    ignoreList: ["GET-/api/status"],
+  });
 
   fastify.register(new UsersRoutes().getRoutes, {
     prefix: "/api/users",
@@ -97,10 +100,21 @@ Promise.resolve().then(async () => {
     return { started: true };
   });
 
-  /* eslint-disable-next-line */
-  fastify.register(require("@fastify/static"), {
+  fastify.register(fastifyStatic, {
     root: path.join(__dirname, "../web"),
     prefix: "/",
+    wildcard: false,
+  });
+
+  fastify.setNotFoundHandler((request, reply) => {
+    if (
+      request.raw.url &&
+      !request.raw.url.startsWith("/api/") &&
+      !path.extname(request.raw.url)
+    ) {
+      return reply.sendFile("index.html");
+    }
+    reply.status(404).send({ error: "Not Found" });
   });
 
   fastify.listen({ port: config.API_PORT, host: "0.0.0.0" }, (err) => {

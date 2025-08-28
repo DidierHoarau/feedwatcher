@@ -95,15 +95,13 @@ export default {
 </script>
 
 <style scoped>
-@media (prefers-color-scheme: dark) {
-  .source-active {
-    background-color: #333;
-  }
+
+:root[data-theme="dark"] .source-active {
+  background-color: #333;
 }
-@media (prefers-color-scheme: light) {
-  .source-active {
-    background-color: #bbb;
-  }
+
+:root[data-theme="light"] .source-active {
+  background-color: #bbb;
 }
 
 .source-name-layout {
