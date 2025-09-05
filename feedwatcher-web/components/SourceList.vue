@@ -1,6 +1,5 @@
 <template>
   <div>
-    HELLO
     <div
       v-for="(source, index) in sourcesStore.sources"
       v-bind:key="source.name"
