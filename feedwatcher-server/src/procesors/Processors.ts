@@ -48,7 +48,7 @@ export async function ProcessorsInit(
     }
   }
   processorsFiles = sortBy(processorsFiles, ["name"]);
-  logger.info(`Found ${processorsFiles.length} processors`);
+  logger.info(`Found ${processorsFiles.length} processors`, span);
   span.end();
 }
 
@@ -123,7 +123,7 @@ export async function ProcessorsFetchSourceItems(
   if (!find(fetchSourceItemsQueue, { id: source.id })) {
     fetchSourceItemsQueue.push(source);
     if (fetchSourceItemsQueue.length === 1) {
-      fetchSourceItemsQueued();
+      ProcessorsFetchSourceItemsQueued();
     }
   }
 }
@@ -142,11 +142,11 @@ export function ProcessorsGetUserProcessorInfo(
 
 // Private Functions
 
-async function fetchSourceItemsQueued(): Promise<void> {
+async function ProcessorsFetchSourceItemsQueued(): Promise<void> {
   if (fetchSourceItemsQueue.length === 0) {
     return;
   }
-  const span = OTelTracer().startSpan("fetchSourceItemsQueued");
+  const span = OTelTracer().startSpan("ProcessorsFetchSourceItemsQueued");
   const source = fetchSourceItemsQueue[0];
   userProcessorInfoStatusStart(span, source.userId);
   let processed = false;
@@ -181,9 +181,9 @@ async function fetchSourceItemsQueued(): Promise<void> {
               await SourceItemsDataAdd(span, newSourceItem);
             }
           }
-          logger.info(`Source ${source.id} has ${nbNewItem} new items`);
+          logger.info(`Source ${source.id} has ${nbNewItem} new items`, span);
           if (source.info.processorPath !== processorsFile.path) {
-            logger.info(`Updating source processor`);
+            logger.info(`Updating source processor`, span);
           }
           source.info.processorPath = processorsFile.path;
           source.info.dateFetched = new Date();
@@ -191,17 +191,17 @@ async function fetchSourceItemsQueued(): Promise<void> {
           processed = true;
         }
       } catch (err) {
-        logger.error(err);
+        logger.error("Error Fetching Source", err);
       }
     }
   }
   if (!processed) {
-    logger.warn(`No processor found for ${source.id} (${source.name})`);
+    logger.warn(`No processor found for ${source.id} (${source.name})`, span);
   }
   userProcessorInfoStatusStop(span, source.userId);
   span.end();
   fetchSourceItemsQueue.shift();
-  fetchSourceItemsQueued();
+  ProcessorsFetchSourceItemsQueued();
 }
 
 function userProcessorInfoStatusStart(context: Span, userId: string): void {

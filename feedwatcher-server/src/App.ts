@@ -119,7 +119,7 @@ Promise.resolve().then(async () => {
 
   fastify.listen({ port: config.API_PORT, host: "0.0.0.0" }, (err) => {
     if (err) {
-      logger.error(err);
+      logger.error("Error Starting API", err);
       process.exit(1);
     }
     logger.info("API Listening");

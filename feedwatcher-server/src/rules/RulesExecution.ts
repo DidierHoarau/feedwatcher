@@ -79,7 +79,7 @@ export async function RulesExecutionExecuteUserRules(
       }
     }
   }
-  logger.info(`Rules for user ${rules.userId} executed`);
+  logger.info(`Rules for user ${rules.userId} executed`, span);
   span.end();
 }
 
