@@ -33,7 +33,7 @@ export class SourcesImportRoutes {
         );
         return res.status(200).send({ sources: sourcesOpml });
       } catch (err) {
-        logger.error(err);
+        logger.error("Error Importing OPML", err, OTelRequestSpan(req));
         return res.status(400).send({ error: "Invalid File" });
       }
     });
