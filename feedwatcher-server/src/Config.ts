@@ -27,6 +27,8 @@ export class Config implements ConfigOTelInterface {
   public OPENTELEMETRY_COLLECT_AUTHORIZATION_HEADER = "";
   public PROCESSORS_SYSTEM = "processors-system";
   public PROCESSORS_USER = "processors-user";
+  public DEEPSEEK_API_KEY = "";
+  public DEEPSEEK_API_URL_CHAT = "https://api.deepseek.com/chat/completions";
 
   constructor() {
     let version = "1";
@@ -55,11 +57,11 @@ export class Config implements ConfigOTelInterface {
       }
       if (displayLog) {
         logger.info(
-          `Configuration Value: ${field}: ${this[field]} (from ${fromEnv})`
+          `Configuration Value: ${field}: ${this[field]} (from ${fromEnv})`,
         );
       } else {
         logger.info(
-          `Configuration Value: ${field}: ******************** (from ${fromEnv})`
+          `Configuration Value: ${field}: ******************** (from ${fromEnv})`,
         );
       }
     };
@@ -78,5 +80,7 @@ export class Config implements ConfigOTelInterface {
     setIfSet("OPENTELEMETRY_COLLECTOR_EXPORT_METRICS_INTERVAL_SECONDS");
     setIfSet("OPENTELEMETRY_COLLECTOR_AWS");
     setIfSet("OPENTELEMETRY_COLLECT_AUTHORIZATION_HEADER", false);
+    setIfSet("DEEPSEEK_API_KEY", false);
+    setIfSet("DEEPSEEK_API_URL_CHAT");
   }
 }

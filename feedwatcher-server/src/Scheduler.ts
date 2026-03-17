@@ -15,6 +15,8 @@ import {
 import { PromisePool } from "./utils-std-ts/PromisePool";
 import { SourceItemStatus } from "./model/SourceItemStatus";
 import { OTelMeter, OTelTracer } from "./OTelContext";
+import { SummaryGenerate } from "./summary/Summary";
+import * as schedule from "node-schedule";
 
 let config: Config;
 const statsSourceItms = {
@@ -37,7 +39,7 @@ export async function SchedulerInit(context: Span, configIn: Config) {
         item: "bookmarked",
       });
     },
-    { description: "Items left to read" }
+    { description: "Items left to read" },
   );
 
   OTelMeter().createObservableGauge(
@@ -48,10 +50,14 @@ export async function SchedulerInit(context: Span, configIn: Config) {
         item: "total",
       });
     },
-    { description: "Items in the database" }
+    { description: "Items in the database" },
   );
 
   SchedulerStartSchedule();
+  SummaryGenerate(config);
+  schedule.scheduleJob("0 0 * * *", () => {
+    SummaryGenerate(config);
+  });
   span.end();
 }
 
@@ -105,7 +111,7 @@ async function SchedulerUpdateStats(context: Span) {
   const nbReadItem = await SourceItemsDataGetCount(span, SourceItemStatus.read);
   const nbUnreadItem = await SourceItemsDataGetCount(
     span,
-    SourceItemStatus.unread
+    SourceItemStatus.unread,
   );
   const nbSavedItem = await SourcesDataListCountsSaved(span);
   statsSourceItms.itemsTotal = nbReadItem + nbUnreadItem;

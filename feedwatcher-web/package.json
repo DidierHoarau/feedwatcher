@@ -10,17 +10,18 @@
     "test": "echo TODO"
   },
   "devDependencies": {
-    "nuxt": "4.1.1"
+    "nuxt": "4.4.2"
   },
   "dependencies": {
     "@picocss/pico": "^2.1.1",
-    "@pinia/nuxt": "^0.11.2",
-    "@vueuse/core": "^13.9.0",
-    "axios": "^1.11.0",
+    "@pinia/nuxt": "^0.11.3",
+    "@vueuse/core": "^14.2.1",
+    "axios": "^1.13.6",
     "bootstrap-icons": "^1.13.1",
     "jwt-decode": "^4.0.0",
-    "lodash": "^4.17.21",
+    "lodash": "^4.17.23",
+    "marked": "^17.0.4",
     "mitt": "^3.0.1",
-    "pinia": "^3.0.3"
+    "pinia": "^3.0.4"
   }
 }
