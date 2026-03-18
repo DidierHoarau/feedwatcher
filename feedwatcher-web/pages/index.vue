@@ -1,14 +1,36 @@
 <template>
   <div class="page">
-    <!-- No summary: show posts from the last 24h -->
+    <Loading v-if="loading" />
     <div v-if="!summary && recentItems.length > 0" class="summary-section">
       <h2>Posts from the last 24h</h2>
       <div class="summary-items">
-        <h3>{{ recentItems.length }} posts</h3>
+        <div class="items-actions">
+          <span>{{ displayedRecentItems.length }} posts</span>
+          <span class="items-actions-icons">
+            <i
+              v-if="displayedRecentItems.length > 0"
+              v-on:click="markAllRead(displayedRecentItems)"
+              class="bi bi-archive"
+              title="Mark all as read"
+            ></i>
+            <i
+              v-if="recentShowUnreadOnly"
+              v-on:click="toggleFilter('recent')"
+              class="bi bi-envelope"
+              title="Show all"
+            ></i>
+            <i
+              v-else
+              v-on:click="toggleFilter('recent')"
+              class="bi bi-envelope-open"
+              title="Show unread only"
+            ></i>
+          </span>
+        </div>
         <div class="summary-items-list">
           <div
             class="summary-items-list-item-container"
-            v-for="sourceItem in recentItems"
+            v-for="sourceItem in displayedRecentItems"
             v-bind:key="sourceItem.id"
           >
             <LazySourceItem
@@ -16,19 +38,47 @@
               :item="sourceItem"
             />
           </div>
+        </div>
+        <div
+          v-if="displayedRecentItems.length > 0"
+          class="items-mark-read-bottom"
+        >
+          <button v-on:click="markAllRead(displayedRecentItems)">
+            <i class="bi bi-archive"></i> Mark all as read
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Has summary -->
     <div v-if="summary" class="summary-section">
-      <!-- Posts since the summary -->
       <div v-if="newItems.length > 0" class="summary-items">
-        <h2>{{ newItems.length }} recent posts</h2>
+        <div class="items-actions">
+          <span>{{ newItems.length }} recent posts</span>
+          <span class="items-actions-icons">
+            <i
+              v-if="displayedNewItems.length > 0"
+              v-on:click="markAllRead(displayedNewItems)"
+              class="bi bi-archive"
+              title="Mark all as read"
+            ></i>
+            <i
+              v-if="newShowUnreadOnly"
+              v-on:click="toggleFilter('new')"
+              class="bi bi-envelope"
+              title="Show all"
+            ></i>
+            <i
+              v-else
+              v-on:click="toggleFilter('new')"
+              class="bi bi-envelope-open"
+              title="Show unread only"
+            ></i>
+          </span>
+        </div>
         <div class="summary-items-list">
           <div
             class="summary-items-list-item-container"
-            v-for="sourceItem in newItems"
+            v-for="sourceItem in displayedNewItems"
             v-bind:key="sourceItem.id"
           >
             <LazySourceItem
@@ -37,9 +87,13 @@
             />
           </div>
         </div>
+        <div v-if="displayedNewItems.length > 0" class="items-mark-read-bottom">
+          <button v-on:click="markAllRead(displayedNewItems)">
+            <i class="bi bi-archive"></i> Mark all as read
+          </button>
+        </div>
       </div>
 
-      <!-- The summary itself -->
       <h2>News Summary</h2>
       <div class="summary-content">
         <div
@@ -49,13 +103,34 @@
         ></div>
       </div>
 
-      <!-- Posts from the 24h before the summary -->
       <div v-if="summaryItems.length > 0" class="summary-items">
-        <h3>{{ summaryItems.length }} posts from the 24h before</h3>
+        <div class="items-actions">
+          <span>{{ summaryItems.length }} posts from the 24h before</span>
+          <span class="items-actions-icons">
+            <i
+              v-if="displayedSummaryItems.length > 0"
+              v-on:click="markAllRead(displayedSummaryItems)"
+              class="bi bi-archive"
+              title="Mark all as read"
+            ></i>
+            <i
+              v-if="summaryShowUnreadOnly"
+              v-on:click="toggleFilter('summary')"
+              class="bi bi-envelope"
+              title="Show all"
+            ></i>
+            <i
+              v-else
+              v-on:click="toggleFilter('summary')"
+              class="bi bi-envelope-open"
+              title="Show unread only"
+            ></i>
+          </span>
+        </div>
         <div class="summary-items-list">
           <div
             class="summary-items-list-item-container"
-            v-for="sourceItem in summaryItems"
+            v-for="sourceItem in displayedSummaryItems"
             v-bind:key="sourceItem.id"
           >
             <LazySourceItem
@@ -63,6 +138,14 @@
               :item="sourceItem"
             />
           </div>
+        </div>
+        <div
+          v-if="displayedSummaryItems.length > 0"
+          class="items-mark-read-bottom"
+        >
+          <button v-on:click="markAllRead(displayedSummaryItems)">
+            <i class="bi bi-archive"></i> Mark all as read
+          </button>
         </div>
       </div>
     </div>
@@ -102,12 +185,80 @@ export default {
       recentItems: [],
       newItems: [],
       summaryItems: [],
+      displayedRecentItems: [],
+      displayedNewItems: [],
+      displayedSummaryItems: [],
+      recentShowUnreadOnly: true,
+      newShowUnreadOnly: true,
+      summaryShowUnreadOnly: true,
+      loading: false,
     };
   },
   computed: {
     formattedSummary() {
       if (!this.summary?.summary) return "";
       return marked(this.summary.summary);
+    },
+  },
+  methods: {
+    rebuildDisplayed(listName) {
+      const sourceMap = {
+        recent: "recentItems",
+        new: "newItems",
+        summary: "summaryItems",
+      };
+      const displayMap = {
+        recent: "displayedRecentItems",
+        new: "displayedNewItems",
+        summary: "displayedSummaryItems",
+      };
+      const filterMap = {
+        recent: "recentShowUnreadOnly",
+        new: "newShowUnreadOnly",
+        summary: "summaryShowUnreadOnly",
+      };
+      const source = this[sourceMap[listName]];
+      if (this[filterMap[listName]]) {
+        this[displayMap[listName]] = source.filter(
+          (item) => item.status === "unread",
+        );
+      } else {
+        this[displayMap[listName]] = [...source];
+      }
+    },
+    toggleFilter(listName) {
+      const filterMap = {
+        recent: "recentShowUnreadOnly",
+        new: "newShowUnreadOnly",
+        summary: "summaryShowUnreadOnly",
+      };
+      this[filterMap[listName]] = !this[filterMap[listName]];
+      this.rebuildDisplayed(listName);
+    },
+    async markAllRead(items) {
+      if (!items || items.length === 0) return;
+      let confirmed = false;
+      if (items.length > 1) {
+        confirmed = confirm("Mark all items as read?");
+      } else {
+        confirmed = true;
+      }
+      if (confirmed) {
+        const headers = await AuthService.getAuthHeader();
+        const itemIds = items.map((item) => item.id);
+        try {
+          await axios.put(
+            `${(await Config.get()).SERVER_URL}/items/status`,
+            { status: "read", itemIds },
+            headers,
+          );
+          for (const item of items) {
+            item.status = "read";
+          }
+        } catch (error) {
+          console.error("Failed to mark items as read", error);
+        }
+      }
     },
   },
   async created() {
@@ -119,6 +270,7 @@ export default {
         this.processorInfos = res.data;
       });
     if (await AuthService.isAuthenticated()) {
+      this.loading = true;
       const headers = await AuthService.getAuthHeader();
 
       // Fetch summary
@@ -175,9 +327,14 @@ export default {
           // No summary: all items are recent
           this.recentItems = allItems;
         }
+        // Build initial displayed lists (snapshot of unread)
+        this.rebuildDisplayed("recent");
+        this.rebuildDisplayed("new");
+        this.rebuildDisplayed("summary");
       } catch (error) {
         console.error("Failed to fetch recent items", error);
       }
+      this.loading = false;
     }
   },
 };
@@ -211,6 +368,32 @@ export default {
 }
 .summary-items h3 {
   margin-bottom: 0.5em;
+}
+.items-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5em;
+}
+.items-actions-icons {
+  font-size: 1.1em;
+}
+.items-actions-icons i {
+  cursor: pointer;
+  margin-left: 0.6em;
+  opacity: 0.7;
+}
+.items-actions-icons i:hover {
+  opacity: 1;
+}
+.items-mark-read-bottom {
+  margin-top: 0.8em;
+  text-align: center;
+}
+.items-mark-read-bottom button {
+  cursor: pointer;
+  padding: 0.4em 1em;
+  font-size: 0.85em;
 }
 .summary-items-list {
   display: flex;
