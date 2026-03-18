@@ -10,7 +10,7 @@
         ></div>
       </div>
       <div v-if="recentItems && recentItems.length > 0" class="summary-items">
-        <h3>{{ recentItems.length }} posts from the last 24h</h3>
+        <h3>{{ recentItems.length }} posts from the last 48h</h3>
         <div class="summary-items-list">
           <div
             class="summary-items-list-item-container"
@@ -87,7 +87,7 @@ export default {
       }
       try {
         const sinceDate = new Date(
-          Date.now() - 24 * 60 * 60 * 1000,
+          Date.now() - 48 * 60 * 60 * 1000,
         ).toISOString();
         const res = await axios.post(
           `${(await Config.get()).SERVER_URL}/items/search`,

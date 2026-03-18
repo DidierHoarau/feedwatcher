@@ -102,6 +102,43 @@ spec:
 
 Check the [docs/deployments](docs/deployments) for more examples of deployments.
 
+# Configuration
+
+Configuration values can be set via environment variables or through the `config.json` file. Environment variables take precedence over config file values, which take precedence over defaults.
+
+## General
+
+| Variable                 | Description                                     | Default             |
+| ------------------------ | ----------------------------------------------- | ------------------- |
+| `DATA_DIR`               | Directory for persistent data                   | `/data`             |
+| `LOG_LEVEL`              | Log level                                       | `info`              |
+| `CORS_POLICY_ORIGIN`     | CORS allowed origin                             |                     |
+| `JWT_KEY`                | Secret key for JWT tokens                       | Auto-generated UUID |
+| `JWT_VALIDITY_DURATION`  | JWT token validity duration in seconds          | `8035200` (93 days) |
+| `SOURCE_FETCH_FREQUENCY` | Interval between source fetches in milliseconds | `1800000` (30 min)  |
+
+## LLM (News Summary)
+
+The application can generate daily news summaries using any OpenAI-compatible chat completions API. Summary generation is enabled when `LLM_API_KEY` is set.
+
+| Variable      | Description                   | Default                                     |
+| ------------- | ----------------------------- | ------------------------------------------- |
+| `LLM_API_KEY` | API key for the LLM provider  |                                             |
+| `LLM_API_URL` | Chat completions endpoint URL | `https://api.deepseek.com/chat/completions` |
+| `LLM_MODEL`   | Model name to use             | `deepseek-chat`                             |
+
+## OpenTelemetry
+
+| Variable                                                  | Description                                 | Default |
+| --------------------------------------------------------- | ------------------------------------------- | ------- |
+| `OPENTELEMETRY_COLLECTOR_HTTP_TRACES`                     | OTel collector URL for traces               |         |
+| `OPENTELEMETRY_COLLECTOR_HTTP_METRICS`                    | OTel collector URL for metrics              |         |
+| `OPENTELEMETRY_COLLECTOR_HTTP_LOGS`                       | OTel collector URL for logs                 |         |
+| `OPENTELEMETRY_COLLECTOR_EXPORT_LOGS_INTERVAL_SECONDS`    | Log export interval in seconds              | `60`    |
+| `OPENTELEMETRY_COLLECTOR_EXPORT_METRICS_INTERVAL_SECONDS` | Metrics export interval in seconds          | `60`    |
+| `OPENTELEMETRY_COLLECTOR_AWS`                             | Enable AWS OTel collector                   | `false` |
+| `OPENTELEMETRY_COLLECT_AUTHORIZATION_HEADER`              | Authorization header for the OTel collector |         |
+
 # Development
 
 If you want to extend the application with your own Processors: [docs/processors](docs/processors)
