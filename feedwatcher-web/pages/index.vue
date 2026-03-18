@@ -1,16 +1,10 @@
 <template>
   <div class="page">
-    <div v-if="summary" class="summary-section">
-      <h2>News Summary</h2>
-      <div class="summary-content">
-        <div
-          v-if="summary.summary"
-          class="summary-text"
-          v-html="formattedSummary"
-        ></div>
-      </div>
-      <div v-if="recentItems && recentItems.length > 0" class="summary-items">
-        <h3>{{ recentItems.length }} posts from the last 48h</h3>
+    <!-- No summary: show posts from the last 24h -->
+    <div v-if="!summary && recentItems.length > 0" class="summary-section">
+      <h2>Posts from the last 24h</h2>
+      <div class="summary-items">
+        <h3>{{ recentItems.length }} posts</h3>
         <div class="summary-items-list">
           <div
             class="summary-items-list-item-container"
@@ -25,6 +19,54 @@
         </div>
       </div>
     </div>
+
+    <!-- Has summary -->
+    <div v-if="summary" class="summary-section">
+      <!-- Posts since the summary -->
+      <div v-if="newItems.length > 0" class="summary-items">
+        <h2>{{ newItems.length }} recent posts</h2>
+        <div class="summary-items-list">
+          <div
+            class="summary-items-list-item-container"
+            v-for="sourceItem in newItems"
+            v-bind:key="sourceItem.id"
+          >
+            <LazySourceItem
+              class="fade-in-fast summary-items-list-item"
+              :item="sourceItem"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- The summary itself -->
+      <h2>News Summary</h2>
+      <div class="summary-content">
+        <div
+          v-if="summary.summary"
+          class="summary-text"
+          v-html="formattedSummary"
+        ></div>
+      </div>
+
+      <!-- Posts from the 24h before the summary -->
+      <div v-if="summaryItems.length > 0" class="summary-items">
+        <h3>{{ summaryItems.length }} posts from the 24h before</h3>
+        <div class="summary-items-list">
+          <div
+            class="summary-items-list-item-container"
+            v-for="sourceItem in summaryItems"
+            v-bind:key="sourceItem.id"
+          >
+            <LazySourceItem
+              class="fade-in-fast summary-items-list-item"
+              :item="sourceItem"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <p>These are the types of URLs that you can follow on this server:</p>
     <div class="processor-info-list">
       <div
@@ -58,6 +100,8 @@ export default {
       processorInfos: [],
       summary: null,
       recentItems: [],
+      newItems: [],
+      summaryItems: [],
     };
   },
   computed: {
@@ -76,30 +120,61 @@ export default {
       });
     if (await AuthService.isAuthenticated()) {
       const headers = await AuthService.getAuthHeader();
+
+      // Fetch summary
+      let summaryData = null;
       try {
         const res = await axios.get(
           `${(await Config.get()).SERVER_URL}/summary`,
           headers,
         );
-        this.summary = res.data;
+        summaryData = res.data;
+        if (summaryData && summaryData.summary) {
+          this.summary = summaryData;
+        }
       } catch (error) {
         console.error("Failed to fetch summary", error);
       }
+
+      // Fetch items based on summary availability
       try {
-        const sinceDate = new Date(
-          Date.now() - 48 * 60 * 60 * 1000,
-        ).toISOString();
+        let sinceDate;
+        if (this.summary && this.summary.generatedAt) {
+          // Fetch items from 24h before the summary until now
+          sinceDate = new Date(
+            new Date(this.summary.generatedAt).getTime() - 24 * 60 * 60 * 1000,
+          ).toISOString();
+        } else {
+          // No summary: fetch items from the last 24h
+          sinceDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        }
+
         const res = await axios.post(
           `${(await Config.get()).SERVER_URL}/items/search`,
           {
             searchCriteria: "all",
-            page: 1,
+            page: -1,
             filterStatus: "all",
             sinceDate,
           },
           headers,
         );
-        this.recentItems = res.data.sourceItems || [];
+        const allItems = res.data.sourceItems || [];
+
+        if (this.summary && this.summary.generatedAt) {
+          const summaryTime = new Date(this.summary.generatedAt).getTime();
+          // Posts newer than the summary
+          this.newItems = allItems.filter(
+            (item) => new Date(item.datePublished).getTime() > summaryTime,
+          );
+          // Posts from the 24h before the summary
+          this.summaryItems = allItems.filter(
+            (item) => new Date(item.datePublished).getTime() <= summaryTime,
+          );
+        } else {
+          // No summary: all items are recent
+          this.recentItems = allItems;
+        }
       } catch (error) {
         console.error("Failed to fetch recent items", error);
       }
