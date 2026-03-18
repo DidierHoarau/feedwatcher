@@ -59,14 +59,8 @@ export async function SummaryGenerateForUser(
     return { itemCount: 0, summary: "", items: [] };
   }
 
-  if (!config.DEEPSEEK_API_KEY) {
-    logger.info(`  Skipping summary: DEEPSEEK_API_KEY not configured`);
-    span.end();
-    return { itemCount: items.length, summary: "", items };
-  }
-
   const newsLines = items.map((item) => {
-    const description = (item.content || "").substring(0, 100);
+    const description = (item.content || "").substring(0, 300);
     return `- [${item.sourceName}] ${item.title}: ${description}`;
   });
   const newsText = newsLines.join("\n");
@@ -74,9 +68,9 @@ export async function SummaryGenerateForUser(
   let summary = "";
   try {
     const response = await axios.post(
-      config.DEEPSEEK_API_URL_CHAT,
+      config.LLM_API_URL,
       {
-        model: "deepseek-chat",
+        model: config.LLM_MODEL,
         messages: [
           {
             role: "system",
@@ -94,7 +88,7 @@ export async function SummaryGenerateForUser(
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${config.DEEPSEEK_API_KEY}`,
+          Authorization: `Bearer ${config.LLM_API_KEY}`,
         },
       },
     );

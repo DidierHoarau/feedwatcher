@@ -23,6 +23,7 @@ export class ItemsRoutes {
         labelName: string;
         sourceId: string;
         isSaved: boolean;
+        sinceDate: string;
       };
     }
 
@@ -46,13 +47,16 @@ export class ItemsRoutes {
       searchOptions.filterStatus =
         req.body.filterStatus || SourceItemStatus.unread;
       searchOptions.isSaved = req.body.isSaved ? true : false;
+      if (req.body.sinceDate) {
+        searchOptions.minDate = new Date(req.body.sinceDate);
+      }
 
       if (req.body.searchCriteria === "labelName") {
         const searchItemsResult = await SearchItemsDataListItemsForLabel(
           OTelRequestSpan(req),
           req.body.labelName,
           userSession.userId,
-          searchOptions
+          searchOptions,
         );
         return res.status(200).send(searchItemsResult);
       }
@@ -60,7 +64,7 @@ export class ItemsRoutes {
       if (req.body.searchCriteria === "sourceId") {
         const source = await SourcesDataGet(
           OTelRequestSpan(req),
-          req.body.sourceId
+          req.body.sourceId,
         );
         if (source.userId !== userSession.userId) {
           return res.status(403).send({ error: "Access Denied" });
@@ -68,7 +72,7 @@ export class ItemsRoutes {
         const searchItemsResult = await SearchItemsDataListForSource(
           OTelRequestSpan(req),
           source.id,
-          searchOptions
+          searchOptions,
         );
         return res.status(200).send(searchItemsResult);
       }
@@ -77,7 +81,7 @@ export class ItemsRoutes {
         const searchItemsResult = await SearchItemsDataListForUser(
           OTelRequestSpan(req),
           userSession.userId,
-          searchOptions
+          searchOptions,
         );
         return res.status(200).send(searchItemsResult);
       }
@@ -110,7 +114,7 @@ export class ItemsRoutes {
         OTelRequestSpan(req),
         req.body.itemIds,
         req.body.status,
-        userSession.userId
+        userSession.userId,
       );
       return res.status(201).send({});
     });

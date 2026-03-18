@@ -53,11 +53,13 @@ export async function SchedulerInit(context: Span, configIn: Config) {
     { description: "Items in the database" },
   );
 
-  SchedulerStartSchedule();
-  SummaryGenerate(config);
-  schedule.scheduleJob("0 0 * * *", () => {
+  if (config.LLM_API_KEY) {
+    SchedulerStartSchedule();
     SummaryGenerate(config);
-  });
+    schedule.scheduleJob("0 0 * * *", () => {
+      SummaryGenerate(config);
+    });
+  }
   span.end();
 }
 

@@ -3,21 +3,28 @@
     <div v-if="summary" class="summary-section">
       <h2>News Summary</h2>
       <div class="summary-content">
-        <p class="summary-meta">
-          {{ summary.itemCount }} items in the last 24h
-        </p>
-        <p v-if="summary.generatedAt" class="summary-meta">
-          Generated: {{ new Date(summary.generatedAt).toLocaleString() }}
-        </p>
         <div
           v-if="summary.summary"
           class="summary-text"
           v-html="formattedSummary"
         ></div>
-        <p v-else class="summary-text">No summary available yet.</p>
+      </div>
+      <div v-if="recentItems && recentItems.length > 0" class="summary-items">
+        <h3>{{ recentItems.length }} posts from the last 24h</h3>
+        <div class="summary-items-list">
+          <div
+            class="summary-items-list-item-container"
+            v-for="sourceItem in recentItems"
+            v-bind:key="sourceItem.id"
+          >
+            <LazySourceItem
+              class="fade-in-fast summary-items-list-item"
+              :item="sourceItem"
+            />
+          </div>
+        </div>
       </div>
     </div>
-    <p>FeedReader: Follow your favorite online resources.</p>
     <p>These are the types of URLs that you can follow on this server:</p>
     <div class="processor-info-list">
       <div
@@ -50,6 +57,7 @@ export default {
     return {
       processorInfos: [],
       summary: null,
+      recentItems: [],
     };
   },
   computed: {
@@ -76,6 +84,24 @@ export default {
         this.summary = res.data;
       } catch (error) {
         console.error("Failed to fetch summary", error);
+      }
+      try {
+        const sinceDate = new Date(
+          Date.now() - 24 * 60 * 60 * 1000,
+        ).toISOString();
+        const res = await axios.post(
+          `${(await Config.get()).SERVER_URL}/items/search`,
+          {
+            searchCriteria: "all",
+            page: 1,
+            filterStatus: "all",
+            sinceDate,
+          },
+          headers,
+        );
+        this.recentItems = res.data.sourceItems || [];
+      } catch (error) {
+        console.error("Failed to fetch recent items", error);
       }
     }
   },
@@ -104,6 +130,29 @@ export default {
 }
 .summary-text {
   line-height: 1.6;
+}
+.summary-items {
+  margin-top: 1.5em;
+}
+.summary-items h3 {
+  margin-bottom: 0.5em;
+}
+.summary-items-list {
+  display: flex;
+  align-items: flex-start;
+  align-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.6em;
+}
+.summary-items-list-item-container {
+  flex: 1 1 20em;
+  min-width: 20em;
+  align-self: flex-start;
+}
+.summary-items-list-item-container,
+.summary-items-list-item {
+  margin: 0;
+  padding: 0;
 }
 .processor-info-list {
   display: grid;
