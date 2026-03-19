@@ -388,6 +388,7 @@ export default {
 }
 .items-mark-read-bottom {
   margin-top: 0.8em;
+  margin-bottom: 0.8em;
   text-align: center;
 }
 .items-mark-read-bottom button {
