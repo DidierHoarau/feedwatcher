@@ -1,14 +1,6 @@
 import { FastifyInstance } from "fastify";
-import { Config } from "../Config";
-import { OTelRequestSpan } from "../OTelContext";
 import { AuthGetUserSession } from "../users/Auth";
 import { SummaryGetCached } from "./Summary";
-
-let config: Config;
-
-export function SummaryRoutesInit(configIn: Config) {
-  config = configIn;
-}
 
 export class SummaryRoutes {
   //
