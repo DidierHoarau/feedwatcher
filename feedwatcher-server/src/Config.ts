@@ -30,6 +30,7 @@ export class Config implements ConfigOTelInterface {
   public LLM_API_KEY = "";
   public LLM_API_URL = "https://api.deepseek.com/chat/completions";
   public LLM_MODEL = "deepseek-chat";
+  public SUMMARY_SCHEDULE_CRON = "0 0 * * *";
 
   constructor() {
     let version = "1";
@@ -84,5 +85,6 @@ export class Config implements ConfigOTelInterface {
     setIfSet("LLM_API_KEY", false);
     setIfSet("LLM_API_URL");
     setIfSet("LLM_MODEL");
+    setIfSet("SUMMARY_SCHEDULE_CRON");
   }
 }
