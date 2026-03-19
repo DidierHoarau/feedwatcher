@@ -4,7 +4,7 @@
     "name": "FeedWatcher",
     "short_name": "FeedWatcher",
     "lang": "en-US",
-    "start_url": "/sources",
+    "start_url": "/",
     "display": "standalone",
     "background_color": "#12191f",
     "theme_color": "#12191f",

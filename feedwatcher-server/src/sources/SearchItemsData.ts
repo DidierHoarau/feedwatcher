@@ -11,7 +11,7 @@ const PAGE_SIZE = 50;
 export async function SearchItemsDataListForUser(
   context: Span,
   userId: string,
-  searchOptions: SearchItemsOptions
+  searchOptions: SearchItemsOptions,
 ): Promise<SearchItemsResult> {
   const span = OTelTracer().startSpan("SearchItemsDataListForUser", context);
   const sourceItemsRaw = await SqlDbUtilsQuerySQL(
@@ -22,9 +22,10 @@ export async function SearchItemsDataListForUser(
       getSavedFromQuery(searchOptions) +
       "WHERE sources.userId = ? " +
       getStatusFilterQuery(searchOptions) +
+      getMinDateFilterQuery(searchOptions) +
       "ORDER BY datePublished DESC " +
       getPageQuery(searchOptions),
-    [userId]
+    [userId],
   );
   const searchItemsResult = getSearchResultsfromRaw(sourceItemsRaw);
   span.end();
@@ -34,7 +35,7 @@ export async function SearchItemsDataListForUser(
 export async function SearchItemsDataListForSource(
   context: Span,
   sourceId: string,
-  searchOptions: SearchItemsOptions
+  searchOptions: SearchItemsOptions,
 ): Promise<SearchItemsResult> {
   const span = OTelTracer().startSpan("SearchItemsDataListForSource", context);
   const sourceItemsRaw = await SqlDbUtilsQuerySQL(
@@ -49,7 +50,7 @@ export async function SearchItemsDataListForSource(
       getStatusFilterQuery(searchOptions) +
       "ORDER BY datePublished DESC " +
       getPageQuery(searchOptions),
-    [sourceId, sourceId]
+    [sourceId, sourceId],
   );
   const searchItemsResult = getSearchResultsfromRaw(sourceItemsRaw);
   span.end();
@@ -60,11 +61,11 @@ export async function SearchItemsDataListItemsForLabel(
   context: Span,
   label: string,
   userId: string,
-  searchOptions: SearchItemsOptions
+  searchOptions: SearchItemsOptions,
 ): Promise<SearchItemsResult> {
   const span = OTelTracer().startSpan(
     "SearchItemsDataListItemsForLabel",
-    context
+    context,
   );
   const sourceItemsRaw = await SqlDbUtilsQuerySQL(
     span,
@@ -83,7 +84,7 @@ export async function SearchItemsDataListItemsForLabel(
       "  AND sources.userId = ? " +
       "ORDER BY datePublished DESC " +
       getPageQuery(searchOptions),
-    [userId, `${label}%`, userId]
+    [userId, `${label}%`, userId],
   );
   const searchItemsResult = getSearchResultsfromRaw(sourceItemsRaw);
   span.end();
@@ -124,6 +125,13 @@ function getStatusFilterQuery(searchOptions: SearchItemsOptions): string {
 function getAgeFilterQuery(searchOptions: SearchItemsOptions): string {
   if (searchOptions.maxDate) {
     return `  AND sources_items.datePublished <= '${searchOptions.maxDate.toISOString()}' `;
+  }
+  return "";
+}
+
+function getMinDateFilterQuery(searchOptions: SearchItemsOptions): string {
+  if (searchOptions.minDate) {
+    return `  AND sources_items.datePublished >= '${searchOptions.minDate.toISOString()}' `;
   }
   return "";
 }

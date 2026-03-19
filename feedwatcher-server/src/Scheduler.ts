@@ -14,9 +14,14 @@ import {
 } from "./sources/SourceItemsData";
 import { PromisePool } from "./utils-std-ts/PromisePool";
 import { SourceItemStatus } from "./model/SourceItemStatus";
-import { OTelMeter, OTelTracer } from "./OTelContext";
+import { OTelLogger, OTelMeter, OTelTracer } from "./OTelContext";
+import { SummaryGenerate } from "./summary/Summary";
+import * as schedule from "node-schedule";
+
+const logger = OTelLogger().createModuleLogger("Scheduler");
 
 let config: Config;
+
 const statsSourceItms = {
   itemsTotal: 0,
   itemsRead: 0,
@@ -37,7 +42,7 @@ export async function SchedulerInit(context: Span, configIn: Config) {
         item: "bookmarked",
       });
     },
-    { description: "Items left to read" }
+    { description: "Items left to read" },
   );
 
   OTelMeter().createObservableGauge(
@@ -48,10 +53,20 @@ export async function SchedulerInit(context: Span, configIn: Config) {
         item: "total",
       });
     },
-    { description: "Items in the database" }
+    { description: "Items in the database" },
   );
 
-  SchedulerStartSchedule();
+  if (config.LLM_API_KEY) {
+    SchedulerStartSchedule();
+    SummaryGenerate(config).catch((err) => {
+      logger.error("Error generating summary", err);
+    });
+    schedule.scheduleJob("0 0 * * *", () => {
+      SummaryGenerate(config).catch((err) => {
+        logger.error("Error generating summary", err);
+      });
+    });
+  }
   span.end();
 }
 
@@ -105,7 +120,7 @@ async function SchedulerUpdateStats(context: Span) {
   const nbReadItem = await SourceItemsDataGetCount(span, SourceItemStatus.read);
   const nbUnreadItem = await SourceItemsDataGetCount(
     span,
-    SourceItemStatus.unread
+    SourceItemStatus.unread,
   );
   const nbSavedItem = await SourcesDataListCountsSaved(span);
   statsSourceItms.itemsTotal = nbReadItem + nbUnreadItem;

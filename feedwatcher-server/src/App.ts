@@ -23,6 +23,7 @@ import { SourcesIdRoutes } from "./sources/SourcesIdRoutes";
 import { SourcesImportRoutes } from "./sources/SourcesImportRoutes";
 import { SourcesLabelsRoutes } from "./sources/SourcesLabelsRoutes";
 import { SourcesRoutes } from "./sources/SourcesRoutes";
+import { SummaryRoutes } from "./summary/SummaryRoutes";
 import { AuthInit } from "./users/Auth";
 import { UsersRoutes } from "./users/UsersRoutes";
 import { SqlDbUtilsInit } from "./utils-std-ts/SqlDbUtils";
@@ -95,6 +96,9 @@ Promise.resolve().then(async () => {
   });
   fastify.register(new RulesRoutes().getRoutes, {
     prefix: "/api/rules",
+  });
+  fastify.register(new SummaryRoutes().getRoutes, {
+    prefix: "/api/summary",
   });
   fastify.get("/api/status", async () => {
     return { started: true };
