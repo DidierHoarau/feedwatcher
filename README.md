@@ -110,10 +110,6 @@ Configuration values can be set via environment variables or through the `config
 
 | Variable                 | Description                                     | Default             |
 | ------------------------ | ----------------------------------------------- | ------------------- |
-| `DATA_DIR`               | Directory for persistent data                   | `/data`             |
-| `LOG_LEVEL`              | Log level                                       | `info`              |
-| `CORS_POLICY_ORIGIN`     | CORS allowed origin                             |                     |
-| `JWT_KEY`                | Secret key for JWT tokens                       | Auto-generated UUID |
 | `JWT_VALIDITY_DURATION`  | JWT token validity duration in seconds          | `8035200` (93 days) |
 | `SOURCE_FETCH_FREQUENCY` | Interval between source fetches in milliseconds | `1800000` (30 min)  |
 
