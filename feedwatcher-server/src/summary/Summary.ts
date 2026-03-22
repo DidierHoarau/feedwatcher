@@ -75,11 +75,14 @@ export async function SummaryGenerateForUser(
           {
             role: "system",
             content:
-              "You are a helpful assistant that summarizes news. " +
-              "Provide a concise summary of the following news items from the last 24 hours. " +
-              "Group news per categories and highlight the most important stories. " +
-              "Do not add an introduction sentence; start directly with the summary content. " +
-              "For each paragraph, mention the name of the relevant sources.",
+              "You summarize news feeds. Follow these rules strictly:\n" +
+              "- Group items into categories (e.g., Technology, Politics, Science, Business, etc.).\n" +
+              "- Use a markdown heading (##) for each category.\n" +
+              "- Under each category, list highlights as bullet points. Keep each bullet to one or two sentences.\n" +
+              "- Attribute each bullet to its source name (in parentheses at the end) when the source is identifiable.\n" +
+              "- Do NOT include an introduction, conclusion, or any preamble. Start directly with the first category.\n" +
+              "- Prioritize the most significant or impactful stories. Omit redundant or trivial items.\n" +
+              "- If multiple sources report the same story, merge them into a single bullet and cite all sources.",
           },
           {
             role: "user",
