@@ -77,7 +77,9 @@ export async function SummaryGenerateForUser(
             content:
               "You are a helpful assistant that summarizes news. " +
               "Provide a concise summary of the following news items from the last 24 hours. " +
-              "Group related topics together and highlight the most important stories.",
+              "Group related topics together and highlight the most important stories. " +
+              "Do not add an introduction sentence; start directly with the summary content. " +
+              "For each paragraph, mention the name of the relevant sources.",
           },
           {
             role: "user",
