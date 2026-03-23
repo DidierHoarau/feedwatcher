@@ -61,7 +61,7 @@ export async function SchedulerInit(context: Span, configIn: Config) {
     SummaryGenerate(config).catch((err) => {
       logger.error("Error generating summary", err);
     });
-    schedule.scheduleJob("0 0 * * *", () => {
+    schedule.scheduleJob(config.SUMMARY_SCHEDULE_CRON, () => {
       SummaryGenerate(config).catch((err) => {
         logger.error("Error generating summary", err);
       });

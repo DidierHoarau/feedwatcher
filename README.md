@@ -117,11 +117,12 @@ Configuration values can be set via environment variables or through the `config
 
 The application can generate daily news summaries using any OpenAI-compatible chat completions API. Summary generation is enabled when `LLM_API_KEY` is set.
 
-| Variable      | Description                   | Default                                     |
-| ------------- | ----------------------------- | ------------------------------------------- |
-| `LLM_API_KEY` | API key for the LLM provider  |                                             |
-| `LLM_API_URL` | Chat completions endpoint URL | `https://api.deepseek.com/chat/completions` |
-| `LLM_MODEL`   | Model name to use             | `deepseek-chat`                             |
+| Variable                | Description                                     | Default                                     |
+| ----------------------- | ----------------------------------------------- | ------------------------------------------- |
+| `LLM_API_KEY`           | API key for the LLM provider                    |                                             |
+| `LLM_API_URL`           | Chat completions endpoint URL                   | `https://api.deepseek.com/chat/completions` |
+| `LLM_MODEL`             | Model name to use                               | `deepseek-chat`                             |
+| `SUMMARY_SCHEDULE_CRON` | Cron expression for summary schedule (UTC time) | `0 0 * * *` (daily at midnight)             |
 
 ## OpenTelemetry
 

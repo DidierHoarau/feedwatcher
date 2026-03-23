@@ -14,11 +14,11 @@
 /* Layout */
 
 #page-layout {
-  width: auto;
-  height: 100vh;
   height: 100dvh;
   display: grid;
   grid-template-rows: 4em 1fr;
+  overflow: hidden !important;
+  width: 100vw;
 }
 
 header,
