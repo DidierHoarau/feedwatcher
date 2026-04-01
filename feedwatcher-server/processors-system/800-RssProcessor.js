@@ -8,7 +8,8 @@ module.exports = {
   getInfo: () => {
     return {
       title: "RSS Feed",
-      description: "Follows a RSS feed. <br/>" + "Expected URLs: RSS or Atom feed URL",
+      description:
+        "Follows a RSS feed. <br/>" + "Expected URLs: RSS or Atom feed URL",
       icon: "rss",
     };
   },
@@ -32,7 +33,7 @@ module.exports = {
       const sourceItem = {};
       sourceItem.url = item.url;
       sourceItem.title = item.title;
-      sourceItem.content = item.content || "";
+      sourceItem.content = item.content || item.description || "";
       sourceItem.datePublished = new Date(item.published);
       sourceItem.thumbnail = item.image ? item.image.url : null;
       sourceItems.push(sourceItem);
