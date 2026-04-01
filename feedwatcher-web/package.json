@@ -16,11 +16,11 @@
     "@picocss/pico": "^2.1.1",
     "@pinia/nuxt": "^0.11.3",
     "@vueuse/core": "^14.2.1",
-    "axios": "^1.13.6",
+    "axios": "^1.14.0",
     "bootstrap-icons": "^1.13.1",
     "jwt-decode": "^4.0.0",
     "lodash": "^4.17.23",
-    "marked": "^17.0.4",
+    "marked": "^17.0.5",
     "mitt": "^3.0.1",
     "pinia": "^3.0.4"
   }
