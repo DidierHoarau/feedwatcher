@@ -9,7 +9,7 @@ module.exports = {
     return {
       title: "RSS Feed",
       description:
-        "Follows a RSS feed. <br/>" + "Expected URLs: RSS or Atom feed URL",
+        "Follows an RSS feed. <br/>Expected URLs: RSS or Atom feed URL",
       icon: "rss",
     };
   },
