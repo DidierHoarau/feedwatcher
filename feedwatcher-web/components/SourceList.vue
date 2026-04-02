@@ -1,11 +1,19 @@
 <template>
   <div>
+    <div>
+      <input
+        v-model="filterText"
+        class="source-filter-input"
+        type="text"
+        placeholder="Filter sources..."
+      />
+    </div>
     <div
-      v-for="(source, index) in sourcesStore.sources"
-      v-bind:key="source.name"
+      v-for="(source, index) in filteredSources"
+      v-bind:key="(source.sourceId || source.labelName) + '-' + index"
     >
       <div
-        v-if="source.isVisible"
+        v-if="source.isVisible || filterText"
         class="source-name-layout"
         :class="{ 'source-active': sourcesStore.selectedIndex == index }"
         :ref="'source-' + index"
@@ -44,6 +52,43 @@
 
 <script setup>
 const sourcesStore = SourcesStore();
+const filterText = ref("");
+
+const filteredSources = computed(() => {
+  const text = filterText.value.trim().toLowerCase();
+  if (!text) {
+    return sourcesStore.sources;
+  }
+  const result = [];
+  const addedLabels = new Set();
+  for (const source of sourcesStore.sources) {
+    if (!source.isLabel) {
+      const nameMatch = source.displayName?.toLowerCase().includes(text);
+      const labelMatch = source.labelName?.toLowerCase().includes(text);
+      if (nameMatch || labelMatch) {
+        // Add all ancestor label entries once
+        if (source.labelName) {
+          const parts = source.labelName.split("/");
+          let accumulated = "";
+          for (const part of parts) {
+            accumulated = accumulated ? accumulated + "/" + part : part;
+            if (!addedLabels.has(accumulated)) {
+              const labelEntry = sourcesStore.sources.find(
+                (s) => s.isLabel && s.labelName === accumulated,
+              );
+              if (labelEntry) {
+                result.push({ ...labelEntry, isVisible: true });
+                addedLabels.add(accumulated);
+              }
+            }
+          }
+        }
+        result.push({ ...source, isVisible: true });
+      }
+    }
+  }
+  return result;
+});
 </script>
 
 <script>
@@ -78,7 +123,7 @@ export default {
       () => SourcesStore().selectedIndex,
       () => {
         this.scrollToSelectedIndex();
-      }
+      },
     );
     this.scrollToSelectedIndex();
   },
@@ -162,5 +207,12 @@ export default {
 }
 .source-name-count {
   grid-column: 3;
+}
+
+.source-filter-input {
+  font-size: 0.8em;
+  padding: 0 1rem;
+  margin-bottom: 0;
+  height: 2.6rem;
 }
 </style>
