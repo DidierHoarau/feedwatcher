@@ -185,7 +185,7 @@ export default {
         .put(
           `${(await Config.get()).SERVER_URL}/sources/fetch`,
           {},
-          await AuthService.getAuthHeader()
+          await AuthService.getAuthHeader(),
         )
         .then((res) => {})
         .catch(handleError);
@@ -213,7 +213,7 @@ export default {
           .put(
             `${(await Config.get()).SERVER_URL}/items/status`,
             { status: "read", itemIds },
-            await AuthService.getAuthHeader()
+            await AuthService.getAuthHeader(),
           )
           .then(() => {
             for (const item of sourceItemsStore.sourceItems) {
@@ -310,7 +310,7 @@ export default {
     grid-column: 1;
   }
   #sources-list {
-    overflow: auto;
+    overflow: hidden;
     height: 25vh;
     grid-row: 2;
     grid-column-start: 1;
@@ -348,7 +348,7 @@ export default {
   #sources-list {
     width: 30vw;
     max-width: 20em;
-    overflow: auto;
+    overflow: hidden;
     height: auto;
     grid-row: 2 / 4;
     grid-column: 1;

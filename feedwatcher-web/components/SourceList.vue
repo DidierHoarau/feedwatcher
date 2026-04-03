@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <div>
+  <div class="source-list-container">
+    <div class="source-list-filter">
       <input
         v-model="filterText"
         class="source-filter-input"
@@ -8,42 +8,44 @@
         placeholder="Filter sources..."
       />
     </div>
-    <div
-      v-for="(source, index) in filteredSources"
-      v-bind:key="(source.sourceId || source.labelName) + '-' + index"
-    >
+    <div class="source-list-scroll">
       <div
-        v-if="source.isVisible || filterText"
-        class="source-name-layout"
-        :class="{ 'source-active': sourcesStore.selectedIndex == index }"
-        :ref="'source-' + index"
+        v-for="(source, index) in filteredSources"
+        v-bind:key="(source.sourceId || source.labelName) + '-' + index"
       >
-        <span
-          v-on:click="toggleLabelCollapsed(source, index)"
-          class="source-name-indent"
-        >
-          <span v-html="getIndentation(source)"></span>
-          <i
-            v-if="source.isLabel && source.isCollapsed"
-            class="bi bi-caret-right-fill"
-          ></i>
-          <i v-else-if="source.isLabel" class="bi bi-caret-down-fill"></i>
-        </span>
         <div
-          v-on:click="onSourceSelected(source, index)"
-          class="source-name-name"
+          v-if="source.isVisible || filterText"
+          class="source-name-layout"
+          :class="{ 'source-active': sourcesStore.selectedIndex == index }"
+          :ref="'source-' + index"
         >
-          <span v-if="!source.isLabel"
-            ><i :class="'bi bi-' + source.icon"></i>&nbsp;</span
+          <span
+            v-on:click="toggleLabelCollapsed(source, index)"
+            class="source-name-indent"
           >
-          {{ source.displayName }}
-        </div>
-        <div
-          v-if="displayCount"
-          v-on:click="onSourceSelected(source, index)"
-          class="source-name-count"
-        >
-          {{ source[displayCount] }}
+            <span v-html="getIndentation(source)"></span>
+            <i
+              v-if="source.isLabel && source.isCollapsed"
+              class="bi bi-caret-right-fill"
+            ></i>
+            <i v-else-if="source.isLabel" class="bi bi-caret-down-fill"></i>
+          </span>
+          <div
+            v-on:click="onSourceSelected(source, index)"
+            class="source-name-name"
+          >
+            <span v-if="!source.isLabel"
+              ><i :class="'bi bi-' + source.icon"></i>&nbsp;</span
+            >
+            {{ source.displayName }}
+          </div>
+          <div
+            v-if="displayCount"
+            v-on:click="onSourceSelected(source, index)"
+            class="source-name-count"
+          >
+            {{ source[displayCount] }}
+          </div>
         </div>
       </div>
     </div>
@@ -209,10 +211,29 @@ export default {
   grid-column: 3;
 }
 
+.source-list-container {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  min-height: 0;
+}
+
+.source-list-filter {
+  grid-row: 1;
+  padding: 0.4em 0.5em;
+}
+
+.source-list-scroll {
+  grid-row: 2;
+  overflow-y: auto;
+  min-height: 0;
+}
+
 .source-filter-input {
+  width: 100%;
+  box-sizing: border-box;
   font-size: 0.8em;
-  padding: 0 1rem;
-  margin-bottom: 0;
-  height: 2.6rem;
+  padding: 0 0.8rem;
+  height: 2.4rem;
 }
 </style>
