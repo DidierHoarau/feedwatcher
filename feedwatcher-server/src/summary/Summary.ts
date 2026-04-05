@@ -1,5 +1,6 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import axios from "axios";
+import sanitizeHtml from "sanitize-html";
 import { Config } from "../Config";
 import { OTelLogger, OTelTracer } from "../OTelContext";
 import { UsersDataList } from "../users/UsersData";
@@ -60,7 +61,13 @@ export async function SummaryGenerateForUser(
   }
 
   const newsLines = items.map((item) => {
-    const description = (item.content || "").substring(0, 300);
+    const description = sanitizeHtml(item.content || "", {
+      allowedTags: [],
+      allowedAttributes: {},
+    })
+      .replace(/\s+/g, " ")
+      .trim()
+      .substring(0, 300);
     return `- [${item.sourceName}] ${item.title}: ${description}`;
   });
   const newsText = newsLines.join("\n");

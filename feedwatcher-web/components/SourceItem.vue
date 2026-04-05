@@ -63,7 +63,15 @@
       class="sourceitem-layout-content"
     >
       <Transition>
-        <span v-if="isActive" v-html="item.content"></span>
+        <iframe
+          v-if="isActive"
+          class="sourceitem-content-frame"
+          :srcdoc="iframeContent"
+          sandbox="allow-same-origin allow-popups"
+          scrolling="no"
+          ref="contentFrame"
+          @load="resizeFrame"
+        ></iframe>
       </Transition>
     </div>
   </article>
@@ -83,13 +91,27 @@ export default {
     return {
       isActive: false,
       isSaved: false,
+      frameHeight: 200,
     };
+  },
+  computed: {
+    iframeContent() {
+      const isDark = (localStorage.getItem("UI_THEME") || "dark") === "dark";
+      const bg = isDark ? "#11191f" : "#ffffff";
+      const fg = isDark ? "#c2cfd6" : "#1a1a1a";
+      const linkColor = isDark ? "#6ea8fe" : "#1a56db";
+      return `<!DOCTYPE html><html><head><style>
+        body { margin: 0; padding: 0.5em; font-family: sans-serif; font-size: 14px; word-break: break-word; overflow-wrap: break-word; background-color: ${bg}; color: ${fg}; }
+        img { max-width: 100%; height: auto; }
+        a { color: ${linkColor}; }
+      </style></head><body>${this.item.content || ""}</body></html>`;
+    },
   },
   async created() {
     axios
       .get(
         `${(await Config.get()).SERVER_URL}/lists/items/${this.item.id}`,
-        await AuthService.getAuthHeader()
+        await AuthService.getAuthHeader(),
       )
       .then((res) => {
         if (res.data.id) {
@@ -112,7 +134,7 @@ export default {
         .put(
           `${(await Config.get()).SERVER_URL}/lists/items`,
           { itemId: this.item.id },
-          await AuthService.getAuthHeader()
+          await AuthService.getAuthHeader(),
         )
         .then((res) => {
           this.isSaved = true;
@@ -123,7 +145,7 @@ export default {
       axios
         .delete(
           `${(await Config.get()).SERVER_URL}/lists/items/${this.item.id}`,
-          await AuthService.getAuthHeader()
+          await AuthService.getAuthHeader(),
         )
         .then((res) => {
           this.isSaved = false;
@@ -135,13 +157,19 @@ export default {
         .put(
           `${(await Config.get()).SERVER_URL}/items/status`,
           { status, itemIds: [this.item.id] },
-          await AuthService.getAuthHeader()
+          await AuthService.getAuthHeader(),
         )
         .then((res) => {
           this.item.status = status;
           EventBus.emit(EventTypes.ITEMS_UPDATED, {});
         })
         .catch(handleError);
+    },
+    resizeFrame() {
+      const frame = this.$refs.contentFrame;
+      if (frame && frame.contentDocument && frame.contentDocument.body) {
+        frame.style.height = frame.contentDocument.body.scrollHeight + "px";
+      }
     },
     relativeTime(date) {
       const delta = Math.round((new Date() - new Date(date)) / 1000);
@@ -226,8 +254,13 @@ export default {
 }
 .sourceitem-layout-content {
   grid-row: 3;
-  grid-column: 3 / 4;
+  grid-column: 1 / 5;
   overflow: hidden;
+}
+.sourceitem-content-frame {
+  width: 100%;
+  border: none;
+  display: block;
 }
 .sourceitem-layout-save {
   grid-row: 3;
