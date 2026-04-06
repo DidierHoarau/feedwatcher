@@ -1,22 +1,17 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
-import { Config } from "./Config";
-import { TimeoutWait } from "./utils-std-ts/Timeout";
-import { RulesDataListAll } from "./rules/RulesData";
-import { ProcessorsFetchSourceItems } from "./procesors/Processors";
-import {
-  SourcesDataListAll,
-  SourcesDataListCountsSaved,
-} from "./sources/SourcesData";
-import { RulesExecutionExecuteUserRules } from "./rules/RulesExecution";
+import { Config } from "../Config";
+import { TimeoutWait } from "../utils-std-ts/Timeout";
+import { RulesDataListAll } from "../rules/RulesData";
+import { ProcessorsFetchSourceItems } from "../procesors/Processors";
+import { SourcesDataListAll, SourcesDataListCountsSaved } from "./SourcesData";
+import { RulesExecutionExecuteUserRules } from "../rules/RulesExecution";
 import {
   SourceItemsDataCleanupOrphans,
   SourceItemsDataGetCount,
-} from "./sources/SourceItemsData";
-import { PromisePool } from "./utils-std-ts/PromisePool";
-import { SourceItemStatus } from "./model/SourceItemStatus";
-import { OTelLogger, OTelMeter, OTelTracer } from "./OTelContext";
-import { SummaryGenerate } from "./summary/Summary";
-import * as schedule from "node-schedule";
+} from "./SourceItemsData";
+import { PromisePool } from "../utils-std-ts/PromisePool";
+import { SourceItemStatus } from "../model/SourceItemStatus";
+import { OTelLogger, OTelMeter, OTelTracer } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger("Scheduler");
 
@@ -29,10 +24,10 @@ const statsSourceItms = {
   itemsBookmarked: 0,
 };
 
-export async function SchedulerInit(context: Span, configIn: Config) {
-  const span = OTelTracer().startSpan("SchedulerInit", context);
+export async function SourcesSchedulerInit(context: Span, configIn: Config) {
+  const span = OTelTracer().startSpan("SourcesSchedulerInit", context);
   config = configIn;
-  await SchedulerUpdateStats(span);
+  await SourcesSchedulerUpdateStats(span);
 
   OTelMeter().createObservableGauge(
     "feeds.items.queue",
@@ -56,27 +51,17 @@ export async function SchedulerInit(context: Span, configIn: Config) {
     { description: "Items in the database" },
   );
 
-  if (config.LLM_API_KEY) {
-    SchedulerStartSchedule();
-    SummaryGenerate(config).catch((err) => {
-      logger.error("Error generating summary", err);
-    });
-    schedule.scheduleJob(config.SUMMARY_SCHEDULE_CRON, () => {
-      SummaryGenerate(config).catch((err) => {
-        logger.error("Error generating summary", err);
-      });
-    });
-  }
+  SourcesSchedulerStartSchedule();
   span.end();
 }
 
 // Private Functions
 
-async function SchedulerStartSchedule() {
+async function SourcesSchedulerStartSchedule() {
   const promisePool = new PromisePool(5, config.SOURCE_FETCH_FREQUENCY / 6);
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const span0 = OTelTracer().startSpan("SchedulerStartSchedule");
+    const span0 = OTelTracer().startSpan("SourcesSchedulerStartSchedule");
     for (const source of await SourcesDataListAll(span0)) {
       if (
         !source.info.dateFetched ||
@@ -84,7 +69,7 @@ async function SchedulerStartSchedule() {
           config.SOURCE_FETCH_FREQUENCY
       ) {
         promisePool.add(async () => {
-          const span = OTelTracer().startSpan("SchedulerStartSchedule");
+          const span = OTelTracer().startSpan("SourcesSchedulerStartSchedule");
           await ProcessorsFetchSourceItems(span, source);
           span.end();
         });
@@ -93,19 +78,19 @@ async function SchedulerStartSchedule() {
 
     for (const userRules of await RulesDataListAll(span0)) {
       promisePool.add(async () => {
-        const span = OTelTracer().startSpan("SchedulerStartSchedule");
+        const span = OTelTracer().startSpan("SourcesSchedulerStartSchedule");
         return RulesExecutionExecuteUserRules(span, userRules);
         span.end();
       });
     }
 
     promisePool.add(async () => {
-      const span = OTelTracer().startSpan("SchedulerStartSchedule");
+      const span = OTelTracer().startSpan("SourcesSchedulerStartSchedule");
       await SourceItemsDataCleanupOrphans(span);
       span.end();
     });
 
-    await SchedulerUpdateStats(span0);
+    await SourcesSchedulerUpdateStats(span0);
 
     span0.end();
 
@@ -115,8 +100,8 @@ async function SchedulerStartSchedule() {
 
 // privaae
 
-async function SchedulerUpdateStats(context: Span) {
-  const span = OTelTracer().startSpan("SchedulerUpdateStats", context);
+async function SourcesSchedulerUpdateStats(context: Span) {
+  const span = OTelTracer().startSpan("SourcesSchedulerUpdateStats", context);
   const nbReadItem = await SourceItemsDataGetCount(span, SourceItemStatus.read);
   const nbUnreadItem = await SourceItemsDataGetCount(
     span,

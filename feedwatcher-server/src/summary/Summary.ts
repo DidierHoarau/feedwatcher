@@ -1,5 +1,8 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import axios from "axios";
+import * as fs from "fs-extra";
+import * as path from "path";
+import * as schedule from "node-schedule";
 import sanitizeHtml from "sanitize-html";
 import { Config } from "../Config";
 import { OTelLogger, OTelTracer } from "../OTelContext";
@@ -9,29 +12,78 @@ import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
 
 const logger = OTelLogger().createModuleLogger("Summary");
 
-const cachedSummaries = new Map<
-  string,
-  { itemCount: number; summary: string; generatedAt: Date }
->();
+let summaryFilePath: string;
 
-export function SummaryGetCached(userId: string): {
+export async function SummaryInit(
+  context: Span,
+  config: Config,
+): Promise<void> {
+  const span = OTelTracer().startSpan("SummaryInit", context);
+  summaryFilePath = path.join(config.DATA_DIR, "summary.json");
+  logger.info(`Summary storage initialized at: ${summaryFilePath}`);
+  if (!(await fs.pathExists(summaryFilePath))) {
+    logger.info("No summary file found, triggering initial generation");
+    SummaryGenerate(config).catch((err) =>
+      logger.error(`Failed to generate summaries on init: ${err.message}`),
+    );
+  }
+  if (config.LLM_API_KEY) {
+    logger.info(
+      `Scheduling summary generation: ${config.SUMMARY_SCHEDULE_CRON}`,
+    );
+    schedule.scheduleJob(config.SUMMARY_SCHEDULE_CRON, () => {
+      SummaryGenerate(config).catch((err) =>
+        logger.error(`Failed to generate scheduled summary: ${err.message}`),
+      );
+    });
+  }
+  span.end();
+}
+
+export async function SummaryGetCached(userId: string): Promise<{
   itemCount: number;
   summary: string;
   generatedAt: Date;
-} | null {
-  return cachedSummaries.get(userId) || null;
+} | null> {
+  try {
+    if (!(await fs.pathExists(summaryFilePath))) {
+      return null;
+    }
+    const data = await fs.readJson(summaryFilePath);
+    const entry = data[userId];
+    if (!entry) {
+      return null;
+    }
+    return {
+      itemCount: entry.itemCount,
+      summary: entry.summary,
+      generatedAt: new Date(entry.generatedAt),
+    };
+  } catch (error) {
+    logger.error(`Failed to read summary for user ${userId}: ${error.message}`);
+    return null;
+  }
 }
 
 export async function SummaryGenerate(config: Config) {
   const span = OTelTracer().startSpan("SummaryGenerate");
   const users = await UsersDataList(span);
+  const allSummaries: Record<
+    string,
+    { itemCount: number; summary: string; generatedAt: string }
+  > = {};
   for (const user of users) {
     const result = await SummaryGenerateForUser(span, config, user.id);
-    cachedSummaries.set(user.id, {
+    allSummaries[user.id] = {
       itemCount: result.itemCount,
       summary: result.summary,
-      generatedAt: new Date(),
-    });
+      generatedAt: new Date().toISOString(),
+    };
+  }
+  try {
+    await fs.writeJson(summaryFilePath, allSummaries);
+  } catch (error) {
+    logger.error(`Failed to save summary file: ${error.message}`);
   }
   span.end();
 }

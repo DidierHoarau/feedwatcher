@@ -11,7 +11,7 @@ export class SummaryRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const cached = SummaryGetCached(userSession.userId);
+      const cached = await SummaryGetCached(userSession.userId);
       if (!cached) {
         return res
           .status(200)

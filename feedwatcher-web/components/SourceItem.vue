@@ -67,7 +67,7 @@
           v-if="isActive"
           class="sourceitem-content-frame"
           :srcdoc="iframeContent"
-          sandbox="allow-same-origin allow-popups"
+          sandbox="allow-same-origin allow-popups allow-scripts"
           scrolling="no"
           ref="contentFrame"
           @load="resizeFrame"
