@@ -16,6 +16,7 @@ import { OTelLogger, OTelMeter, OTelTracer } from "../OTelContext";
 const logger = OTelLogger().createModuleLogger("Scheduler");
 
 let config: Config;
+let lastRulesExecution = 0;
 
 const statsSourceItms = {
   itemsTotal: 0,
@@ -51,7 +52,9 @@ export async function SourcesSchedulerInit(context: Span, configIn: Config) {
     { description: "Items in the database" },
   );
 
-  SourcesSchedulerStartSchedule();
+  SourcesSchedulerStartSchedule().catch((err) =>
+    logger.error("SourcesSchedulerStartSchedule crashed", err),
+  );
   span.end();
 }
 
@@ -61,31 +64,36 @@ async function SourcesSchedulerStartSchedule() {
   const promisePool = new PromisePool(5, config.SOURCE_FETCH_FREQUENCY / 6);
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const span0 = OTelTracer().startSpan("SourcesSchedulerStartSchedule");
+    const span0 = OTelTracer().startSpan("SourcesSchedulerCycle");
+    const now = new Date().getTime();
+
     for (const source of await SourcesDataListAll(span0)) {
       if (
         !source.info.dateFetched ||
-        new Date().getTime() - new Date(source.info.dateFetched).getTime() >
+        now - new Date(source.info.dateFetched).getTime() >
           config.SOURCE_FETCH_FREQUENCY
       ) {
         promisePool.add(async () => {
-          const span = OTelTracer().startSpan("SourcesSchedulerStartSchedule");
+          const span = OTelTracer().startSpan("FetchSourceItems");
           await ProcessorsFetchSourceItems(span, source);
           span.end();
         });
       }
     }
 
-    for (const userRules of await RulesDataListAll(span0)) {
-      promisePool.add(async () => {
-        const span = OTelTracer().startSpan("SourcesSchedulerStartSchedule");
-        return RulesExecutionExecuteUserRules(span, userRules);
-        span.end();
-      });
+    if (now - lastRulesExecution > config.SOURCE_FETCH_FREQUENCY) {
+      lastRulesExecution = now;
+      for (const userRules of await RulesDataListAll(span0)) {
+        promisePool.add(async () => {
+          const span = OTelTracer().startSpan("ExecuteUserRules");
+          await RulesExecutionExecuteUserRules(span, userRules);
+          span.end();
+        });
+      }
     }
 
     promisePool.add(async () => {
-      const span = OTelTracer().startSpan("SourcesSchedulerStartSchedule");
+      const span = OTelTracer().startSpan("CleanupOrphanItems");
       await SourceItemsDataCleanupOrphans(span);
       span.end();
     });
@@ -98,16 +106,15 @@ async function SourcesSchedulerStartSchedule() {
   }
 }
 
-// privaae
+// private
 
 async function SourcesSchedulerUpdateStats(context: Span) {
   const span = OTelTracer().startSpan("SourcesSchedulerUpdateStats", context);
-  const nbReadItem = await SourceItemsDataGetCount(span, SourceItemStatus.read);
-  const nbUnreadItem = await SourceItemsDataGetCount(
-    span,
-    SourceItemStatus.unread,
-  );
-  const nbSavedItem = await SourcesDataListCountsSaved(span);
+  const [nbReadItem, nbUnreadItem, nbSavedItem] = await Promise.all([
+    SourceItemsDataGetCount(span, SourceItemStatus.read),
+    SourceItemsDataGetCount(span, SourceItemStatus.unread),
+    SourcesDataListCountsSaved(span),
+  ]);
   statsSourceItms.itemsTotal = nbReadItem + nbUnreadItem;
   statsSourceItms.itemsRead = nbReadItem;
   statsSourceItms.itemsUnread = nbUnreadItem;
