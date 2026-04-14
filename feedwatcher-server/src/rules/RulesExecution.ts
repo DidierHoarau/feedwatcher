@@ -1,7 +1,7 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Rules } from "../model/Rules";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
-import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
+import { SqlDbUtilsExecSQL } from "../utils-std-ts/SqlDbUtils";
 import { OTelLogger, OTelTracer } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger("RulesExecution");
@@ -97,7 +97,7 @@ async function execRuleForUser(
   searchOptions: SearchItemsOptions
 ): Promise<void> {
   const span = OTelTracer().startSpan("execRuleForUser", context);
-  await SqlDbUtilsQuerySQL(
+  SqlDbUtilsExecSQL(
     span,
     getRuleActionSql(action) +
       "WHERE sources_items.sourceId IN ( SELECT id FROM sources WHERE userId = ? ) " +
@@ -115,7 +115,7 @@ async function execRuleForSource(
   searchOptions: SearchItemsOptions
 ): Promise<void> {
   const span = OTelTracer().startSpan("execRuleForSource", context);
-  await SqlDbUtilsQuerySQL(
+  SqlDbUtilsExecSQL(
     span,
     getRuleActionSql(action) +
       "WHERE sourceId = ? " +
@@ -134,7 +134,7 @@ async function execRuleForLabel(
   searchOptions: SearchItemsOptions
 ): Promise<void> {
   const span = OTelTracer().startSpan("execRuleForLabel", context);
-  await SqlDbUtilsQuerySQL(
+  SqlDbUtilsExecSQL(
     span,
     getRuleActionSql(action) +
       "WHERE sources_items.sourceId IN ( " +
@@ -154,7 +154,7 @@ function getRuleActionSql(ruleAction: RuleAction): string {
   if (ruleAction == RuleAction.delete) {
     return " DELETE FROM sources_items ";
   }
-  return ' UPDATE sources_items SET status = "read" ';
+  return " UPDATE sources_items SET status = 'read' ";
 }
 
 function getAgeFilterQuery(searchOptions: SearchItemsOptions): string {
