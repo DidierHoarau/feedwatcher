@@ -44,7 +44,9 @@ export const SourcesStore = defineStore("SourcesStore", {
         return;
       }
       if (this.selectedSourceId !== "") {
-        const position = findIndex(this.sources, { sourceId: this.selectedSourceId });
+        const position = findIndex(this.sources, {
+          sourceId: this.selectedSourceId,
+        });
         if (position < 0) {
           return;
         }
@@ -52,7 +54,10 @@ export const SourcesStore = defineStore("SourcesStore", {
         return;
       }
       if (this.selectedLabel !== "") {
-        const position = findIndex(this.sources, { labelName: this.selectedLabel, isLabel: true });
+        const position = findIndex(this.sources, {
+          labelName: this.selectedLabel,
+          isLabel: true,
+        });
         if (position < 0) {
           return;
         }
@@ -62,9 +67,15 @@ export const SourcesStore = defineStore("SourcesStore", {
     },
     async fetch() {
       await axios
-        .get(`${(await Config.get()).SERVER_URL}/sources/labels`, await AuthService.getAuthHeader())
+        .get(
+          `${(await Config.get()).SERVER_URL}/sources/labels`,
+          await AuthService.getAuthHeader(),
+        )
         .then((res) => {
-          const sourcesData = sortBy(res.data.sourceLabels, ["labelName", "sourceName"]);
+          const sourcesData = sortBy(res.data.sourceLabels, [
+            "labelName",
+            "sourceName",
+          ]);
           const soucesStr = JSON.stringify(sourcesData);
           if (this.sourcesStr === soucesStr) {
             this.checkVisibility();
@@ -84,17 +95,24 @@ export const SourcesStore = defineStore("SourcesStore", {
             unreadCount: 0,
             savedCount: 0,
             isCollapsed: false,
+            sourceInfo: {},
             isVisible: true,
           });
           for (let i = 0; i < sourcesData.length; i++) {
             const sourceData = sourcesData[i];
+            console.log(sourceData);
             const source: any = {};
             let labelSplit = [];
             if (sourceData.labelName) {
               labelSplit = sourceData.labelName.split("/");
             }
-            if (labelSplit.length > 0 && sourceData.labelName !== sourcesTmp[sourcesTmp.length - 1].labelName) {
-              const parentLabelSplit = sourcesTmp[sourcesTmp.length - 1].labelName.split("/");
+            if (
+              labelSplit.length > 0 &&
+              sourceData.labelName !==
+                sourcesTmp[sourcesTmp.length - 1].labelName
+            ) {
+              const parentLabelSplit =
+                sourcesTmp[sourcesTmp.length - 1].labelName.split("/");
               let labelName = "";
               for (let j = 0; j < labelSplit.length; j++) {
                 if (labelName !== "") {
@@ -109,10 +127,16 @@ export const SourcesStore = defineStore("SourcesStore", {
                     displayName: labelSplit[labelSplit.length - 1],
                     unreadCount: 0,
                     savedCount: 0,
-                    isCollapsed: PreferencesLabels.isCollapsed(sourceData.labelName),
+                    sourceInfo: {},
+                    isCollapsed: PreferencesLabels.isCollapsed(
+                      sourceData.labelName,
+                    ),
                     isVisible: false,
                   });
-                } else if (j >= parentLabelSplit.length || parentLabelSplit[j] !== labelSplit[j]) {
+                } else if (
+                  j >= parentLabelSplit.length ||
+                  parentLabelSplit[j] !== labelSplit[j]
+                ) {
                   sourcesTmp.push({
                     isLabel: true,
                     depth: j + 1,
@@ -120,6 +144,7 @@ export const SourcesStore = defineStore("SourcesStore", {
                     displayName: labelSplit[j],
                     unreadCount: 0,
                     savedCount: 0,
+                    sourceInfo: {},
                     isCollapsed: PreferencesLabels.isCollapsed(labelName),
                     isVisible: false,
                   });
@@ -139,6 +164,7 @@ export const SourcesStore = defineStore("SourcesStore", {
               savedCount: 0,
               isCollapsed: false,
               isVisible: false,
+              sourceInfo: sourceData.sourceInfo,
             });
           }
           this.sources = sourcesTmp as never[];
@@ -152,14 +178,20 @@ export const SourcesStore = defineStore("SourcesStore", {
     },
     async fetchCounts() {
       await axios
-        .get(`${(await Config.get()).SERVER_URL}/sources/labels/counts/unread`, await AuthService.getAuthHeader())
+        .get(
+          `${(await Config.get()).SERVER_URL}/sources/labels/counts/unread`,
+          await AuthService.getAuthHeader(),
+        )
         .then((res) => {
           this.sourceCounts = res.data.counts;
           assignCounts(this.sources, this.sourceCounts, "unreadCount");
         })
         .catch(handleError);
       await axios
-        .get(`${(await Config.get()).SERVER_URL}/sources/labels/counts/saved`, await AuthService.getAuthHeader())
+        .get(
+          `${(await Config.get()).SERVER_URL}/sources/labels/counts/saved`,
+          await AuthService.getAuthHeader(),
+        )
         .then((res) => {
           this.savedCounts = res.data.counts;
           assignCounts(this.sources, this.savedCounts, "savedCount");
@@ -179,7 +211,10 @@ export const SourcesStore = defineStore("SourcesStore", {
       let parentCollapsedLabel = "";
       for (let i = 0; i < this.sources.length; i++) {
         const source = this.sources[i] as any;
-        if (parentCollapsedLabel && `${source.labelName}/`.indexOf(parentCollapsedLabel) === 0) {
+        if (
+          parentCollapsedLabel &&
+          `${source.labelName}/`.indexOf(parentCollapsedLabel) === 0
+        ) {
           source.isVisible = false;
         } else if (source.isLabel && !source.isCollapsed) {
           source.isVisible = true;
@@ -217,7 +252,10 @@ function assignCounts(sources: any[], counts: any[], field: string, index = 0) {
   let count = 0;
   while (nextIteration < sources.length) {
     const sourceNext = sources[nextIteration] as any;
-    if (!sourceNext.isLabel && sourceNext.labelName.indexOf(source.labelName) === 0) {
+    if (
+      !sourceNext.isLabel &&
+      sourceNext.labelName.indexOf(source.labelName) === 0
+    ) {
       const sourceCounNext = find(counts, { sourceId: sourceNext.sourceId });
       if (sourceCounNext) {
         count += sourceCounNext[field];

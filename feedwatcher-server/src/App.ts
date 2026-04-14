@@ -16,13 +16,14 @@ import {
 import { ProcessorsInit } from "./procesors/Processors";
 import { ProcessorsRoutes } from "./procesors/ProcessorsRoutes";
 import { RulesRoutes } from "./rules/RulesRoutes";
-import { SchedulerInit } from "./Scheduler";
+import { SourcesSchedulerInit } from "./sources/SourcesScheduler";
 import { ItemsRoutes } from "./sources/ItemsRoutes";
 import { ListsItemsRoutes } from "./sources/ListsItemsRoutes";
 import { SourcesIdRoutes } from "./sources/SourcesIdRoutes";
 import { SourcesImportRoutes } from "./sources/SourcesImportRoutes";
 import { SourcesLabelsRoutes } from "./sources/SourcesLabelsRoutes";
 import { SourcesRoutes } from "./sources/SourcesRoutes";
+import { SummaryInit } from "./summary/Summary";
 import { SummaryRoutes } from "./summary/SummaryRoutes";
 import { AuthInit } from "./users/Auth";
 import { UsersRoutes } from "./users/UsersRoutes";
@@ -50,7 +51,8 @@ Promise.resolve().then(async () => {
   await SqlDbUtilsInit(span, config);
   await AuthInit(span, config);
   await ProcessorsInit(span, config);
-  await SchedulerInit(span, config);
+  await SummaryInit(span, config);
+  await SourcesSchedulerInit(span, config);
 
   span.end();
 
