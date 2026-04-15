@@ -111,7 +111,7 @@ export async function SourceItemsDataUpdateMultipleStatusForUser(
     if (inItemsId.length > 0) {
       inItemsId += ",";
     }
-    inItemsId += `"${itemId}"`;
+    inItemsId += `'${itemId}'`;
   }
   SqlDbUtilsExecSQL(
     span,
