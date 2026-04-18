@@ -16,13 +16,13 @@ const cacheInProgress: any = {};
 
 export async function SourcesDataGet(
   context: Span,
-  sourceId: string
+  sourceId: string,
 ): Promise<Source> {
   const span = OTelTracer().startSpan("SourcesDataGet", context);
   const sourceRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT * FROM sources WHERE id = ?",
-    [sourceId]
+    [sourceId],
   );
   let source: Source = null;
   if (sourceRaw.length > 0) {
@@ -34,12 +34,12 @@ export async function SourcesDataGet(
 
 export async function SourcesDataListForUser(
   context: Span,
-  userId: string
+  userId: string,
 ): Promise<Source[]> {
   const span = OTelTracer().startSpan("SourcesDataListForUser", context);
   const sourcesRaw = await SqlDbUtilsQuerySQL(
     span,
-    `SELECT * FROM sources WHERE userId = '${userId}'`
+    `SELECT * FROM sources WHERE userId = '${userId}'`,
   );
   const sources = [];
   for (const sourceRaw of sourcesRaw) {
@@ -53,7 +53,7 @@ export async function SourcesDataListForUser(
 export async function SourcesDataListCountsForUser(
   context: Span,
   userId: string,
-  skipCache = false
+  skipCache = false,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[]> {
   const span = OTelTracer().startSpan("SourcesDataListCountsForUser", context);
@@ -71,7 +71,7 @@ export async function SourcesDataListCountsForUser(
       "  ) " +
       "  AND status = ? " +
       "GROUP BY sourceId ",
-    [userId, "unread"]
+    [userId, "unread"],
   );
   span.end();
   return cacheUserCounts[userId];
@@ -80,12 +80,12 @@ export async function SourcesDataListCountsForUser(
 export async function SourcesDataListCountsSavedForUser(
   context: Span,
   userId: string,
-  skipCache = false
+  skipCache = false,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[]> {
   const span = OTelTracer().startSpan(
     "SourcesDataListCountsSavedForUser",
-    context
+    context,
   );
   if (cacheUserSavedCounts[userId] && !skipCache) {
     span.setAttribute("cached", true);
@@ -104,7 +104,7 @@ export async function SourcesDataListCountsSavedForUser(
       "          AND sources.userId = ? " +
       "  ) " +
       "GROUP BY sourceId ",
-    [userId]
+    [userId],
   );
   span.end();
   return cacheUserSavedCounts[userId];
@@ -123,33 +123,33 @@ export async function SourcesDataListAll(context: Span): Promise<Source[]> {
 
 export async function SourcesDataAdd(
   context: Span,
-  source: Source
+  source: Source,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourcesDataAdd", context);
-  await SqlDbUtilsQuerySQL(
+  SqlDbUtilsExecSQL(
     span,
     "INSERT INTO sources (id,userId,name,info) VALUES (?,?,?,?)",
-    [source.id, source.userId, source.name, JSON.stringify(source.info)]
+    [source.id, source.userId, source.name, JSON.stringify(source.info)],
   );
   span.end();
 }
 
 export async function SourcesDataUpdate(
   context: Span,
-  source: Source
+  source: Source,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourcesDataUpdate", context);
   await SqlDbUtilsExecSQL(
     span,
     "UPDATE sources SET name = ?, info = ? WHERE id = ?",
-    [source.name, JSON.stringify(source.info), source.id]
+    [source.name, JSON.stringify(source.info), source.id],
   );
   span.end();
 }
 
 export async function SourcesDataDelete(
   context: Span,
-  sourceId: string
+  sourceId: string,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourcesDataDelete", context);
   const source = await SourcesDataGet(span, sourceId);
@@ -157,12 +157,12 @@ export async function SourcesDataDelete(
   await SqlDbUtilsExecSQL(
     span,
     "DELETE FROM sources_items WHERE sourceId = ?",
-    [sourceId]
+    [sourceId],
   );
   await SqlDbUtilsExecSQL(
     span,
     "DELETE FROM sources_labels WHERE sourceId = ?",
-    [sourceId]
+    [sourceId],
   );
   SourcesDataInvalidateUserCache(span, source.userId);
   span.end();
@@ -170,7 +170,7 @@ export async function SourcesDataDelete(
 
 export async function SourcesDataInvalidateUserCache(
   context: Span,
-  userId: string
+  userId: string,
 ): Promise<void> {
   if (cacheInProgress[userId]) {
     cacheInProgress[userId] = 0;
@@ -197,14 +197,14 @@ export async function SourcesDataInvalidateUserCache(
 }
 
 export async function SourcesDataListCountsSaved(
-  context: Span
+  context: Span,
 ): Promise<number> {
   const span = OTelTracer().startSpan("SourcesDataListCountsSaved", context);
   const countRaw = await SqlDbUtilsQuerySQL(
     span,
     "    SELECT COUNT(sources_items.id) as count " +
       "    FROM lists_items, sources_items " +
-      "    WHERE lists_items.itemId = sources_items.id "
+      "    WHERE lists_items.itemId = sources_items.id ",
   );
 
   let count = 0;

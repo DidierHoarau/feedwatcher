@@ -10,7 +10,7 @@ import { OTelTracer } from "../OTelContext";
 
 export async function SourceLabelsDataListForUser(
   context: Span,
-  userId: string
+  userId: string,
 ): Promise<Source[]> {
   const span = OTelTracer().startSpan("SourceLabelsDataListForUser", context);
   const sourceLabelsRaw = await SqlDbUtilsQuerySQL(
@@ -22,7 +22,7 @@ export async function SourceLabelsDataListForUser(
       "FROM sources " +
       "  LEFT JOIN sources_labels ON sources_labels.sourceId = sources.id " +
       "WHERE sources.userId = ?",
-    [userId]
+    [userId],
   );
   const sourcesLabels = [];
   for (const sourceLabelRaw of sourceLabelsRaw) {
@@ -36,22 +36,22 @@ export async function SourceLabelsDataListForUser(
 export async function SourceLabelsDataSetSourceLabels(
   context: Span,
   sourceId: string,
-  labels: string[]
+  labels: string[],
 ): Promise<void> {
   const span = OTelTracer().startSpan(
     "SourceLabelsDataSetSourceLabels",
-    context
+    context,
   );
   await SqlDbUtilsExecSQL(
     span,
     "DELETE FROM sources_labels WHERE sourceId = ?",
-    [sourceId]
+    [sourceId],
   );
   for (const label of labels) {
-    await SqlDbUtilsQuerySQL(
+    SqlDbUtilsExecSQL(
       span,
       "INSERT INTO sources_labels (id,sourceId,name,info) VALUES (?,?,?,?)",
-      [uuidv4(), sourceId, label.trim(), JSON.stringify({})]
+      [uuidv4(), sourceId, label.trim(), JSON.stringify({})],
     );
   }
   const source = await SourcesDataGet(span, sourceId);
@@ -61,17 +61,17 @@ export async function SourceLabelsDataSetSourceLabels(
 
 export async function SourceLabelsDataGetSourceLabels(
   context: Span,
-  sourceId: string
+  sourceId: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[]> {
   const span = OTelTracer().startSpan(
     "SourceLabelsDataGetSourceLabels",
-    context
+    context,
   );
   const labelsRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT * FROM sources_labels WHERE sourceId = ?",
-    [sourceId]
+    [sourceId],
   );
   const labels = [];
   for (const labelRaw of labelsRaw) {

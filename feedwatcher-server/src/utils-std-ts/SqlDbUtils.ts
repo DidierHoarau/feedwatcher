@@ -1,4 +1,4 @@
-import { Database } from "sqlite3";
+import Database from "better-sqlite3";
 import { Config } from "../Config";
 import * as fs from "fs-extra";
 import { Span } from "@opentelemetry/sdk-trace-base";
@@ -8,21 +8,21 @@ import { OTelLogger, OTelTracer } from "../OTelContext";
 const logger = OTelLogger().createModuleLogger("SqlDbutils");
 const SQL_DIR = `${__dirname}/../../sql`;
 
-let database;
+let database: Database.Database;
 
 export async function SqlDbUtilsInit(
   context: Span,
-  config: Config
+  config: Config,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SqlDbUtilsInit", context);
   await fs.ensureDir(config.DATA_DIR);
   database = new Database(`${config.DATA_DIR}/database.db`);
-  await SqlDbUtilsExecSQLFile(span, `${SQL_DIR}/init-0000.sql`);
-  const initFiles = (await await fs.readdir(`${SQL_DIR}`)).sort();
+  SqlDbUtilsExecSQLFile(span, `${SQL_DIR}/init-0000.sql`);
+  const initFiles = (await fs.readdir(`${SQL_DIR}`)).sort();
   let dbVersionApplied = 0;
-  const dbVersionQuery = await SqlDbUtilsQuerySQL(
+  const dbVersionQuery = SqlDbUtilsQuerySQL(
     span,
-    "SELECT MAX(value) as maxVerion FROM metadata WHERE type='db_version'"
+    "SELECT MAX(value) as maxVerion FROM metadata WHERE type='db_version'",
   );
   if (dbVersionQuery[0].maxVerion) {
     dbVersionApplied = Number(dbVersionQuery[0].maxVerion);
@@ -35,11 +35,11 @@ export async function SqlDbUtilsInit(
       const dbVersionInitFile = Number(match[1]);
       if (dbVersionInitFile > dbVersionApplied) {
         logger.info(`Loading init file: ${initFile}`, span);
-        await SqlDbUtilsExecSQLFile(span, `${SQL_DIR}/${initFile}`);
-        await SqlDbUtilsQuerySQL(
+        SqlDbUtilsExecSQLFile(span, `${SQL_DIR}/${initFile}`);
+        SqlDbUtilsExecSQL(
           span,
-          'INSERT INTO metadata (type, value, dateCreated) VALUES ("db_version",?,?)',
-          [dbVersionInitFile, new Date().toISOString()]
+          "INSERT INTO metadata (type, value, dateCreated) VALUES ('db_version',?,?)",
+          [dbVersionInitFile, new Date().toISOString()],
         );
       }
     }
@@ -54,65 +54,54 @@ export function SqlDbUtilsInitGetDatabase() {
 export function SqlDbUtilsExecSQL(
   context: Span,
   sql: string,
-  params = []
-): Promise<number> {
+  params = [],
+): number {
   const span = OTelTracer().startSpan("SqlDbUtilsExecSQL", context);
-  return new Promise((resolve, reject) => {
-    database.run(sql, params, function (error) {
-      if (error) {
-        span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-        span.end();
-        reject(error);
-      } else {
-        span.addEvent(`Impacted Rows: ${this.changes}`);
-        span.end();
-        resolve(this.changes);
-      }
-    });
-  });
+  try {
+    const stmt = database.prepare(sql);
+    const result = stmt.run(params);
+    span.addEvent(`Impacted Rows: ${result.changes}`);
+    span.end();
+    return result.changes;
+  } catch (error) {
+    span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+    span.end();
+    throw error;
+  }
 }
 
-export async function SqlDbUtilsExecSQLFile(
-  context: Span,
-  filename: string
-): Promise<void> {
+export function SqlDbUtilsExecSQLFile(context: Span, filename: string): void {
   const span = OTelTracer().startSpan("SqlDbUtilsExecSQLFile", context);
-  const sql = (await fs.readFile(filename)).toString();
-  return new Promise((resolve, reject) => {
-    database.exec(sql, (error) => {
-      if (error) {
-        span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-        span.end();
-        reject(error);
-      } else {
-        span.end();
-        resolve();
-      }
-    });
-  });
+  try {
+    const sql = fs.readFileSync(filename).toString();
+    database.exec(sql);
+    span.end();
+  } catch (error) {
+    span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+    span.end();
+    throw error;
+  }
 }
 
 export function SqlDbUtilsQuerySQL(
   context: Span,
   sql: string,
   params = [],
-  debug = false
+  debug = false,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any[]> {
+): any[] {
   const span = OTelTracer().startSpan("SqlDbUtilsQuerySQL", context);
   if (debug) {
     console.log(sql);
   }
-  return new Promise((resolve, reject) => {
-    database.all(sql, params, (error, rows) => {
-      if (error) {
-        span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-        span.end();
-        reject(error);
-      } else {
-        span.end();
-        resolve(rows);
-      }
-    });
-  });
+  try {
+    const stmt = database.prepare(sql);
+    const rows = stmt.all(params);
+    span.end();
+    return rows;
+  } catch (error) {
+    span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+    span.end();
+    throw error;
+  }
 }

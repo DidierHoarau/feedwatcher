@@ -2,13 +2,16 @@ import { Span } from "@opentelemetry/sdk-trace-base";
 import { SourceItem } from "../model/SourceItem";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { OTelTracer } from "../OTelContext";
-import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
+import {
+  SqlDbUtilsExecSQL,
+  SqlDbUtilsQuerySQL,
+} from "../utils-std-ts/SqlDbUtils";
 import { SourcesDataGet, SourcesDataInvalidateUserCache } from "./SourcesData";
 
 export async function SourceItemsDataGetForUser(
   context: Span,
   itemId: string,
-  userId: string
+  userId: string,
 ): Promise<SourceItem> {
   const span = OTelTracer().startSpan("SourceItemsDataGetForUser", context);
   const itemRaw = await SqlDbUtilsQuerySQL(
@@ -18,7 +21,7 @@ export async function SourceItemsDataGetForUser(
       "WHERE sources_items.id = ? " +
       "  AND sources.userId = ? " +
       "  AND sources.id = sources_items.sourceId ",
-    [itemId, userId]
+    [itemId, userId],
   );
   let sourceItem: SourceItem = null;
   if (itemRaw.length > 0) {
@@ -30,10 +33,10 @@ export async function SourceItemsDataGetForUser(
 
 export async function SourceItemsDataAdd(
   context: Span,
-  sourceItem: SourceItem
+  sourceItem: SourceItem,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourceItemsDataAdd", context);
-  await SqlDbUtilsQuerySQL(
+  SqlDbUtilsExecSQL(
     span,
     "INSERT INTO sources_items " +
       "(id, sourceId, title, content, url, status, datePublished, thumbnail, info) " +
@@ -48,7 +51,7 @@ export async function SourceItemsDataAdd(
       sourceItem.datePublished.toISOString(),
       sourceItem.thumbnail,
       JSON.stringify(sourceItem.info),
-    ]
+    ],
   );
   const source = await SourcesDataGet(span, sourceItem.sourceId);
   SourcesDataInvalidateUserCache(span, await source.userId);
@@ -57,10 +60,10 @@ export async function SourceItemsDataAdd(
 
 export async function SourceItemsDataUpdate(
   context: Span,
-  sourceItem: SourceItem
+  sourceItem: SourceItem,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourceItemsDataUpdate", context);
-  await SqlDbUtilsQuerySQL(
+  SqlDbUtilsExecSQL(
     span,
     "UPDATE sources_items " +
       " SET title = ?, content = ?, url = ?, status = ?, datePublished = ?, info = ? " +
@@ -73,7 +76,7 @@ export async function SourceItemsDataUpdate(
       sourceItem.datePublished.toISOString(),
       JSON.stringify(sourceItem.info),
       sourceItem.id,
-    ]
+    ],
   );
   const source = await SourcesDataGet(span, sourceItem.sourceId);
   SourcesDataInvalidateUserCache(span, source.userId);
@@ -83,10 +86,10 @@ export async function SourceItemsDataUpdate(
 export async function SourceItemsDataDelete(
   context: Span,
   userId: string,
-  sourceItemId: string
+  sourceItemId: string,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourceItemsDataDelete", context);
-  await SqlDbUtilsQuerySQL(span, "DELETE FROM sources_items WHERE id = ?", [
+  SqlDbUtilsExecSQL(span, "DELETE FROM sources_items WHERE id = ?", [
     sourceItemId,
   ]);
   SourcesDataInvalidateUserCache(span, userId);
@@ -97,20 +100,20 @@ export async function SourceItemsDataUpdateMultipleStatusForUser(
   context: Span,
   itemIds: string[],
   status: SourceItemStatus,
-  userId: string
+  userId: string,
 ): Promise<void> {
   const span = OTelTracer().startSpan(
     "SourceItemsDataUpdateMultipleStatusForUser",
-    context
+    context,
   );
   let inItemsId = "";
   for (const itemId of itemIds) {
     if (inItemsId.length > 0) {
       inItemsId += ",";
     }
-    inItemsId += `"${itemId}"`;
+    inItemsId += `'${itemId}'`;
   }
-  await SqlDbUtilsQuerySQL(
+  SqlDbUtilsExecSQL(
     span,
     "UPDATE sources_items " +
       " SET status = ? " +
@@ -121,7 +124,7 @@ export async function SourceItemsDataUpdateMultipleStatusForUser(
       "         AND sources_items.sourceId = sources.id " +
       "         AND sources.userId = ? " +
       " )",
-    [status, userId]
+    [status, userId],
   );
   SourcesDataInvalidateUserCache(span, userId);
   span.end();
@@ -129,17 +132,17 @@ export async function SourceItemsDataUpdateMultipleStatusForUser(
 
 export async function SourceItemsDataGetLastForSource(
   context: Span,
-  sourceId: string
+  sourceId: string,
 ): Promise<SourceItem> {
   const span = OTelTracer().startSpan(
     "SourceItemsDataGetLastForSource",
-    context
+    context,
   );
   let sourceItem: SourceItem = null;
   const sourceItemRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT * FROM sources_items WHERE sourceId = ? ORDER BY datePublished DESC LIMIT 1",
-    [sourceId]
+    [sourceId],
   );
   if (sourceItemRaw.length > 0) {
     sourceItem = SourceItem.fromRaw(sourceItemRaw[0]);
@@ -149,25 +152,25 @@ export async function SourceItemsDataGetLastForSource(
 }
 
 export async function SourceItemsDataCleanupOrphans(
-  context: Span
+  context: Span,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourceItemsDataCleanupOrphans", context);
-  await SqlDbUtilsQuerySQL(
+  SqlDbUtilsExecSQL(
     span,
-    "DELETE FROM sources_items WHERE sourceId NOT IN (SELECT id FROM sources)"
+    "DELETE FROM sources_items WHERE sourceId NOT IN (SELECT id FROM sources)",
   );
   span.end();
 }
 
 export async function SourceItemsDataGetCount(
   context: Span,
-  status: SourceItemStatus
+  status: SourceItemStatus,
 ): Promise<number> {
   const span = OTelTracer().startSpan("SourceItemsDataGetCount", context);
   const countRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT COUNT(*) as count FROM sources_items WHERE status = ?",
-    [status]
+    [status],
   );
   let count = 0;
   if (countRaw.length > 0) {

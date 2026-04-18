@@ -27,7 +27,7 @@ const fetchSourceItemsQueue: Source[] = [];
 
 export async function ProcessorsInit(
   context: Span,
-  configIn: Config
+  configIn: Config,
 ): Promise<void> {
   const span = OTelTracer().startSpan("ProcessorsInit", context);
   config = configIn;
@@ -53,7 +53,7 @@ export async function ProcessorsInit(
 }
 
 export async function ProcessorsGetInfos(
-  context: Span
+  context: Span,
 ): Promise<ProcessorInfo[]> {
   const span = OTelTracer().startSpan("ProcessorsGetInfos", context);
   const processorInfos = [];
@@ -103,11 +103,11 @@ export async function ProcessorsCheckSource(context: Span, source: Source) {
 
 export async function ProcessorsFetchSourceItemsForUser(
   context: Span,
-  userId: string
+  userId: string,
 ) {
   const span = OTelTracer().startSpan(
     "ProcessorsFetchSourceItemsForUser",
-    context
+    context,
   );
   const sources = await SourcesDataListForUser(span, userId);
   for (const source of sources) {
@@ -118,7 +118,7 @@ export async function ProcessorsFetchSourceItemsForUser(
 
 export async function ProcessorsFetchSourceItems(
   context: Span,
-  source: Source
+  source: Source,
 ): Promise<void> {
   if (!find(fetchSourceItemsQueue, { id: source.id })) {
     fetchSourceItemsQueue.push(source);
@@ -130,14 +130,15 @@ export async function ProcessorsFetchSourceItems(
 
 export function ProcessorsGetUserProcessorInfo(
   context: Span,
-  userId: string
+  userId: string,
 ): UserProcessorInfo {
   const span = OTelTracer().startSpan(
     "ProcessorsGetUserProcessorInfo",
-    context
+    context,
   );
-  return find(userProcessorInfoStatus, { userId });
+  const result = find(userProcessorInfoStatus, { userId });
   span.end();
+  return result;
 }
 
 // Private Functions
@@ -152,7 +153,7 @@ async function ProcessorsFetchSourceItemsQueued(): Promise<void> {
   let processed = false;
   const lastSourceItemSaved = await SourceItemsDataGetLastForSource(
     span,
-    source.id
+    source.id,
   );
   for (const processorsFile of processorsFiles) {
     if (!processed) {
@@ -162,7 +163,7 @@ async function ProcessorsFetchSourceItemsQueued(): Promise<void> {
           let nbNewItem = 0;
           const newSourceItems = await processor.fetchLatest(
             source,
-            lastSourceItemSaved
+            lastSourceItemSaved,
           );
           for (const newSourceItem of newSourceItems) {
             if (

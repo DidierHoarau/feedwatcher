@@ -1,10 +1,11 @@
 {
   "name": "feedwatcher",
-  "version": "1.15.0",
+  "version": "1.16.0",
   "description": "",
   "main": "ecosystem.config.js",
   "scripts": {
-    "dev": "./docs/dev/run-dev-env.sh"
+    "dev": "./docs/dev/run-dev-env.sh",
+    "dependencies": "./docs/dev/run-dev-dependencies-rebuild.sh"
   },
   "repository": {
     "type": "git",

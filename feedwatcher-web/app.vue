@@ -1,3 +1,21 @@
+<script setup>
+function updateAppHeight() {
+  const height = window.visualViewport?.height ?? window.innerHeight;
+  document.documentElement.style.setProperty("--app-height", `${height}px`);
+}
+
+onMounted(() => {
+  updateAppHeight();
+  window.addEventListener("resize", updateAppHeight);
+  window.visualViewport?.addEventListener("resize", updateAppHeight);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", updateAppHeight);
+  window.visualViewport?.removeEventListener("resize", updateAppHeight);
+});
+</script>
+
 <template>
   <div id="page-layout">
     <header>
@@ -14,7 +32,7 @@
 /* Layout */
 
 #page-layout {
-  height: 100dvh;
+  height: var(--app-height, 100dvh);
   display: grid;
   grid-template-rows: 4em 1fr;
   overflow: hidden !important;
