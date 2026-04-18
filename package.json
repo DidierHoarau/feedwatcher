@@ -4,7 +4,8 @@
   "description": "",
   "main": "ecosystem.config.js",
   "scripts": {
-    "dev": "./docs/dev/run-dev-env.sh"
+    "dev": "./docs/dev/run-dev-env.sh",
+    "dependencies": "./docs/dev/run-dev-dependencies-rebuild.sh"
   },
   "repository": {
     "type": "git",
