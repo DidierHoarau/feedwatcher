@@ -17,13 +17,13 @@ import {
   SourceItemsDataAdd,
   SourceItemsDataGetLastForSource,
 } from "../sources/SourceItemsData";
-import { OTelLogger, OTelTracer } from "../OTelContext";
+import { OTelLogger, OTelMeter, OTelTracer } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger("Processor");
 let config: Config;
 let processorsFiles = [];
 const userProcessorInfoStatus: UserProcessorInfo[] = [];
-const fetchSourceItemsQueue: Source[] = [];
+const sourcesInFlight: Set<string> = new Set();
 
 export async function ProcessorsInit(
   context: Span,
@@ -49,6 +49,15 @@ export async function ProcessorsInit(
   }
   processorsFiles = sortBy(processorsFiles, ["name"]);
   logger.info(`Found ${processorsFiles.length} processors`, span);
+
+  OTelMeter().createObservableGauge(
+    "feedwatcher.processor.inflight",
+    (observableResult) => {
+      observableResult.observe(sourcesInFlight.size, { status: "in-flight" });
+    },
+    { description: "Sources currently being fetched by processors" },
+  );
+
   span.end();
 }
 
@@ -120,11 +129,72 @@ export async function ProcessorsFetchSourceItems(
   context: Span,
   source: Source,
 ): Promise<void> {
-  if (!find(fetchSourceItemsQueue, { id: source.id })) {
-    fetchSourceItemsQueue.push(source);
-    if (fetchSourceItemsQueue.length === 1) {
-      ProcessorsFetchSourceItemsQueued();
+  if (sourcesInFlight.has(source.id)) {
+    return;
+  }
+
+  sourcesInFlight.add(source.id);
+  userProcessorInfoStatusStart(context, source.userId);
+
+  try {
+    let processed = false;
+    const lastSourceItemSaved = await SourceItemsDataGetLastForSource(
+      context,
+      source.id,
+    );
+    for (const processorsFile of processorsFiles) {
+      if (!processed) {
+        try {
+          const processor = await import(processorsFile.path);
+          if (await processor.test(source)) {
+            let nbNewItem = 0;
+            const newSourceItems = await processor.fetchLatest(
+              source,
+              lastSourceItemSaved,
+            );
+            for (const newSourceItem of newSourceItems) {
+              if (
+                !lastSourceItemSaved ||
+                newSourceItem.datePublished > lastSourceItemSaved.datePublished
+              ) {
+                nbNewItem++;
+                newSourceItem.sourceId = source.id;
+                newSourceItem.status = SourceItemStatus.unread;
+                if (!newSourceItem.info) {
+                  newSourceItem.info = {};
+                }
+                if (!newSourceItem.id) {
+                  newSourceItem.id = uuidv4();
+                }
+                await SourceItemsDataAdd(context, newSourceItem);
+              }
+            }
+            logger.info(
+              `Source ${source.id} has ${nbNewItem} new items`,
+              context,
+            );
+            if (source.info.processorPath !== processorsFile.path) {
+              logger.info(`Updating source processor`, context);
+            }
+            source.info.processorPath = processorsFile.path;
+            source.info.dateFetched = new Date();
+            await SourcesDataUpdate(context, source);
+            processed = true;
+          }
+        } catch (err) {
+          logger.error("Error Fetching Source", err);
+        }
+      }
     }
+    if (!processed) {
+      logger.warn(
+        `No processor found for ${source.id} (${source.name})`,
+        context,
+      );
+    }
+  } finally {
+    sourcesInFlight.delete(source.id);
+    userProcessorInfoStatusStop(context, source.userId);
   }
 }
 
@@ -142,68 +212,6 @@ export function ProcessorsGetUserProcessorInfo(
 }
 
 // Private Functions
-
-async function ProcessorsFetchSourceItemsQueued(): Promise<void> {
-  if (fetchSourceItemsQueue.length === 0) {
-    return;
-  }
-  const span = OTelTracer().startSpan("ProcessorsFetchSourceItemsQueued");
-  const source = fetchSourceItemsQueue[0];
-  userProcessorInfoStatusStart(span, source.userId);
-  let processed = false;
-  const lastSourceItemSaved = await SourceItemsDataGetLastForSource(
-    span,
-    source.id,
-  );
-  for (const processorsFile of processorsFiles) {
-    if (!processed) {
-      try {
-        const processor = await import(processorsFile.path);
-        if (await processor.test(source)) {
-          let nbNewItem = 0;
-          const newSourceItems = await processor.fetchLatest(
-            source,
-            lastSourceItemSaved,
-          );
-          for (const newSourceItem of newSourceItems) {
-            if (
-              !lastSourceItemSaved ||
-              newSourceItem.datePublished > lastSourceItemSaved.datePublished
-            ) {
-              nbNewItem++;
-              newSourceItem.sourceId = source.id;
-              newSourceItem.status = SourceItemStatus.unread;
-              if (!newSourceItem.info) {
-                newSourceItem.info = {};
-              }
-              if (!newSourceItem.id) {
-                newSourceItem.id = uuidv4();
-              }
-              await SourceItemsDataAdd(span, newSourceItem);
-            }
-          }
-          logger.info(`Source ${source.id} has ${nbNewItem} new items`, span);
-          if (source.info.processorPath !== processorsFile.path) {
-            logger.info(`Updating source processor`, span);
-          }
-          source.info.processorPath = processorsFile.path;
-          source.info.dateFetched = new Date();
-          await SourcesDataUpdate(span, source);
-          processed = true;
-        }
-      } catch (err) {
-        logger.error("Error Fetching Source", err);
-      }
-    }
-  }
-  if (!processed) {
-    logger.warn(`No processor found for ${source.id} (${source.name})`, span);
-  }
-  userProcessorInfoStatusStop(span, source.userId);
-  span.end();
-  fetchSourceItemsQueue.shift();
-  ProcessorsFetchSourceItemsQueued();
-}
 
 function userProcessorInfoStatusStart(context: Span, userId: string): void {
   const span = OTelTracer().startSpan("userProcessorInfoStatusStart", context);

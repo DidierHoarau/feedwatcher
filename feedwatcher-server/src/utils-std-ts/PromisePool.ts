@@ -12,6 +12,14 @@ export class PromisePool {
     this.timeout = timeout;
   }
 
+  public getQueueLength(): number {
+    return this.queue.length;
+  }
+
+  public getInFlightCount(): number {
+    return this.currentConcurrency;
+  }
+
   public add(promiseGenerator) {
     return new Promise((resolve, reject) => {
       const controller = new AbortController();
@@ -42,7 +50,10 @@ export class PromisePool {
   }
 
   private runNext() {
-    if (this.currentConcurrency < this.maxConcurrency && this.queue.length > 0) {
+    if (
+      this.currentConcurrency < this.maxConcurrency &&
+      this.queue.length > 0
+    ) {
       const { wrappedPromise, resolve, reject } = this.queue.shift();
       this.currentConcurrency++;
 
