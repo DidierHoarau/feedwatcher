@@ -2,7 +2,10 @@
   <nav>
     <ul class="menu-links">
       <li>
-        <NuxtLink to="/"><strong>FeedWatcher</strong></NuxtLink>
+        <NuxtLink to="/" class="brand-link"
+          ><img src="/icon.png" alt="FeedWatcher" class="nav-logo" />
+          <strong>FeedWatcher</strong></NuxtLink
+        >
       </li>
     </ul>
     <ul class="menu-links">
@@ -10,29 +13,33 @@
         <NuxtLink
           to="/sources"
           :class="activeRoute == 'sources' ? 'active' : 'inactive'"
-          ><i class="bi bi-rss-fill"></i
-        ></NuxtLink>
+          ><i class="bi bi-rss-fill"></i>
+          <span class="nav-label">Sources</span></NuxtLink
+        >
       </li>
       <li v-if="authenticationStore.isAuthenticated">
         <NuxtLink
           to="/bookmarks"
           :class="activeRoute == 'bookmarks' ? 'active' : 'inactive'"
-          ><i class="bi bi-bookmark-check-fill"></i
-        ></NuxtLink>
+          ><i class="bi bi-bookmark-check-fill"></i>
+          <span class="nav-label">Bookmarks</span></NuxtLink
+        >
       </li>
       <li v-if="authenticationStore.isAuthenticated">
         <NuxtLink
           to="/rules"
           :class="activeRoute == 'rules' ? 'active' : 'inactive'"
-          ><i class="bi bi-robot"></i
-        ></NuxtLink>
+          ><i class="bi bi-robot"></i>
+          <span class="nav-label">Rules</span></NuxtLink
+        >
       </li>
       <li>
         <NuxtLink
           to="/users"
           :class="activeRoute == 'users' ? 'active' : 'inactive'"
-          ><i class="bi bi-person-circle"></i
-        ></NuxtLink>
+          ><i class="bi bi-person-circle"></i>
+          <span class="nav-label">Users</span></NuxtLink
+        >
       </li>
     </ul>
   </nav>
@@ -68,7 +75,7 @@ export default {
           .post(
             `${(await Config.get()).SERVER_URL}/users/session`,
             {},
-            await AuthService.getAuthHeader()
+            await AuthService.getAuthHeader(),
           )
           .then((res) => {
             AuthService.saveToken(res.data.token);
@@ -88,13 +95,44 @@ export default {
 
 <style scoped>
 .menu-links li {
+  padding-top: 0.2em;
+  padding-bottom: 0.2em;
+}
+.menu-links li {
   padding-right: 1em;
-  font-size: 1.2em;
+  font-size: 1em;
 }
 .menu-links .inactive {
   opacity: 0.3;
 }
 .menu-links .active {
   color: #3cabff;
+}
+.menu-links {
+  font-weight: bold;
+}
+
+.nav-logo {
+  height: 1.4em;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+
+.menu-links i {
+  margin-right: 0.5rem;
+}
+
+/* Hide nav labels on narrow screens */
+@media (max-width: 1000px) {
+  .nav-label {
+    display: none;
+  }
+}
+
+:root[data-theme="light"] .menu-links .inactive {
+  opacity: 0.8;
+}
+:root[data-theme="light"] .menu-links .active {
+  color: #033452;
 }
 </style>
