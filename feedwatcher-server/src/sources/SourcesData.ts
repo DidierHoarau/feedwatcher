@@ -49,7 +49,6 @@ export async function SourcesDataListForUser(
   return sources;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function SourcesDataListCountsForUser(
   context: Span,
   userId: string,

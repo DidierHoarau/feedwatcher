@@ -1,6 +1,5 @@
 import { Source } from "../../model/Source";
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const processor = require("../../processors-system/505-WikipediaProcessor");
+import processor from "../../processors-system/505-WikipediaProcessor";
 
 describe("Wikipedia processor: Test URL", () => {
   //

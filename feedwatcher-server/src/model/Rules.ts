@@ -12,7 +12,7 @@ export class Rules {
     if (json.id) {
       rules.id = json.id;
     }
-    rules.id = json.id;
+    rules.userId = json.userId;
     if (typeof json.info === "string") {
       rules.info = JSON.parse(json.info);
     } else {

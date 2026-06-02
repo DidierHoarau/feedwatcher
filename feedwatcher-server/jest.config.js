@@ -8,6 +8,9 @@ module.exports = {
       },
     ],
   },
+  moduleNameMapper: {
+    "^uuid$": "<rootDir>/__mocks__/uuid.ts",
+  },
   testMatch: ["/**/src/**/*.spec.(ts|js)"],
   testEnvironment: "node",
 };

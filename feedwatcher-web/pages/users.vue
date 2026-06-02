@@ -1,52 +1,136 @@
 <template>
-  <div class="user-page">
-    <div v-if="!authenticationStore.isAuthenticated">
-      <h1 v-if="isInitialized">Login</h1>
-      <h1 v-else>New User</h1>
-      <label>Name</label>
-      <input id="username" v-model="user.name" type="text" />
-      <label>Password</label>
-      <input id="passwrd" v-model="user.password" type="password" />
-      <button
-        v-if="!authenticationStore.isAuthenticated && !isInitialized"
-        v-on:click="saveNew()"
-      >
-        Create
-      </button>
-      <button
-        v-if="!authenticationStore.isAuthenticated && isInitialized"
-        v-on:click="login()"
-      >
-        Login
-      </button>
-    </div>
-    <div v-else>
-      <h1>Import/Export Sources</h1>
-      <button v-on:click="gotoImport()">Import Sources (OPML)</button>
-      <button v-on:click="gotoExport()">Export Sources (OPML)</button>
-      <br />
-      <h1>Authentication</h1>
-      <button v-on:click="logout()">Logout</button>
-      <button
-        v-if="!isChangePasswordStarted"
-        v-on:click="changePasswordStart(true)"
-      >
-        Change Password
-      </button>
-      <article v-else>
-        <h1>Change Password</h1>
-        <label>Old Password</label>
-        <input id="password" v-model="user.passwordOld" type="password" />
-        <label>New Password</label>
-        <input id="passwordOld" v-model="user.password" type="password" />
-        <button v-on:click="changePassword()">Change</button>
-        <button v-on:click="changePasswordStart(false)">Cancel</button>
+  <div id="settings-page">
+    <!-- Unauthenticated: Login / Register -->
+    <div
+      v-if="!authenticationStore.isAuthenticated"
+      class="settings-auth-content"
+    >
+      <article class="settings-card">
+        <header>
+          <h3 v-if="isInitialized">
+            <i class="bi bi-box-arrow-in-right"></i> Login
+          </h3>
+          <h3 v-else><i class="bi bi-person-plus"></i> New User</h3>
+        </header>
+        <label>
+          Username
+          <input v-model="user.name" type="text" placeholder="Enter username" />
+        </label>
+        <label>
+          Password
+          <input
+            v-model="user.password"
+            type="password"
+            placeholder="Enter password"
+          />
+        </label>
+        <footer>
+          <button v-if="isInitialized" @click="login()">
+            <i class="bi bi-box-arrow-in-right"></i> Login
+          </button>
+          <button v-else @click="saveNew()">
+            <i class="bi bi-person-plus"></i> Create
+          </button>
+        </footer>
       </article>
-      <h1>Preferences</h1>
-      <h3>Dark Mode</h3>
-      <button @click="toggleTheme" style="margin-bottom: 1em">
-        Switch to {{ isDark ? "Light" : "Dark" }} Mode
-      </button>
+    </div>
+
+    <!-- Authenticated -->
+    <div v-else class="settings-authenticated-content">
+      <!-- Data Management -->
+      <article class="settings-card">
+        <header>
+          <h3><i class="bi bi-diagram-3"></i> Import / Export Sources</h3>
+        </header>
+        <div class="settings-card-actions">
+          <button @click="gotoImport()">
+            <i class="bi bi-upload"></i> Import OPML
+          </button>
+          <button @click="gotoExport()">
+            <i class="bi bi-download"></i> Export OPML
+          </button>
+        </div>
+      </article>
+
+      <!-- Account -->
+      <article class="settings-card">
+        <header>
+          <h3><i class="bi bi-shield-lock"></i> Account</h3>
+        </header>
+
+        <div v-if="!isChangePasswordStarted" class="settings-card-actions">
+          <button @click="changePasswordStart(true)">
+            <i class="bi bi-key"></i> Change Password
+          </button>
+          <button class="contrast" @click="logout()">
+            <i class="bi bi-box-arrow-right"></i> Logout
+          </button>
+        </div>
+
+        <div v-else class="change-password-form">
+          <label>
+            Old Password
+            <input
+              v-model="user.passwordOld"
+              type="password"
+              placeholder="Enter current password"
+            />
+          </label>
+          <label>
+            New Password
+            <input
+              v-model="user.password"
+              type="password"
+              placeholder="Enter new password"
+            />
+          </label>
+          <div class="settings-card-actions">
+            <button class="secondary" @click="changePasswordStart(false)">
+              Cancel
+            </button>
+            <button @click="changePassword()">
+              <i class="bi bi-check-lg"></i> Change
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Preferences -->
+      <article class="settings-card">
+        <header>
+          <h3><i class="bi bi-sliders"></i> Preferences</h3>
+        </header>
+
+        <div class="preference-row">
+          <div class="preference-label">
+            <i class="bi bi-moon-stars"></i>
+            <span>Dark Mode</span>
+          </div>
+          <div class="preference-control">
+            <button @click="toggleTheme" class="icon-btn">
+              <i :class="isDark ? 'bi bi-sun-fill' : 'bi bi-moon-fill'"></i>
+              {{ isDark ? "Light" : "Dark" }}
+            </button>
+          </div>
+        </div>
+
+        <div class="preference-row">
+          <div class="preference-label">
+            <i class="bi bi-envelope-open"></i>
+            <span>Auto-mark as read</span>
+          </div>
+          <div class="preference-control">
+            <label class="switch-label">
+              <input
+                type="checkbox"
+                v-model="autoMarkRead"
+                @change="toggleAutoMarkRead"
+              />
+              Mark items as read when scrolling out of view
+            </label>
+          </div>
+        </div>
+      </article>
     </div>
   </div>
 </template>
@@ -61,7 +145,7 @@ import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 import { UserService } from "~~/services/UserService";
-import { PreferencesService } from "~/services/PreferencesService";
+import { PreferencesService } from "~~/services/PreferencesService";
 
 export default {
   data() {
@@ -79,6 +163,7 @@ export default {
       isInitialized: true,
       isChangePasswordStarted: false,
       isDark,
+      autoMarkRead: PreferencesService.isAutoMarkReadEnabled(),
     };
   },
   async created() {
@@ -92,7 +177,7 @@ export default {
           .post(
             `${(await Config.get()).SERVER_URL}/users`,
             this.user,
-            await AuthService.getAuthHeader()
+            await AuthService.getAuthHeader(),
           )
           .then((res) => {
             EventBus.emit(EventTypes.ALERT_MESSAGE, {
@@ -116,7 +201,7 @@ export default {
           .post(
             `${(await Config.get()).SERVER_URL}/users/session`,
             this.user,
-            await AuthService.getAuthHeader()
+            await AuthService.getAuthHeader(),
           )
           .then((res) => {
             AuthService.saveToken(res.data.token);
@@ -142,7 +227,7 @@ export default {
           .put(
             `${(await Config.get()).SERVER_URL}/users/password`,
             this.user,
-            await AuthService.getAuthHeader()
+            await AuthService.getAuthHeader(),
           )
           .then((res) => {
             EventBus.emit(EventTypes.ALERT_MESSAGE, {
@@ -177,7 +262,7 @@ export default {
       axios
         .get(
           `${(await Config.get()).SERVER_URL}/sources/import/export/opml`,
-          headers
+          headers,
         )
         .then((response) => {
           const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -185,7 +270,7 @@ export default {
           link.href = url;
           link.setAttribute(
             "download",
-            `sources_export_${new Date().toISOString()}.opml`
+            `sources_export_${new Date().toISOString()}.opml`,
           );
           document.body.appendChild(link);
           link.click();
@@ -195,18 +280,142 @@ export default {
     toggleTheme() {
       PreferencesService.toggleTheme(this);
     },
+    toggleAutoMarkRead() {
+      this.autoMarkRead = PreferencesService.toggleAutoMarkRead();
+    },
   },
 };
 </script>
 
 <style scoped>
-.user-page {
-  width: min(100%, 50em);
+#settings-page {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  max-width: 50em;
 }
-button {
-  margin-right: 1em;
+
+/* Auth (login/register) */
+.settings-auth-content {
+  display: flex;
+  justify-content: center;
+  padding-top: 2rem;
 }
-h1 {
-  margin-top: 1em;
+
+.settings-auth-content .settings-card {
+  width: min(100%, 28em);
+}
+
+.settings-authenticated-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+.settings-card {
+  margin: 0;
+}
+
+.settings-card header h3 {
+  margin: 0;
+  font-size: 1.1em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-card header h3 i {
+  font-size: 1.2em;
+}
+
+.settings-card-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.settings-card-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Change password form */
+.change-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Preference rows */
+.preference-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0;
+  gap: 1rem;
+}
+
+.preference-row + .preference-row {
+  border-top: 1px solid var(--pico-muted-border-color, #333);
+}
+
+.preference-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 500;
+}
+
+.preference-label i {
+  font-size: 1.2em;
+  opacity: 0.8;
+}
+
+.preference-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Icon button for dark mode */
+.icon-btn {
+  background: none;
+  border: 1px solid var(--pico-muted-border-color, #555);
+  cursor: pointer;
+  padding: 0.35em 0.75em;
+  border-radius: var(--pico-border-radius);
+  color: var(--pico-color);
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.9em;
+}
+
+.icon-btn:hover {
+  background: var(
+    --pico-card-sectioning-background-color,
+    rgba(255, 255, 255, 0.05)
+  );
+  border-color: var(--pico-primary);
+}
+
+/* Checkbox switch label */
+.switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.switch-label input[type="checkbox"] {
+  width: 1.2em;
+  height: 1.2em;
+  cursor: pointer;
 }
 </style>

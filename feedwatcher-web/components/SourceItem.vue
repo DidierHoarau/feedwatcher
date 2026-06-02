@@ -82,6 +82,7 @@ import axios from "axios";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
+import { PreferencesService } from "~~/services/PreferencesService";
 
 export default {
   props: {
@@ -92,6 +93,8 @@ export default {
       isActive: false,
       isSaved: false,
       frameHeight: 200,
+      autoMarkReadObserver: null,
+      wasIntersected: false,
     };
   },
   computed: {
@@ -106,6 +109,30 @@ export default {
         a { color: ${linkColor}; }
       </style></head><body>${this.item.content || ""}</body></html>`;
     },
+  },
+  mounted() {
+    this.autoMarkReadObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          this.wasIntersected = true;
+        } else if (
+          this.wasIntersected &&
+          this.item.status === "unread" &&
+          entry.boundingClientRect.top < 0
+        ) {
+          if (PreferencesService.isAutoMarkReadEnabled()) {
+            this.markReadStatus("read");
+          }
+          this.autoMarkReadObserver.disconnect();
+        }
+      }
+    });
+    this.autoMarkReadObserver.observe(this.$el);
+  },
+  beforeUnmount() {
+    if (this.autoMarkReadObserver) {
+      this.autoMarkReadObserver.disconnect();
+    }
   },
   async created() {
     axios
