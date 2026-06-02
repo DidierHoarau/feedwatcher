@@ -17,6 +17,7 @@ const logger = OTelLogger().createModuleLogger("Scheduler");
 
 let config: Config;
 let lastRulesExecution = 0;
+let promisePool: PromisePool;
 
 const statsSourceItms = {
   itemsTotal: 0,
@@ -52,6 +53,21 @@ export async function SourcesSchedulerInit(context: Span, configIn: Config) {
     { description: "Items in the database" },
   );
 
+  OTelMeter().createObservableGauge(
+    "feeds.fetch.queue",
+    (observableResult) => {
+      if (promisePool) {
+        observableResult.observe(promisePool.getQueueLength(), {
+          status: "pending",
+        });
+        observableResult.observe(promisePool.getInFlightCount(), {
+          status: "in-flight",
+        });
+      }
+    },
+    { description: "Feed source fetch queue depth" },
+  );
+
   SourcesSchedulerStartSchedule().catch((err) =>
     logger.error("SourcesSchedulerStartSchedule crashed", err),
   );
@@ -61,7 +77,10 @@ export async function SourcesSchedulerInit(context: Span, configIn: Config) {
 // Private Functions
 
 async function SourcesSchedulerStartSchedule() {
-  const promisePool = new PromisePool(5, config.SOURCE_FETCH_FREQUENCY / 6);
+  promisePool = new PromisePool(
+    config.PROCESSOR_CONCURRENCY,
+    config.SOURCE_FETCH_FREQUENCY / 6,
+  );
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const span0 = OTelTracer().startSpan("SourcesSchedulerCycle");
