@@ -1,5 +1,5 @@
 import { Source } from "../../model/Source";
-import processor from "../../processors-system/505-WikipediaProcessor";
+import processor from "../../../processors-system/505-WikipediaProcessor";
 
 describe("Wikipedia processor: Test URL", () => {
   //
