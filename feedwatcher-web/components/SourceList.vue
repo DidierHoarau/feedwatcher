@@ -208,8 +208,6 @@ export default {
   font-size: var(--font-sm);
   padding-top: 0;
   padding-bottom: 0;
-  font-size: var(--font-base);
-  padding: 0 0.8rem;
   height: 2.4rem;
   margin-bottom: 0;
   border-radius: var(--radius-md);
