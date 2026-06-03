@@ -4,7 +4,7 @@
       <input
         v-model="filterText"
         class="source-filter-input"
-        type="text"
+        type="search"
         placeholder="Filter sources..."
       />
     </div>
@@ -204,9 +204,14 @@ export default {
 
 .source-filter-input {
   width: 100%;
-  box-sizing: border-box;
+  align-self: stretch;
+  font-size: var(--font-sm);
+  padding-top: 0;
+  padding-bottom: 0;
   font-size: var(--font-base);
   padding: 0 0.8rem;
   height: 2.4rem;
+  margin-bottom: 0;
+  border-radius: var(--radius-md);
 }
 </style>

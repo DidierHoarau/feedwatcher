@@ -33,6 +33,7 @@
     <div id="sources-items-actions" class="actions">
       <input
         id="sources-items-search-filter"
+        class="source-filter-input"
         v-model="searchText"
         type="search"
         placeholder="Filter items…"

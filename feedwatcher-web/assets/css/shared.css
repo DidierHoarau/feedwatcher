@@ -136,8 +136,8 @@
   text-align: right;
   white-space: nowrap;
 }
-#sources-list div {
-  white-space: nowrap;
+#sources-list .source-name-name,
+#sources-list .source-name-count {
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -172,7 +172,7 @@
     grid-template-rows: auto auto auto 2fr;
     grid-template-columns: auto auto;
     height: 100%;
-    column-gap: var(--space-base);
+    gap: var(--space-sm);
   }
   #sources-header {
     grid-row: 1;
@@ -201,7 +201,7 @@
     grid-template-rows: auto auto 1fr;
     grid-template-columns: auto 1fr 1fr;
     height: 100%;
-    column-gap: var(--space-base);
+    gap: var(--space-sm);
   }
   #sources-header {
     grid-row: 1;
@@ -256,7 +256,7 @@
   height: 100%;
 }
 
-#sources-items-search-filter::placeholder {
+#sources-items-search-filter::placeholder::placeholder {
   color: var(--color-text-placeholder);
 }
 
