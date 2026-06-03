@@ -16,6 +16,7 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
     pageHasMore: false,
     loading: false,
     searchCriteriaValue: "",
+    searchPattern: "",
     etagFetch: "",
   }),
 
@@ -41,11 +42,16 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
         searchOptions.labelName = this.searchCriteriaValue;
       }
       searchOptions.isSaved = this.filterSaved;
+      searchOptions.pattern = this.searchPattern;
       this.pageHasMore = false;
       this.loading = true;
       await Timeout.wait(10);
       await axios
-        .post(`${(await Config.get()).SERVER_URL}/items/search`, searchOptions, await AuthService.getAuthHeader())
+        .post(
+          `${(await Config.get()).SERVER_URL}/items/search`,
+          searchOptions,
+          await AuthService.getAuthHeader(),
+        )
         .then((res) => {
           if (etagFetch === this.etagFetch) {
             this.sourceItems = concat(this.sourceItems, res.data.sourceItems);

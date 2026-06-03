@@ -14,6 +14,8 @@ export async function SearchItemsDataListForUser(
   searchOptions: SearchItemsOptions,
 ): Promise<SearchItemsResult> {
   const span = OTelTracer().startSpan("SearchItemsDataListForUser", context);
+  const { query: patternQuery, params: patternParams } =
+    getPatternFilterQuery(searchOptions);
   const sourceItemsRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT sources_items.*, sources.name as sourceName " +
@@ -23,9 +25,10 @@ export async function SearchItemsDataListForUser(
       "WHERE sources.userId = ? " +
       getStatusFilterQuery(searchOptions) +
       getMinDateFilterQuery(searchOptions) +
+      patternQuery +
       "ORDER BY datePublished DESC " +
       getPageQuery(searchOptions),
-    [userId],
+    [userId, ...patternParams],
   );
   const searchItemsResult = getSearchResultsfromRaw(sourceItemsRaw);
   span.end();
@@ -38,6 +41,8 @@ export async function SearchItemsDataListForSource(
   searchOptions: SearchItemsOptions,
 ): Promise<SearchItemsResult> {
   const span = OTelTracer().startSpan("SearchItemsDataListForSource", context);
+  const { query: patternQuery, params: patternParams } =
+    getPatternFilterQuery(searchOptions);
   const sourceItemsRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT sources_items.*, sources.name as sourceName " +
@@ -48,9 +53,10 @@ export async function SearchItemsDataListForSource(
       "  AND sources.id = ? " +
       getAgeFilterQuery(searchOptions) +
       getStatusFilterQuery(searchOptions) +
+      patternQuery +
       "ORDER BY datePublished DESC " +
       getPageQuery(searchOptions),
-    [sourceId, sourceId],
+    [sourceId, sourceId, ...patternParams],
   );
   const searchItemsResult = getSearchResultsfromRaw(sourceItemsRaw);
   span.end();
@@ -67,6 +73,8 @@ export async function SearchItemsDataListItemsForLabel(
     "SearchItemsDataListItemsForLabel",
     context,
   );
+  const { query: patternQuery, params: patternParams } =
+    getPatternFilterQuery(searchOptions);
   const sourceItemsRaw = await SqlDbUtilsQuerySQL(
     span,
     "SELECT sources_items.*, sources.name AS sourceName " +
@@ -82,9 +90,10 @@ export async function SearchItemsDataListItemsForLabel(
       getStatusFilterQuery(searchOptions) +
       getAgeFilterQuery(searchOptions) +
       "  AND sources.userId = ? " +
+      patternQuery +
       "ORDER BY datePublished DESC " +
       getPageQuery(searchOptions),
-    [userId, `${label}%`, userId],
+    [userId, `${label}%`, userId, ...patternParams],
   );
   const searchItemsResult = getSearchResultsfromRaw(sourceItemsRaw);
   span.end();
@@ -134,6 +143,21 @@ function getMinDateFilterQuery(searchOptions: SearchItemsOptions): string {
     return `  AND sources_items.datePublished >= '${searchOptions.minDate.toISOString()}' `;
   }
   return "";
+}
+
+function getPatternFilterQuery(searchOptions: SearchItemsOptions): {
+  query: string;
+  params: string[];
+} {
+  if (searchOptions.pattern && searchOptions.pattern.trim().length > 0) {
+    const likePattern = `%${searchOptions.pattern.trim()}%`;
+    return {
+      query:
+        "  AND (sources_items.title LIKE ? OR sources_items.content LIKE ?) ",
+      params: [likePattern, likePattern],
+    };
+  }
+  return { query: "", params: [] };
 }
 
 function getSavedFromQuery(searchOptions: SearchItemsOptions): string {

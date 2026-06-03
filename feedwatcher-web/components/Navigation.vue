@@ -95,18 +95,17 @@ export default {
 
 <style scoped>
 .menu-links li {
-  padding-top: 0.2em;
-  padding-bottom: 0.2em;
+  padding-top: var(--space-xs);
+  padding-bottom: var(--space-xs);
 }
 .menu-links li {
-  padding-right: 1em;
-  font-size: 1em;
+  padding-right: var(--space-base);
 }
 .menu-links .inactive {
   opacity: 0.3;
 }
 .menu-links .active {
-  color: #3cabff;
+  color: var(--color-primary);
 }
 .menu-links {
   font-weight: bold;
@@ -115,11 +114,11 @@ export default {
 .nav-logo {
   height: 1.4em;
   vertical-align: middle;
-  margin-right: 0.5rem;
+  margin-right: var(--space-sm);
 }
 
 .menu-links i {
-  margin-right: 0.5rem;
+  margin-right: var(--space-sm);
 }
 
 /* Hide nav labels on narrow screens */
@@ -133,6 +132,6 @@ export default {
   opacity: 0.8;
 }
 :root[data-theme="light"] .menu-links .active {
-  color: #033452;
+  color: var(--color-primary-dark);
 }
 </style>

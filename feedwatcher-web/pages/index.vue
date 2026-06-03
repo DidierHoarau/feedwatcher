@@ -29,12 +29,12 @@
         </div>
         <div class="summary-items-list">
           <div
-            class="summary-items-list-item-container"
+            class="item-list-card"
             v-for="sourceItem in displayedRecentItems"
             v-bind:key="sourceItem.id"
           >
             <LazySourceItem
-              class="fade-in-fast summary-items-list-item"
+              class="fade-in-fast item-list-card"
               :item="sourceItem"
             />
           </div>
@@ -77,12 +77,12 @@
         </div>
         <div class="summary-items-list">
           <div
-            class="summary-items-list-item-container"
+            class="item-list-card"
             v-for="sourceItem in displayedNewItems"
             v-bind:key="sourceItem.id"
           >
             <LazySourceItem
-              class="fade-in-fast summary-items-list-item"
+              class="fade-in-fast item-list-card"
               :item="sourceItem"
             />
           </div>
@@ -129,12 +129,12 @@
         </div>
         <div class="summary-items-list">
           <div
-            class="summary-items-list-item-container"
+            class="item-list-card"
             v-for="sourceItem in displayedSummaryItems"
             v-bind:key="sourceItem.id"
           >
             <LazySourceItem
-              class="fade-in-fast summary-items-list-item"
+              class="fade-in-fast item-list-card"
               :item="sourceItem"
             />
           </div>
@@ -347,79 +347,67 @@ export default {
 }
 
 .summary-section {
-  margin-bottom: 2em;
-  padding: 1em;
-  border: 1px solid var(--pico-muted-border-color, #ccc);
-  border-radius: 8px;
+  margin-bottom: var(--space-2xl);
+  padding: var(--space-base);
+  border: 1px solid var(--pico-muted-border-color, var(--color-border));
+  border-radius: var(--radius-lg);
 }
 .summary-content {
-  margin-top: 0.5em;
+  margin-top: var(--space-sm);
 }
 .summary-meta {
-  font-size: 0.85em;
+  font-size: var(--font-base);
   opacity: 0.6;
-  margin-bottom: 0.5em;
+  margin-bottom: var(--space-sm);
 }
 .summary-text {
   line-height: 1.6;
 }
 .summary-items {
-  margin-top: 1.5em;
-}
-.summary-items h3 {
-  margin-bottom: 0.5em;
+  margin-top: var(--space-xl);
 }
 .items-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5em;
+  margin-bottom: var(--space-sm);
 }
 .items-actions-icons {
   font-size: 1.1em;
 }
 .items-actions-icons i {
   cursor: pointer;
-  margin-left: 0.6em;
+  margin-left: var(--space-md);
   opacity: 0.7;
 }
 .items-actions-icons i:hover {
   opacity: 1;
 }
 .items-mark-read-bottom {
-  margin-top: 0.8em;
-  margin-bottom: 0.8em;
+  margin-top: var(--space-md);
+  margin-bottom: var(--space-md);
   text-align: center;
 }
 .items-mark-read-bottom button {
   cursor: pointer;
-  padding: 0.4em 1em;
-  font-size: 0.85em;
+  padding: var(--space-xs) var(--space-base);
+  font-size: var(--font-base);
 }
 .summary-items-list {
   display: flex;
   align-items: flex-start;
   align-content: flex-start;
   flex-wrap: wrap;
-  gap: 0.6em;
+  gap: var(--space-md);
 }
-.summary-items-list-item-container {
-  flex: 1 1 20em;
-  min-width: 20em;
-  align-self: flex-start;
-}
-.summary-items-list-item-container,
-.summary-items-list-item {
-  margin: 0;
-  padding: 0;
-}
+
 .processor-info-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(20em, 1fr));
   gap: 10px;
 }
 .processor-info-layout {
-  margin: 1em 1em;
+  margin: var(--space-base) var(--space-base);
   display: grid;
   grid-template-columns: 3em 1fr;
   grid-template-rows: auto auto;
@@ -441,7 +429,7 @@ export default {
   grid-column: 2;
 }
 .processor-info-description span {
-  font-size: 0.8em;
+  font-size: var(--font-base);
   opacity: 0.5;
   word-break: break-all;
 }

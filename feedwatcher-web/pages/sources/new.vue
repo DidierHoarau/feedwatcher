@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1>New Source</h1>
+    <h4>New Source</h4>
     <label>URL</label>
     <input v-model="source.url" type="text" />
     <div v-if="alreadyExists" class="source-exists-warning">
@@ -71,9 +71,9 @@ export default {
 
 <style scoped>
 .source-exists-warning {
-  color: #e6a817;
-  font-size: 0.85em;
-  margin-top: 0.3em;
-  margin-bottom: 1em;
+  color: var(--color-warning);
+  font-size: var(--font-base);
+  margin-top: var(--space-xs);
+  margin-bottom: var(--space-base);
 }
 </style>

@@ -31,17 +31,15 @@ export default {
 </script>
 <style>
 .message {
-  padding: 1rem;
-  margin: 1rem;
-  color: #eee;
-}
-.message {
+  padding: var(--space-base);
+  margin: var(--space-base);
+  color: var(--color-text-inverse);
   background-color: #546e7a;
 }
 .message-info {
-  background-color: #43a047;
+  background-color: var(--color-success);
 }
 .message-error {
-  background-color: #e53935;
+  background-color: var(--color-error);
 }
 </style>
