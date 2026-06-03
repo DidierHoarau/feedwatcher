@@ -111,19 +111,25 @@ export default {
     },
   },
   mounted() {
+    let lastKnownTop = null;
     this.autoMarkReadObserver = new IntersectionObserver((entries) => {
       for (const entry of entries) {
         if (entry.isIntersecting) {
           this.wasIntersected = true;
-        } else if (
-          this.wasIntersected &&
-          this.item.status === "unread" &&
-          entry.boundingClientRect.top < 0
-        ) {
-          if (PreferencesService.isAutoMarkReadEnabled()) {
-            this.markReadStatus("read");
+          lastKnownTop = entry.boundingClientRect.top;
+        } else if (this.wasIntersected && this.item.status === "unread") {
+          const currentTop = entry.boundingClientRect.top;
+          // Mark as read when the user scrolled down past the item
+          // (element's top decreased / moved upward, or left the viewport entirely)
+          if (
+            currentTop < 0 ||
+            (lastKnownTop !== null && currentTop < lastKnownTop)
+          ) {
+            if (PreferencesService.isAutoMarkReadEnabled()) {
+              this.markReadStatus("read");
+            }
+            this.autoMarkReadObserver.disconnect();
           }
-          this.autoMarkReadObserver.disconnect();
         }
       }
     });

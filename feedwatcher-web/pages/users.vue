@@ -377,7 +377,6 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-shrink: 0;
 }
 
 /* Icon button for dark mode */
@@ -410,7 +409,8 @@ export default {
   gap: 0.5rem;
   font-size: 0.9em;
   cursor: pointer;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .switch-label input[type="checkbox"] {
