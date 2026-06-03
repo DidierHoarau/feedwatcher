@@ -1,5 +1,18 @@
+const AUTO_MARK_READ_KEY = "auto_mark_read_on_scroll";
+
 export const PreferencesService = {
   //
+  isAutoMarkReadEnabled(): boolean {
+    return localStorage.getItem(AUTO_MARK_READ_KEY) === "true";
+  },
+
+  toggleAutoMarkRead(): boolean {
+    const current = this.isAutoMarkReadEnabled();
+    const newValue = !current;
+    localStorage.setItem(AUTO_MARK_READ_KEY, newValue ? "true" : "false");
+    return newValue;
+  },
+
   toggleTheme(vm: any) {
     vm.isDark = !vm.isDark;
     localStorage.setItem("UI_THEME", vm.isDark ? "dark" : "light");
@@ -18,7 +31,7 @@ export const PreferencesService = {
     }
     document.documentElement.setAttribute(
       "data-theme",
-      isDark ? "dark" : "light"
+      isDark ? "dark" : "light",
     );
     localStorage.setItem("UI_THEME", isDark ? "dark" : "light");
   },

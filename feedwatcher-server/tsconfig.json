@@ -12,8 +12,9 @@
     "strict": false,
     "noImplicitAny": false,
     "strictPropertyInitialization": false,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    "types": ["jest"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "coverage", "test", "dist", "src/**/*.spec.ts"]
+  "exclude": ["node_modules", "coverage", "test", "dist", "**/*.spec.ts"]
 }

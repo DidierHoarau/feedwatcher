@@ -39,7 +39,7 @@ export async function SourcesSchedulerInit(context: Span, configIn: Config) {
         item: "bookmarked",
       });
     },
-    { description: "Items left to read" },
+    "Items left to read",
   );
 
   OTelMeter().createObservableGauge(
@@ -50,7 +50,7 @@ export async function SourcesSchedulerInit(context: Span, configIn: Config) {
         item: "total",
       });
     },
-    { description: "Items in the database" },
+    "Items in the database",
   );
 
   OTelMeter().createObservableGauge(
@@ -65,7 +65,7 @@ export async function SourcesSchedulerInit(context: Span, configIn: Config) {
         });
       }
     },
-    { description: "Feed source fetch queue depth" },
+    "Feed source fetch queue depth",
   );
 
   SourcesSchedulerStartSchedule().catch((err) =>
@@ -81,7 +81,6 @@ async function SourcesSchedulerStartSchedule() {
     config.PROCESSOR_CONCURRENCY,
     config.SOURCE_FETCH_FREQUENCY / 6,
   );
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const span0 = OTelTracer().startSpan("SourcesSchedulerCycle");
     const now = new Date().getTime();

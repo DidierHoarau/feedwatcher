@@ -11,7 +11,6 @@ export class User {
     if (json.id) {
       user.id = json.id;
     }
-    user.id = json.id;
     user.name = json.name;
     user.passwordEncrypted = json.passwordEncrypted;
     return user;

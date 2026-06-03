@@ -4,12 +4,8 @@ import { SqlDbUtilsInitGetDatabase } from "./SqlDbUtils";
 const logger = OTelLogger().createModuleLogger("SqlDbUtilsNoTelemetry");
 
 export function SqlDbUtilsNoTelemetryExecSQL(sql: string, params = []): void {
-  try {
-    const stmt = SqlDbUtilsInitGetDatabase().prepare(sql);
-    stmt.run(params);
-  } catch (error) {
-    throw error;
-  }
+  const stmt = SqlDbUtilsInitGetDatabase().prepare(sql);
+  stmt.run(params);
 }
 
 export function SqlDbUtilsNoTelemetryQuerySQL(

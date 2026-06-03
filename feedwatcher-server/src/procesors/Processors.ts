@@ -23,7 +23,7 @@ const logger = OTelLogger().createModuleLogger("Processor");
 let config: Config;
 let processorsFiles = [];
 const userProcessorInfoStatus: UserProcessorInfo[] = [];
-const sourcesInFlight: Set<string> = new Set();
+const sourcesInFlight = new Set<string>();
 
 export async function ProcessorsInit(
   context: Span,
@@ -55,7 +55,7 @@ export async function ProcessorsInit(
     (observableResult) => {
       observableResult.observe(sourcesInFlight.size, { status: "in-flight" });
     },
-    { description: "Sources currently being fetched by processors" },
+    "Sources currently being fetched by processors",
   );
 
   span.end();

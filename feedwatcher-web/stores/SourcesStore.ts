@@ -100,7 +100,6 @@ export const SourcesStore = defineStore("SourcesStore", {
           });
           for (let i = 0; i < sourcesData.length; i++) {
             const sourceData = sourcesData[i];
-            console.log(sourceData);
             const source: any = {};
             let labelSplit = [];
             if (sourceData.labelName) {
