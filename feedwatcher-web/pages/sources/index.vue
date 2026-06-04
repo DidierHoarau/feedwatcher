@@ -1,7 +1,7 @@
 <template>
   <div id="sources-layout">
     <div id="sources-header">
-      <h3>Sources</h3>
+      <h4>Sources</h4>
     </div>
     <div id="sources-actions" class="actions">
       <i
@@ -31,6 +31,14 @@
       />
     </div>
     <div id="sources-items-actions" class="actions">
+      <input
+        id="sources-items-search-filter"
+        class="source-filter-input"
+        v-model="searchText"
+        type="search"
+        placeholder="Filter items…"
+        @search="onSearchInput"
+      />
       <NuxtLink
         v-if="sourceItemsStore.selectedSource"
         :to="'/sources/' + sourceItemsStore.selectedSource"
@@ -54,12 +62,12 @@
     </div>
     <div id="sources-items-list-page">
       <div
-        class="sources-items-list-item-container"
+        class="item-list-card"
         v-for="sourceItem in sourceItemsStore.sourceItems"
         v-bind:key="sourceItem.id"
       >
         <LazySourceItem
-          class="fade-in-fast sources-items-list-item"
+          class="fade-in-fast item-list-card"
           :item="sourceItem"
         />
       </div>
@@ -92,6 +100,7 @@ import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 import { Timeout } from "~~/services/Timeout";
+import { debounce } from "lodash";
 
 export default {
   data() {
@@ -100,6 +109,7 @@ export default {
       menuOpened: true,
       filterStatus: "unread",
       markingUnreead: false,
+      searchText: "",
     };
   },
   async created() {
@@ -234,6 +244,18 @@ export default {
     openListMenu() {
       this.menuOpened = !this.menuOpened;
     },
+    onSearchInput: debounce(function () {
+      const sourceItemsStore = SourceItemsStore();
+      sourceItemsStore.searchPattern = this.searchText;
+      sourceItemsStore.page = 1;
+      sourceItemsStore.fetch();
+    }, 300),
+    clearSearchInput() {
+      this.searchText = "";
+      SourceItemsStore().searchPattern = "";
+      SourceItemsStore().page = 1;
+      SourceItemsStore().fetch();
+    },
     pageNext() {
       const sourceItemsStore = SourceItemsStore();
       if (!sourceItemsStore.pageHasMore) {
@@ -254,6 +276,11 @@ export default {
       sourceItemsStore.fetch();
     },
   },
+  watch: {
+    searchText() {
+      this.onSearchInput();
+    },
+  },
 };
 </script>
 
@@ -261,167 +288,22 @@ export default {
 #sources-items-list-page {
   grid-row: 4;
   grid-column: 1 / 3;
-  gap: 0.6em;
   display: flex;
   align-items: flex-start;
   align-content: flex-start;
   flex-wrap: wrap;
 }
 
-#sources-layout > * {
-  min-height: 0px;
-}
-#sources-actions {
-  text-align: right;
-  white-space: nowrap;
-}
-#sources-list div {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-#sources-items-actions {
-  text-align: right;
-  font-size: 0.9em;
-  padding-top: 0.2em;
-  padding-bottom: 0.2em;
-}
-
-@media (max-width: 700px) {
-  #sources-layout {
-    display: grid;
-    grid-template-rows: 2.7em auto 3em 2fr;
-    grid-template-columns: auto auto;
-    height: 100%;
-    column-gap: 1em;
-  }
-  #sources-items-actions {
-    grid-row: 3;
-    grid-column-start: 1;
-    grid-column-end: span 2;
-    display: flex;
-    justify-content: right;
-    align-items: center;
-  }
-  #sources-items-list {
-  }
-  #sources-header {
-    grid-row: 1;
-    grid-column: 1;
-  }
-  #sources-list {
-    overflow: hidden;
-    height: 25vh;
-    grid-row: 2;
-    grid-column-start: 1;
-    grid-column-end: span 2;
-  }
-  .sources-list-closed {
-    height: 0px !important;
-  }
-}
-
 @media (min-width: 701px) {
-  #sources-layout {
-    display: grid;
-    grid-template-rows: 2.7em 3em 1fr;
-    grid-template-columns: auto 1fr 1fr;
-    height: 100%;
-    column-gap: 1em;
-  }
-  #sources-items-actions {
-    grid-row: 2;
-    grid-column-start: 2;
-    grid-column-end: span 2;
-  }
   #sources-items-list-page {
-    overflow: auto;
     grid-row: 3;
     grid-column-start: 2;
     grid-column-end: span 2;
-  }
-  #sources-header {
-    grid-row: 1;
-    grid-column-start: 1;
-    grid-column-end: span 2;
-  }
-  #sources-list {
-    width: 30vw;
-    max-width: 20em;
-    overflow: hidden;
-    height: auto;
-    grid-row: 2 / 4;
-    grid-column: 1;
-  }
-  .sources-actions-menu-toggle {
-    visibility: hidden;
-    font-size: 0px;
-    padding: 0px;
-    margin: 0px;
+    overflow: auto;
   }
 }
 
-:root[data-theme="dark"] .source-active {
-  background-color: #333;
-}
-:root[data-theme="dark"] #sources-list {
-  background-color: #33333333;
-}
-
-:root[data-theme="light"] .source-active {
-  background-color: #bbb;
-}
-:root[data-theme="light"] #sources-list {
-  background-color: #aaaaaa33;
-}
-
-.source-name-layout {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  padding: 0.3em 0.5em;
-}
-.source-name-indent {
-  grid-column: 1;
-  padding-right: 0.5em;
-}
-.source-name-name {
-  grid-column: 2;
-}
-.source-name-count {
-  grid-column: 3;
-}
-
-#sources-items-list {
-  display: grid;
-  grid-template-columns: 1fr;
-  overflow: hidden;
-  align-items: center;
-}
 #sources-items-list-page-next {
-  padding-bottom: 0.6em;
-  padding-top: 0.6em;
-  text-align: center;
-  height: 300;
   width: 100%;
-}
-.page-inactive {
-  opacity: 0.1;
-}
-
-#sources-items-list-page {
-  height: 100%;
-  overflow-y: auto;
-}
-
-.sources-items-list-item-container {
-  flex: 1 1 20em;
-  min-width: 20em;
-  align-self: flex-start;
-}
-
-.sources-items-list-item-container,
-.sources-items-list-item {
-  margin: 0;
-  padding: 0;
 }
 </style>

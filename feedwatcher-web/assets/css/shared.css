@@ -1,0 +1,273 @@
+/* ============================================================
+   Shared Component Styles
+   ============================================================ */
+
+/* ---------- Fade-in animations ---------- */
+.fade-in-fast {
+  animation: fadeIn 0.5s;
+}
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* ---------- Blink animation ---------- */
+.blink {
+  transition: all 1s ease-in-out;
+  animation: blink normal 3s infinite ease-in-out;
+}
+@keyframes blink {
+  0% {
+    color: inherit;
+  }
+  50% {
+    color: var(--color-primary);
+  }
+  100% {
+    color: inherit;
+  }
+}
+
+/* ---------- Loading indicator ---------- */
+.loading-indicator {
+  width: 3rem;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 3rem;
+  margin-bottom: 3rem;
+  aspect-ratio: 1;
+  --c: no-repeat linear-gradient(var(--color-text) 0 0);
+  background:
+    var(--c) 0% 50%,
+    var(--c) 50% 50%,
+    var(--c) 100% 50%;
+  background-size: 20% 100%;
+  animation: l1 2s infinite linear;
+}
+@keyframes l1 {
+  0% {
+    background-size:
+      20% 100%,
+      20% 100%,
+      20% 100%;
+  }
+  33% {
+    background-size:
+      20% 10%,
+      20% 100%,
+      20% 100%;
+  }
+  50% {
+    background-size:
+      20% 100%,
+      20% 10%,
+      20% 100%;
+  }
+  66% {
+    background-size:
+      20% 100%,
+      20% 100%,
+      20% 10%;
+  }
+  100% {
+    background-size:
+      20% 100%,
+      20% 100%,
+      20% 100%;
+  }
+}
+
+/* ---------- Action icons ---------- */
+.actions i {
+  font-size: var(--font-xl);
+  cursor: pointer;
+  margin-left: var(--space-sm);
+  margin-right: var(--space-sm);
+  color: var(--color-text);
+}
+
+/* ---------- Page alert messages ---------- */
+#page-alert-messages {
+  position: fixed;
+  right: 3rem;
+  bottom: 3rem;
+  max-width: 80vw;
+}
+
+/* ============================================================
+   Source Name Layout — shared across components & pages
+   ============================================================ */
+
+.source-name-layout {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  padding: var(--space-xs) var(--space-sm);
+}
+.source-name-indent {
+  grid-column: 1;
+  padding-right: var(--space-sm);
+}
+.source-name-name {
+  grid-column: 2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.source-name-count {
+  grid-column: 3;
+}
+
+.source-active {
+  background-color: var(--color-bg-hover);
+}
+
+/* ============================================================
+   Sources Pages — shared layout (sources, bookmarks, rules)
+   ============================================================ */
+
+#sources-layout > * {
+  min-height: 0px;
+}
+#sources-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+#sources-list .source-name-name,
+#sources-list .source-name-count {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#sources-items-actions {
+  text-align: right;
+  font-size: var(--font-body);
+  padding-top: var(--space-xs);
+  padding-bottom: var(--space-xs);
+}
+#sources-items-list-page-next {
+  padding-bottom: var(--space-md);
+  padding-top: var(--space-md);
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .sources-list-closed {
+    height: 0px !important;
+  }
+}
+
+@media (min-width: 701px) {
+  .sources-actions-menu-toggle {
+    display: none;
+  }
+}
+
+/* ---------- Grid layout media queries ---------- */
+@media (max-width: 700px) {
+  #sources-layout {
+    display: grid;
+    grid-template-rows: auto auto auto 2fr;
+    grid-template-columns: auto auto;
+    height: 100%;
+    gap: var(--space-sm);
+  }
+  #sources-header {
+    grid-row: 1;
+    grid-column: 1;
+  }
+  #sources-list {
+    overflow: auto;
+    height: 25vh;
+    grid-row: 2;
+    grid-column-start: 1;
+    grid-column-end: span 2;
+  }
+  #sources-items-actions {
+    grid-row: 3;
+    grid-column-start: 1;
+    grid-column-end: span 2;
+    display: flex;
+    justify-content: right;
+    align-items: center;
+  }
+}
+
+@media (min-width: 701px) {
+  #sources-layout {
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    grid-template-columns: auto 1fr 1fr;
+    height: 100%;
+    gap: var(--space-sm);
+  }
+  #sources-header {
+    grid-row: 1;
+    grid-column-start: 1;
+    grid-column-end: span 2;
+  }
+  #sources-list {
+    width: 30vw;
+    max-width: 20em;
+    overflow: auto;
+    height: auto;
+    grid-row-start: 2;
+    grid-row-end: span 2;
+    grid-column: 1;
+  }
+  #sources-items-actions {
+    grid-row: 2;
+    grid-column-start: 2;
+    grid-column-end: span 2;
+    display: flex;
+    align-items: center;
+  }
+}
+
+:root[data-theme="dark"] #sources-list {
+  background-color: var(--color-bg-subtle);
+}
+:root[data-theme="light"] #sources-list {
+  background-color: var(--color-bg-subtle);
+}
+
+#sources-items-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  overflow: hidden;
+  align-items: center;
+}
+#sources-items-list-page {
+  height: 100%;
+  overflow-y: auto;
+}
+
+#sources-items-search-filter {
+  flex: 1;
+  align-self: stretch;
+  font-size: var(--font-sm);
+  padding-top: 0;
+  padding-bottom: 0;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  height: 100%;
+}
+
+#sources-items-search-filter::placeholder::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+/* ============================================================
+   Item List Containers — cards in flex/grid layouts
+   ============================================================ */
+
+.item-list-card {
+  flex: 1 1 20em;
+  min-width: 20em;
+  align-self: flex-start;
+  margin: 0;
+  padding: 0;
+}

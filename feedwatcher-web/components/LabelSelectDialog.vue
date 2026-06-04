@@ -95,34 +95,6 @@ export default {
 </script>
 
 <style scoped>
-
-:root[data-theme="dark"] .source-active {
-  background-color: #333;
-}
-
-:root[data-theme="light"] .source-active {
-  background-color: #bbb;
-}
-
-.source-name-layout {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  padding: 0.3em 0.5em;
-}
-.source-name-indent {
-  grid-column: 1;
-  padding-right: 0.5em;
-}
-.source-name-name {
-  grid-column: 2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.source-name-count {
-  grid-column: 3;
-}
-
 .label-list {
   max-height: 60vh;
   overflow: auto;

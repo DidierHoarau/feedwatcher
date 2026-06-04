@@ -4,7 +4,7 @@
       <input
         v-model="filterText"
         class="source-filter-input"
-        type="text"
+        type="search"
         placeholder="Filter sources..."
       />
     </div>
@@ -184,33 +184,6 @@ export default {
 </script>
 
 <style scoped>
-:root[data-theme="dark"] .source-active {
-  background-color: #333;
-}
-
-:root[data-theme="light"] .source-active {
-  background-color: #bbb;
-}
-
-.source-name-layout {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  padding: 0.3em 0.5em;
-}
-.source-name-indent {
-  grid-column: 1;
-  padding-right: 0.5em;
-}
-.source-name-name {
-  grid-column: 2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.source-name-count {
-  grid-column: 3;
-}
-
 .source-list-container {
   display: grid;
   grid-template-rows: auto 1fr;
@@ -220,7 +193,7 @@ export default {
 
 .source-list-filter {
   grid-row: 1;
-  padding: 0.4em 0.5em;
+  padding: var(--space-xs) var(--space-sm);
 }
 
 .source-list-scroll {
@@ -231,9 +204,12 @@ export default {
 
 .source-filter-input {
   width: 100%;
-  box-sizing: border-box;
-  font-size: 0.8em;
-  padding: 0 0.8rem;
+  align-self: stretch;
+  font-size: var(--font-sm);
+  padding-top: 0;
+  padding-bottom: 0;
   height: 2.4rem;
+  margin-bottom: 0;
+  border-radius: var(--radius-md);
 }
 </style>

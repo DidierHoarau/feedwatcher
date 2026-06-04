@@ -39,7 +39,7 @@ export default {
     axios
       .get(
         `${(await Config.get()).SERVER_URL}/sources/${this.$route.params.sourceId}`,
-        await AuthService.getAuthHeader()
+        await AuthService.getAuthHeader(),
       )
       .then((res) => {
         this.source = res.data;
@@ -48,7 +48,7 @@ export default {
     axios
       .get(
         `${(await Config.get()).SERVER_URL}/sources/${this.$route.params.sourceId}/labels`,
-        await AuthService.getAuthHeader()
+        await AuthService.getAuthHeader(),
       )
       .then((res) => {
         this.labels = res.data.labels;
@@ -67,7 +67,7 @@ export default {
           .put(
             `${(await Config.get()).SERVER_URL}/sources/${this.source.id}`,
             this.source,
-            await AuthService.getAuthHeader()
+            await AuthService.getAuthHeader(),
           )
           .then((res) => {
             EventBus.emit(EventTypes.ALERT_MESSAGE, {
@@ -80,7 +80,10 @@ export default {
             SourcesStore().setSelectedSourceId(this.source.id);
             setTimeout(() => {
               UserProcessorInfoStore().check();
-              useRouter().push({ path: "/sources", query: { sourceId: this.source.id } });
+              useRouter().push({
+                path: "/sources",
+                query: { sourceId: this.source.id },
+              });
             }, 100);
           })
           .catch(handleError);
@@ -94,7 +97,10 @@ export default {
     async deleteSource() {
       if (confirm("Delete the source?") == true) {
         await axios
-          .delete(`${(await Config.get()).SERVER_URL}/sources/${this.source.id}`, await AuthService.getAuthHeader())
+          .delete(
+            `${(await Config.get()).SERVER_URL}/sources/${this.source.id}`,
+            await AuthService.getAuthHeader(),
+          )
           .then((res) => {
             EventBus.emit(EventTypes.ALERT_MESSAGE, {
               text: "Source deleted",
@@ -129,16 +135,16 @@ h1 {
   word-break: break-all;
 }
 kbd {
-  margin-right: 2em;
-  margin-bottom: 1em;
+  margin-right: var(--space-2xl);
+  margin-bottom: var(--space-base);
 }
 kbd i {
-  margin-left: 0.5em;
+  margin-left: var(--space-sm);
 }
 .label-list {
-  margin-bottom: 2em;
+  margin-bottom: var(--space-2xl);
 }
 button {
-  margin-right: 1em;
+  margin-right: var(--space-base);
 }
 </style>

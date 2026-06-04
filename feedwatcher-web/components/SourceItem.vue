@@ -245,8 +245,8 @@ export default {
 <style scoped>
 .sourceitem-active {
   height: auto;
-  border-top: 2px solid #333;
-  padding-top: 0.6em;
+  border-top: 2px solid var(--color-border);
+  padding-top: var(--space-md);
 }
 .sourceitem-notactive {
   height: 0px;
@@ -258,9 +258,9 @@ export default {
   height: calc(100vh - 5em);
   width: 100%;
   height: auto;
-  grid-gap: 0.5em;
-  padding: 0.5em 0.6em;
-  margin: 0.5em 0;
+  grid-gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  margin: var(--space-sm) 0;
 }
 .sourceitem-layout-title {
   grid-row: 1;
@@ -276,14 +276,14 @@ export default {
   grid-row: 1 / 3;
   grid-column: 1;
   text-align: center;
-  padding: 0.5em;
+  padding: var(--space-sm);
   background-color: #33333344;
 }
 .sourceitem-layout-link {
   grid-row: 1;
   grid-column: 4;
   text-align: right;
-  padding-left: 0.5em;
+  padding-left: var(--space-sm);
 }
 .sourceitem-layout-content {
   grid-row: 3;
@@ -295,18 +295,6 @@ export default {
   border: none;
   display: block;
 }
-.sourceitem-layout-save {
-  grid-row: 3;
-  grid-column: 1;
-  text-align: center;
-  padding-right: 0.5em;
-  padding-top: 0.7em;
-}
-.sourceitem-actions {
-  font-size: 0.7em;
-  margin-bottom: 0.5em;
-  text-align: right;
-}
 .sourceitem-layout-meta {
   grid-row: 2;
   grid-column: 3 / 5;
@@ -314,8 +302,8 @@ export default {
   text-align: right;
 }
 .sourceitem-date {
-  font-size: 0.7em;
-  padding-right: 0.6em;
+  font-size: var(--font-xs);
+  padding-right: var(--space-md);
 }
 .sourceitem-read,
 .sourceitem-date,

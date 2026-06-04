@@ -1,11 +1,20 @@
 <template>
   <div class="page">
-    <h3>Source Import (OPML)</h3>
+    <h4>Source Import (OPML)</h4>
     <input type="file" id="file" name="file" @change="uploadOpml()" />
-    <button v-if="sourcesImports.length > 0" v-on:click="startImport()" :disabled="processing">
-      Import Selected <i class="bi bi-hourglass-split blink" v-if="processing"></i>
+    <button
+      v-if="sourcesImports.length > 0"
+      v-on:click="startImport()"
+      :disabled="processing"
+    >
+      Import Selected
+      <i class="bi bi-hourglass-split blink" v-if="processing"></i>
     </button>
-    <div v-for="sourcesImport in sourcesImports" v-bind:key="sourcesImport.source.name" class="source-import">
+    <div
+      v-for="sourcesImport in sourcesImports"
+      v-bind:key="sourcesImport.source.name"
+      class="source-import"
+    >
       <div class="source-import-select">
         <input
           type="checkbox"
@@ -18,16 +27,27 @@
       <div class="source-import-url">{{ sourcesImport.source.info.url }}</div>
       <div class="source-import-name">
         <label>Name</label>
-        <input v-model="sourcesImport.source.name" type="text" :disabled="processing || sourcesImport.imported" />
+        <input
+          v-model="sourcesImport.source.name"
+          type="text"
+          :disabled="processing || sourcesImport.imported"
+        />
       </div>
       <div class="source-import-labels">
         <label>Labels (coma separated)</label>
-        <input v-model="sourcesImport.source.labels" type="text" :disabled="processing || sourcesImport.imported" />
+        <input
+          v-model="sourcesImport.source.labels"
+          type="text"
+          :disabled="processing || sourcesImport.imported"
+        />
       </div>
       <div class="source-import-status">
         <i v-if="sourcesImport.imported" class="bi bi-check-circle"></i>
         <i v-else-if="processing" class="bi bi-hourglass-split blink"></i>
-        <i v-else-if="sourcesImport.importFailed" class="bi bi-exclamation-circle-fill"></i>
+        <i
+          v-else-if="sourcesImport.importFailed"
+          class="bi bi-exclamation-circle-fill"
+        ></i>
       </div>
     </div>
   </div>
@@ -57,7 +77,10 @@ export default {
       useRouter().push({ path: "/users" });
     }
     EventBus.on(EventTypes.ITEMS_UPDATED, (message) => {
-      if (SourceItemsStore().sourceItems.length === 0 && UserProcessorInfoStore().status === "idle") {
+      if (
+        SourceItemsStore().sourceItems.length === 0 &&
+        UserProcessorInfoStore().status === "idle"
+      ) {
         SourceItemsStore().fetch();
       }
     });
@@ -70,10 +93,17 @@ export default {
       const headers = await AuthService.getAuthHeader();
       headers["Content-Type"] = "multipart/form-data";
       axios
-        .post(`${(await Config.get()).SERVER_URL}/sources/import/analyze/opml`, formData, headers)
+        .post(
+          `${(await Config.get()).SERVER_URL}/sources/import/analyze/opml`,
+          formData,
+          headers,
+        )
         .then(async (res) => {
           const sourcesExisting = (
-            await axios.get(`${(await Config.get()).SERVER_URL}/sources`, await AuthService.getAuthHeader())
+            await axios.get(
+              `${(await Config.get()).SERVER_URL}/sources`,
+              await AuthService.getAuthHeader(),
+            )
           ).data.sources;
           const sourcesImportTmp = [];
           for (const source of res.data.sources) {
@@ -117,7 +147,7 @@ export default {
               let res = await axios.post(
                 `${(await Config.get()).SERVER_URL}/sources`,
                 { url: sourcesImport.source.info.url },
-                await AuthService.getAuthHeader()
+                await AuthService.getAuthHeader(),
               );
               const source = res.data;
               const labelsStr = sourcesImport.source.labels
@@ -138,7 +168,7 @@ export default {
               await axios.put(
                 `${(await Config.get()).SERVER_URL}/sources/${source.id}`,
                 source,
-                await AuthService.getAuthHeader()
+                await AuthService.getAuthHeader(),
               );
               sourcesImport.imported = true;
               sourcesImport.importFailed = false;
@@ -152,7 +182,9 @@ export default {
         }
       }
       while (processingPromises.length) {
-        await Promise.all(processingPromises.splice(0, 3).map((f) => f())).catch(handleError);
+        await Promise.all(
+          processingPromises.splice(0, 3).map((f) => f()),
+        ).catch(handleError);
       }
       this.processing = false;
       EventBus.emit(EventTypes.ALERT_MESSAGE, {
@@ -169,7 +201,7 @@ export default {
   display: grid;
   grid-template-columns: 2em 1fr 2em;
   grid-template-rows: auto auto auto;
-  margin: 0.5em 0em;
+  margin: var(--space-sm) 0em;
 }
 .source-import-check {
   grid-row: 1;

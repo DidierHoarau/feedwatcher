@@ -24,6 +24,7 @@ export class ItemsRoutes {
         sourceId: string;
         isSaved: boolean;
         sinceDate: string;
+        pattern: string;
       };
     }
 
@@ -49,6 +50,9 @@ export class ItemsRoutes {
       searchOptions.isSaved = req.body.isSaved ? true : false;
       if (req.body.sinceDate) {
         searchOptions.minDate = new Date(req.body.sinceDate);
+      }
+      if (req.body.pattern) {
+        searchOptions.pattern = req.body.pattern;
       }
 
       if (req.body.searchCriteria === "labelName") {

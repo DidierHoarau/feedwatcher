@@ -7,10 +7,10 @@
     >
       <article class="settings-card">
         <header>
-          <h3 v-if="isInitialized">
+          <h4 v-if="isInitialized">
             <i class="bi bi-box-arrow-in-right"></i> Login
-          </h3>
-          <h3 v-else><i class="bi bi-person-plus"></i> New User</h3>
+          </h4>
+          <h4 v-else><i class="bi bi-person-plus"></i> New User</h4>
         </header>
         <label>
           Username
@@ -40,7 +40,7 @@
       <!-- Data Management -->
       <article class="settings-card">
         <header>
-          <h3><i class="bi bi-diagram-3"></i> Import / Export Sources</h3>
+          <h4><i class="bi bi-diagram-3"></i> Import / Export Sources</h4>
         </header>
         <div class="settings-card-actions">
           <button @click="gotoImport()">
@@ -55,7 +55,7 @@
       <!-- Account -->
       <article class="settings-card">
         <header>
-          <h3><i class="bi bi-shield-lock"></i> Account</h3>
+          <h4><i class="bi bi-shield-lock"></i> Account</h4>
         </header>
 
         <div v-if="!isChangePasswordStarted" class="settings-card-actions">
@@ -98,7 +98,7 @@
       <!-- Preferences -->
       <article class="settings-card">
         <header>
-          <h3><i class="bi bi-sliders"></i> Preferences</h3>
+          <h4><i class="bi bi-sliders"></i> Preferences</h4>
         </header>
 
         <div class="preference-row">
@@ -299,7 +299,7 @@ export default {
 .settings-auth-content {
   display: flex;
   justify-content: center;
-  padding-top: 2rem;
+  padding-top: var(--space-2xl);
 }
 
 .settings-auth-content .settings-card {
@@ -309,43 +309,43 @@ export default {
 .settings-authenticated-content {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 1rem 0;
+  gap: var(--space-xl);
+  padding: var(--space-base) 0;
 }
 
 .settings-card {
   margin: 0;
 }
 
-.settings-card header h3 {
+.settings-card header h4 {
   margin: 0;
   font-size: 1.1em;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-sm);
 }
 
-.settings-card header h3 i {
-  font-size: 1.2em;
+.settings-card header h4 i {
+  font-size: var(--font-xl);
 }
 
 .settings-card-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--space-md);
   flex-wrap: wrap;
 }
 
 .settings-card-actions button {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-xs);
 }
 
 /* Change password form */
 .change-password-form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-md);
 }
 
 /* Preference rows */
@@ -353,45 +353,45 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.6rem 0;
-  gap: 1rem;
+  padding: var(--space-md) 0;
+  gap: var(--space-base);
 }
 
 .preference-row + .preference-row {
-  border-top: 1px solid var(--pico-muted-border-color, #333);
+  border-top: 1px solid var(--pico-muted-border-color, var(--color-border));
 }
 
 .preference-label {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-md);
   font-weight: 500;
 }
 
 .preference-label i {
-  font-size: 1.2em;
+  font-size: var(--font-xl);
   opacity: 0.8;
 }
 
 .preference-control {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-sm);
 }
 
 /* Icon button for dark mode */
 .icon-btn {
   background: none;
-  border: 1px solid var(--pico-muted-border-color, #555);
+  border: 1px solid var(--pico-muted-border-color, var(--color-border));
   cursor: pointer;
-  padding: 0.35em 0.75em;
+  padding: var(--space-xs) var(--space-md);
   border-radius: var(--pico-border-radius);
   color: var(--pico-color);
   transition: all 0.15s;
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.9em;
+  gap: var(--space-xs);
+  font-size: var(--font-body);
 }
 
 .icon-btn:hover {
@@ -406,8 +406,8 @@ export default {
 .switch-label {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9em;
+  gap: var(--space-sm);
+  font-size: var(--font-body);
   cursor: pointer;
   white-space: normal;
   word-break: break-word;
