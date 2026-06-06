@@ -3,9 +3,9 @@ import { ListItem } from "../model/ListItem";
 import { SourceItem } from "../model/SourceItem";
 import { OTelTracer } from "../OTelContext";
 import {
-  SqlDbUtilsExecSQL,
-  SqlDbUtilsQuerySQL,
-} from "../utils-std-ts/SqlDbUtils";
+  DbUtilsExecSQL,
+  DbUtilsQuerySQL,
+} from "@devopsplaybook.io/common-utils";
 import { SourcesDataInvalidateUserCache } from "./SourcesData";
 
 export async function ListsItemsDataAdd(
@@ -13,7 +13,7 @@ export async function ListsItemsDataAdd(
   listItem: ListItem
 ): Promise<void> {
   const span = OTelTracer().startSpan("ListsItemsDataAdd", context);
-  await SqlDbUtilsExecSQL(
+  await DbUtilsExecSQL(
     span,
     "INSERT INTO lists_items (id, itemId, userId, name, info) VALUES (?, ?, ?, ?, ?)",
     [
@@ -34,7 +34,7 @@ export async function ListsItemsDataDeleteForUser(
   userId: string
 ): Promise<void> {
   const span = OTelTracer().startSpan("ListsItemsDataDeleteForUser", context);
-  await SqlDbUtilsExecSQL(
+  await DbUtilsExecSQL(
     span,
     "DELETE FROM lists_items WHERE itemId = ? AND userId = ?",
     [itemId, userId]
@@ -49,7 +49,7 @@ export async function ListsItemsDataGetItemForUser(
   userId: string
 ): Promise<SourceItem> {
   const span = OTelTracer().startSpan("ListsItemsDataGetItemForUser", context);
-  const sourceItemRaw = await SqlDbUtilsQuerySQL(
+  const sourceItemRaw = await DbUtilsQuerySQL(
     span,
     "SELECT sources_items.* " +
       "FROM sources_items, lists_items " +

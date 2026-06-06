@@ -2,10 +2,10 @@ import { Span } from "@opentelemetry/sdk-trace-base";
 import { Source } from "../model/Source";
 import { OTelTracer } from "../OTelContext";
 import {
-  SqlDbUtilsExecSQL,
-  SqlDbUtilsQuerySQL,
-} from "../utils-std-ts/SqlDbUtils";
-import { TimeoutWait } from "../utils-std-ts/Timeout";
+  DbUtilsExecSQL,
+  DbUtilsQuerySQL,
+} from "@devopsplaybook.io/common-utils";
+import { TimeoutWait } from "@devopsplaybook.io/common-utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cacheUserCounts: any = {};
@@ -19,7 +19,7 @@ export async function SourcesDataGet(
   sourceId: string,
 ): Promise<Source> {
   const span = OTelTracer().startSpan("SourcesDataGet", context);
-  const sourceRaw = await SqlDbUtilsQuerySQL(
+  const sourceRaw = await DbUtilsQuerySQL(
     span,
     "SELECT * FROM sources WHERE id = ?",
     [sourceId],
@@ -37,7 +37,7 @@ export async function SourcesDataListForUser(
   userId: string,
 ): Promise<Source[]> {
   const span = OTelTracer().startSpan("SourcesDataListForUser", context);
-  const sourcesRaw = await SqlDbUtilsQuerySQL(
+  const sourcesRaw = await DbUtilsQuerySQL(
     span,
     `SELECT * FROM sources WHERE userId = '${userId}'`,
   );
@@ -61,7 +61,7 @@ export async function SourcesDataListCountsForUser(
     span.end();
     return cacheUserCounts[userId];
   }
-  cacheUserCounts[userId] = await SqlDbUtilsQuerySQL(
+  cacheUserCounts[userId] = await DbUtilsQuerySQL(
     span,
     "SELECT COUNT(id) as unreadCount, sourceId FROM sources_items " +
       "WHERE sourceId IN (" +
@@ -91,7 +91,7 @@ export async function SourcesDataListCountsSavedForUser(
     span.end();
     return cacheUserSavedCounts[userId];
   }
-  cacheUserSavedCounts[userId] = await SqlDbUtilsQuerySQL(
+  cacheUserSavedCounts[userId] = await DbUtilsQuerySQL(
     span,
     "SELECT COUNT(id) as savedCount, sourceId  " +
       "FROM sources_items " +
@@ -111,7 +111,7 @@ export async function SourcesDataListCountsSavedForUser(
 
 export async function SourcesDataListAll(context: Span): Promise<Source[]> {
   const span = OTelTracer().startSpan("SourcesDataListAll", context);
-  const sourcesRaw = await SqlDbUtilsQuerySQL(span, `SELECT * FROM sources`);
+  const sourcesRaw = await DbUtilsQuerySQL(span, `SELECT * FROM sources`);
   const sources = [];
   for (const sourceRaw of sourcesRaw) {
     sources.push(fromRaw(sourceRaw));
@@ -125,7 +125,7 @@ export async function SourcesDataAdd(
   source: Source,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourcesDataAdd", context);
-  SqlDbUtilsExecSQL(
+  DbUtilsExecSQL(
     span,
     "INSERT INTO sources (id,userId,name,info) VALUES (?,?,?,?)",
     [source.id, source.userId, source.name, JSON.stringify(source.info)],
@@ -138,7 +138,7 @@ export async function SourcesDataUpdate(
   source: Source,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourcesDataUpdate", context);
-  await SqlDbUtilsExecSQL(
+  await DbUtilsExecSQL(
     span,
     "UPDATE sources SET name = ?, info = ? WHERE id = ?",
     [source.name, JSON.stringify(source.info), source.id],
@@ -153,12 +153,12 @@ export async function SourcesDataDelete(
   const span = OTelTracer().startSpan("SourcesDataDelete", context);
   const source = await SourcesDataGet(span, sourceId);
   await SqlDbUtilsExecSQL(span, "DELETE FROM sources WHERE id = ?", [sourceId]);
-  await SqlDbUtilsExecSQL(
+  await DbUtilsExecSQL(
     span,
     "DELETE FROM sources_items WHERE sourceId = ?",
     [sourceId],
   );
-  await SqlDbUtilsExecSQL(
+  await DbUtilsExecSQL(
     span,
     "DELETE FROM sources_labels WHERE sourceId = ?",
     [sourceId],
@@ -199,7 +199,7 @@ export async function SourcesDataListCountsSaved(
   context: Span,
 ): Promise<number> {
   const span = OTelTracer().startSpan("SourcesDataListCountsSaved", context);
-  const countRaw = await SqlDbUtilsQuerySQL(
+  const countRaw = await DbUtilsQuerySQL(
     span,
     "    SELECT COUNT(sources_items.id) as count " +
       "    FROM lists_items, sources_items " +

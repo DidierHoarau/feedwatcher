@@ -3,7 +3,7 @@ import { SearchItemsResult } from "../model/SearchItemsResult";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SourceItem } from "../model/SourceItem";
 import { SourceItemStatus } from "../model/SourceItemStatus";
-import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
+import { DbUtilsQuerySQL } from "@devopsplaybook.io/common-utils";
 import { OTelTracer } from "../OTelContext";
 
 const PAGE_SIZE = 50;
@@ -16,7 +16,7 @@ export async function SearchItemsDataListForUser(
   const span = OTelTracer().startSpan("SearchItemsDataListForUser", context);
   const { query: patternQuery, params: patternParams } =
     getPatternFilterQuery(searchOptions);
-  const sourceItemsRaw = await SqlDbUtilsQuerySQL(
+  const sourceItemsRaw = await DbUtilsQuerySQL(
     span,
     "SELECT sources_items.*, sources.name as sourceName " +
       "FROM sources_items " +
@@ -43,7 +43,7 @@ export async function SearchItemsDataListForSource(
   const span = OTelTracer().startSpan("SearchItemsDataListForSource", context);
   const { query: patternQuery, params: patternParams } =
     getPatternFilterQuery(searchOptions);
-  const sourceItemsRaw = await SqlDbUtilsQuerySQL(
+  const sourceItemsRaw = await DbUtilsQuerySQL(
     span,
     "SELECT sources_items.*, sources.name as sourceName " +
       "FROM sources_items " +
@@ -75,7 +75,7 @@ export async function SearchItemsDataListItemsForLabel(
   );
   const { query: patternQuery, params: patternParams } =
     getPatternFilterQuery(searchOptions);
-  const sourceItemsRaw = await SqlDbUtilsQuerySQL(
+  const sourceItemsRaw = await DbUtilsQuerySQL(
     span,
     "SELECT sources_items.*, sources.name AS sourceName " +
       "FROM sources_items " +
