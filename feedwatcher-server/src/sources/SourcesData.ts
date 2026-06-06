@@ -152,7 +152,7 @@ export async function SourcesDataDelete(
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourcesDataDelete", context);
   const source = await SourcesDataGet(span, sourceId);
-  await SqlDbUtilsExecSQL(span, "DELETE FROM sources WHERE id = ?", [sourceId]);
+  await DbUtilsExecSQL(span, "DELETE FROM sources WHERE id = ?", [sourceId]);
   await DbUtilsExecSQL(
     span,
     "DELETE FROM sources_items WHERE sourceId = ?",

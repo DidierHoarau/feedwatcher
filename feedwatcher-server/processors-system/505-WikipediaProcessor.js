@@ -2,24 +2,33 @@
 const axios = require("axios");
 const _ = require("lodash");
 
+const headers = { "User-Agent": "FeedWatcher/0.1.0 (https://feedwatcher.app)" };
+
 // eslint-disable-next-line no-undef
 module.exports = {
   //
   getInfo: () => {
     return {
       title: "Wikipedia Page",
-      description: "Follows edits a a Wikipedia page. <br/>" + "Expected URLs: https://hub.wikipedia.com/wiki/[page]",
+      description:
+        "Follows edits a a Wikipedia page. <br/>" +
+        "Expected URLs: https://hub.wikipedia.com/wiki/[page]",
       icon: "wikipedia",
     };
   },
 
   test: async (source) => {
-    let urlMatch = /.*\/\/(.+)(\.m)?.wikipedia.org\/wiki\/(.+)/.exec(source.info.url);
+    let urlMatch = /.*\/\/(.+)(\.m)?.wikipedia.org\/wiki\/(.+)/.exec(
+      source.info.url,
+    );
     if (urlMatch) {
       const pageLanguage = urlMatch[1];
       const pageName = urlMatch[3];
       const pageInfo = (
-        await axios.get(`https://${pageLanguage}.wikipedia.org/w/rest.php/v1/page/${pageName}/bare`, { timeout: 30000 })
+        await axios.get(
+          `https://${pageLanguage}.wikipedia.org/w/rest.php/v1/page/${pageName}/bare`,
+          { timeout: 30000, headers },
+        )
       ).data;
       return { name: pageInfo.title, icon: "wikipedia" };
     }
@@ -27,16 +36,22 @@ module.exports = {
   },
 
   fetchLatest: async (source, lastSourceItemSaved) => {
-    let urlMatch = /.*\/\/(.+)(\.m)?.wikipedia.org\/wiki\/(.+)/.exec(source.info.url);
+    let urlMatch = /.*\/\/(.+)(\.m)?.wikipedia.org\/wiki\/(.+)/.exec(
+      source.info.url,
+    );
     const pageLanguage = urlMatch[1];
     const pageName = urlMatch[3];
     const pageRevisions = _.sortBy(
       (
-        await axios.get(`https://${pageLanguage}.wikipedia.org/w/rest.php/v1/page/${pageName}/history`, {
-          timeout: 30000,
-        })
+        await axios.get(
+          `https://${pageLanguage}.wikipedia.org/w/rest.php/v1/page/${pageName}/history`,
+          {
+            timeout: 30000,
+            headers,
+          },
+        )
       ).data.revisions,
-      ["timestamp"]
+      ["timestamp"],
     );
     const sourceItems = [];
     for (let i = 0; i < pageRevisions.length; i++) {
