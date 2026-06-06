@@ -1,19 +1,26 @@
 {
-  // PWA options
-  "manifest": {
-    "name": "FeedWatcher",
-    "short_name": "FeedWatcher",
-    "lang": "en-US",
-    "start_url": "/",
-    "display": "standalone",
-    "background_color": "#12191f",
-    "theme_color": "#12191f",
-    "icons": [
-      {
-        "src": "images/icon-512.png",
-        "sizes": "512x512",
-        "type": "image/png"
-      }
-    ]
-  }
+  "name": "FeedWatcher",
+  "short_name": "FeedWatcher",
+  "description": "RSS feed reader and aggregator",
+  "lang": "en-US",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "categories": ["news", "productivity"],
+  "background_color": "#11191f",
+  "theme_color": "#1976d2",
+  "icons": [
+    {
+      "src": "images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
