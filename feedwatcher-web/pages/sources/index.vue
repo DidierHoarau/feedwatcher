@@ -292,6 +292,7 @@ export default {
   align-items: flex-start;
   align-content: flex-start;
   flex-wrap: wrap;
+  gap: var(--space-md);
 }
 
 @media (min-width: 701px) {

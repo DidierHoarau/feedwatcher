@@ -3,9 +3,9 @@ import { Source } from "../model/Source";
 import { v4 as uuidv4 } from "uuid";
 import { SourcesDataGet, SourcesDataInvalidateUserCache } from "./SourcesData";
 import {
-  SqlDbUtilsExecSQL,
-  SqlDbUtilsQuerySQL,
-} from "../utils-std-ts/SqlDbUtils";
+  DbUtilsExecSQL,
+  DbUtilsQuerySQL,
+} from "@devopsplaybook.io/common-utils";
 import { OTelTracer } from "../OTelContext";
 
 export async function SourceLabelsDataListForUser(
@@ -13,7 +13,7 @@ export async function SourceLabelsDataListForUser(
   userId: string,
 ): Promise<Source[]> {
   const span = OTelTracer().startSpan("SourceLabelsDataListForUser", context);
-  const sourceLabelsRaw = await SqlDbUtilsQuerySQL(
+  const sourceLabelsRaw = await DbUtilsQuerySQL(
     span,
     "SELECT sources_labels.name as labelName, " +
       "  sources.name as sourceName, " +
@@ -42,13 +42,13 @@ export async function SourceLabelsDataSetSourceLabels(
     "SourceLabelsDataSetSourceLabels",
     context,
   );
-  await SqlDbUtilsExecSQL(
+  await DbUtilsExecSQL(
     span,
     "DELETE FROM sources_labels WHERE sourceId = ?",
     [sourceId],
   );
   for (const label of labels) {
-    SqlDbUtilsExecSQL(
+    DbUtilsExecSQL(
       span,
       "INSERT INTO sources_labels (id,sourceId,name,info) VALUES (?,?,?,?)",
       [uuidv4(), sourceId, label.trim(), JSON.stringify({})],
@@ -68,7 +68,7 @@ export async function SourceLabelsDataGetSourceLabels(
     "SourceLabelsDataGetSourceLabels",
     context,
   );
-  const labelsRaw = await SqlDbUtilsQuerySQL(
+  const labelsRaw = await DbUtilsQuerySQL(
     span,
     "SELECT * FROM sources_labels WHERE sourceId = ?",
     [sourceId],

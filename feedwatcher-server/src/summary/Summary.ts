@@ -8,7 +8,7 @@ import { Config } from "../Config";
 import { OTelLogger, OTelTracer } from "../OTelContext";
 import { UsersDataList } from "../users/UsersData";
 import { SourceItem } from "../model/SourceItem";
-import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
+import { DbUtilsQuerySQL } from "@devopsplaybook.io/common-utils";
 
 const logger = OTelLogger().createModuleLogger("Summary");
 
@@ -95,7 +95,7 @@ export async function SummaryGenerateForUser(
 ): Promise<{ itemCount: number; summary: string; items: SourceItem[] }> {
   const span = OTelTracer().startSpan("SummaryGenerateForUser", context);
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const itemsRaw = await SqlDbUtilsQuerySQL(
+  const itemsRaw = await DbUtilsQuerySQL(
     span,
     "SELECT sources_items.*, sources.name as sourceName " +
       "FROM sources_items " +

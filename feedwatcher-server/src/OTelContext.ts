@@ -1,38 +1,10 @@
-import {
-  StandardLogger,
-  StandardMeter,
-  StandardTracer,
-} from "@devopsplaybook.io/otel-utils";
-import { Span } from "@opentelemetry/sdk-trace-base";
+import { createOTelContext } from "@devopsplaybook.io/common-utils";
 
-let tracer: StandardTracer;
-let meter: StandardMeter;
-let logger: StandardLogger;
+const otel = createOTelContext();
 
-export function OTelSetTracer(tracerIn: StandardTracer) {
-  tracer = tracerIn;
-}
-
-export function OTelSetMeter(meterIn: StandardMeter) {
-  meter = meterIn;
-}
-
-export function OTelTracer(): StandardTracer {
-  return tracer;
-}
-
-export function OTelMeter(): StandardMeter {
-  return meter;
-}
-
-export function OTelLogger(): StandardLogger {
-  if (!logger) {
-    logger = new StandardLogger();
-  }
-  return logger;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function OTelRequestSpan(req: any): Span {
-  return req.tracerSpanApi;
-}
+export const OTelTracer = otel.OTelTracer;
+export const OTelSetTracer = otel.OTelSetTracer;
+export const OTelMeter = otel.OTelMeter;
+export const OTelSetMeter = otel.OTelSetMeter;
+export const OTelLogger = otel.OTelLogger;
+export const OTelRequestSpan = otel.OTelRequestSpan;

@@ -1,4 +1,5 @@
 import { StandardMeter, StandardTracer } from "@devopsplaybook.io/otel-utils";
+import { DbUtilsSetOTel, DbUtilsInit } from "@devopsplaybook.io/common-utils";
 import { StandardTracerFastifyRegisterHooks } from "@devopsplaybook.io/otel-utils-fastify";
 import cors from "@fastify/cors";
 import fastifyMultipart from "@fastify/multipart";
@@ -27,7 +28,6 @@ import { SummaryInit } from "./summary/Summary";
 import { SummaryRoutes } from "./summary/SummaryRoutes";
 import { AuthInit } from "./users/Auth";
 import { UsersRoutes } from "./users/UsersRoutes";
-import { SqlDbUtilsInit } from "./utils-std-ts/SqlDbUtils";
 
 const logger = OTelLogger().createModuleLogger("app");
 
@@ -36,19 +36,21 @@ logger.info("====== Starting FeedWatcher Server ======");
 Promise.resolve().then(async () => {
   //
   const config = new Config();
-  await config.reload();
+  await config.reload((msg) => logger.info(msg));
   watchFile(config.CONFIG_FILE, () => {
     logger.info(`Config updated: ${config.CONFIG_FILE}`);
-    config.reload();
+    config.reload((msg) => logger.info(msg));
   });
 
   OTelSetTracer(new StandardTracer(config));
   OTelSetMeter(new StandardMeter(config));
   OTelLogger().initOTel(config);
 
+  DbUtilsSetOTel(OTelTracer(), OTelLogger());
+
   const span = OTelTracer().startSpan("init");
 
-  await SqlDbUtilsInit(span, config);
+  await DbUtilsInit(span, config, `${__dirname}/../sql`);
   await AuthInit(span, config);
   await ProcessorsInit(span, config);
   await SummaryInit(span, config);

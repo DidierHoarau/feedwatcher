@@ -5,7 +5,7 @@ import { User } from "../model/User";
 import { UserSession } from "../model/UserSession";
 import { Config } from "../Config";
 import { Span } from "@opentelemetry/sdk-trace-base";
-import { SqlDbUtilsQuerySQL } from "../utils-std-ts/SqlDbUtils";
+import { DbUtilsQuerySQL } from "@devopsplaybook.io/common-utils";
 import { OTelLogger, OTelTracer } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger(path.basename(__filename));
@@ -14,13 +14,13 @@ let config: Config;
 export async function AuthInit(context: Span, configIn: Config) {
   config = configIn;
   const span = OTelTracer().startSpan("AuthInit", context);
-  const authKeyRaw = await SqlDbUtilsQuerySQL(
+  const authKeyRaw = await DbUtilsQuerySQL(
     span,
     "SELECT * FROM metadata WHERE type='auth_token'",
   );
   if (authKeyRaw.length == 0) {
     configIn.JWT_KEY = uuidv4();
-    await SqlDbUtilsQuerySQL(
+    await DbUtilsQuerySQL(
       span,
       "INSERT INTO metadata (type, value, dateCreated) VALUES ('auth_token', ?, ?)",
       [configIn.JWT_KEY, new Date().toISOString()],

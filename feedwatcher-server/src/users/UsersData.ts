@@ -2,13 +2,13 @@ import { Span } from "@opentelemetry/sdk-trace-base";
 import { User } from "../model/User";
 import { OTelTracer } from "../OTelContext";
 import {
-  SqlDbUtilsExecSQL,
-  SqlDbUtilsQuerySQL,
-} from "../utils-std-ts/SqlDbUtils";
+  DbUtilsExecSQL,
+  DbUtilsQuerySQL,
+} from "@devopsplaybook.io/common-utils";
 
 export async function UsersDataGet(context: Span, id: string): Promise<User> {
   const span = OTelTracer().startSpan("UsersDataGet", context);
-  const usersRaw = await SqlDbUtilsQuerySQL(
+  const usersRaw = await DbUtilsQuerySQL(
     span,
     "SELECT * FROM users WHERE id=?",
     [id]
@@ -26,7 +26,7 @@ export async function UsersDataGetByName(
   name: string
 ): Promise<User> {
   const span = OTelTracer().startSpan("UsersDataGetByName", context);
-  const usersRaw = await SqlDbUtilsQuerySQL(
+  const usersRaw = await DbUtilsQuerySQL(
     span,
     "SELECT * FROM users WHERE name=?",
     [name]
@@ -41,7 +41,7 @@ export async function UsersDataGetByName(
 
 export async function UsersDataList(context: Span): Promise<User[]> {
   const span = OTelTracer().startSpan("UsersDataList", context);
-  const usersRaw = await SqlDbUtilsQuerySQL(span, "SELECT * FROM users");
+  const usersRaw = await DbUtilsQuerySQL(span, "SELECT * FROM users");
   const users = [];
   for (const userRaw of usersRaw) {
     users.push(fromRaw(userRaw));
@@ -52,7 +52,7 @@ export async function UsersDataList(context: Span): Promise<User[]> {
 
 export async function UsersDataAdd(context: Span, user: User): Promise<void> {
   const span = OTelTracer().startSpan("UsersDataAdd", context);
-  await SqlDbUtilsExecSQL(
+  await DbUtilsExecSQL(
     span,
     "INSERT INTO users (id,name,passwordEncrypted) VALUES (?, ?, ?)",
     [user.id, user.name, user.passwordEncrypted]
@@ -65,7 +65,7 @@ export async function UsersDataUpdate(
   user: User
 ): Promise<void> {
   const span = OTelTracer().startSpan("UsersDataUpdate", context);
-  await SqlDbUtilsExecSQL(
+  await DbUtilsExecSQL(
     span,
     "UPDATE users SET passwordEncrypted = ? WHERE id = ? ",
     [user.passwordEncrypted, user.id]

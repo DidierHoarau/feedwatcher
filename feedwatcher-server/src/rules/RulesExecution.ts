@@ -1,7 +1,7 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Rules } from "../model/Rules";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
-import { SqlDbUtilsExecSQL } from "../utils-std-ts/SqlDbUtils";
+import { DbUtilsExecSQL } from "@devopsplaybook.io/common-utils";
 import { OTelLogger, OTelTracer } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger("RulesExecution");
@@ -97,7 +97,7 @@ async function execRuleForUser(
   searchOptions: SearchItemsOptions,
 ): Promise<void> {
   const span = OTelTracer().startSpan("execRuleForUser", context);
-  SqlDbUtilsExecSQL(
+  DbUtilsExecSQL(
     span,
     getRuleActionSql(action) +
       "WHERE sources_items.sourceId IN ( SELECT id FROM sources WHERE userId = ? ) " +
@@ -115,7 +115,7 @@ async function execRuleForSource(
   searchOptions: SearchItemsOptions,
 ): Promise<void> {
   const span = OTelTracer().startSpan("execRuleForSource", context);
-  SqlDbUtilsExecSQL(
+  DbUtilsExecSQL(
     span,
     getRuleActionSql(action) +
       "WHERE sourceId = ? " +
@@ -134,7 +134,7 @@ async function execRuleForLabel(
   searchOptions: SearchItemsOptions,
 ): Promise<void> {
   const span = OTelTracer().startSpan("execRuleForLabel", context);
-  SqlDbUtilsExecSQL(
+  DbUtilsExecSQL(
     span,
     getRuleActionSql(action) +
       "WHERE sources_items.sourceId IN ( " +

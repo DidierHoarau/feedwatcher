@@ -1,9 +1,9 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Rules } from "../model/Rules";
 import {
-  SqlDbUtilsExecSQL,
-  SqlDbUtilsQuerySQL,
-} from "../utils-std-ts/SqlDbUtils";
+  DbUtilsExecSQL,
+  DbUtilsQuerySQL,
+} from "@devopsplaybook.io/common-utils";
 import { OTelTracer } from "../OTelContext";
 
 //
@@ -12,7 +12,7 @@ export async function RulesDataGet(
   ruleId: string
 ): Promise<Rules> {
   const span = OTelTracer().startSpan("RulesDataGet", context);
-  const rulesRaw = await SqlDbUtilsQuerySQL(
+  const rulesRaw = await DbUtilsQuerySQL(
     span,
     "SELECT * FROM rules WHERE id = ?",
     [ruleId]
@@ -30,7 +30,7 @@ export async function RulesDataListForUser(
   userId: string
 ): Promise<Rules> {
   const span = OTelTracer().startSpan("RulesDataListForUser", context);
-  const rulesRaw = await SqlDbUtilsQuerySQL(
+  const rulesRaw = await DbUtilsQuerySQL(
     span,
     `SELECT * FROM rules WHERE userId = '${userId}'`
   );
@@ -45,7 +45,7 @@ export async function RulesDataListForUser(
 
 export async function RulesDataListAll(context: Span): Promise<Rules[]> {
   const span = OTelTracer().startSpan("RulesDataListAll", context);
-  const rulesRaw = await SqlDbUtilsQuerySQL(span, `SELECT * FROM rules`);
+  const rulesRaw = await DbUtilsQuerySQL(span, `SELECT * FROM rules`);
   const rules = [];
   for (const userRules of rulesRaw) {
     rules.push(fromRaw(userRules));
@@ -59,10 +59,10 @@ export async function RulesDataUpdate(
   rules: Rules
 ): Promise<void> {
   const span = OTelTracer().startSpan("RulesDataUpdate", context);
-  await SqlDbUtilsExecSQL(span, "DELETE FROM rules WHERE userId = ?", [
+  await DbUtilsExecSQL(span, "DELETE FROM rules WHERE userId = ?", [
     rules.userId,
   ]);
-  await SqlDbUtilsExecSQL(
+  await DbUtilsExecSQL(
     span,
     "INSERT INTO rules (id,userId,info) VALUES (?,?,?)",
     [rules.id, rules.userId, JSON.stringify(rules.info)]

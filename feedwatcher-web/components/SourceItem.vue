@@ -259,8 +259,6 @@ export default {
   width: 100%;
   height: auto;
   grid-gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  margin: var(--space-sm) 0;
 }
 .sourceitem-layout-title {
   grid-row: 1;

@@ -1,6 +1,6 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Config } from "../Config";
-import { TimeoutWait } from "../utils-std-ts/Timeout";
+import { TimeoutWait } from "@devopsplaybook.io/common-utils";
 import { RulesDataListAll } from "../rules/RulesData";
 import { ProcessorsFetchSourceItems } from "../procesors/Processors";
 import { SourcesDataListAll, SourcesDataListCountsSaved } from "./SourcesData";
