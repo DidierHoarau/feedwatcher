@@ -147,7 +147,7 @@ export class ItemsRoutes {
           },
         });
         return res.status(200).send({ content: response.data });
-      } catch (error) {
+      } catch {
         return res.status(502).send({ error: "Failed to fetch URL" });
       }
     });
