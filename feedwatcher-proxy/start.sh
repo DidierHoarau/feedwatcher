@@ -13,8 +13,8 @@ fi
 
 cd ${SERVICE_DIR}
 ./bin/traefik \
-    --entryPoints.web.address=:9999 \
-    --entryPoints.websecure.address=:9998 \
+    --entryPoints.web.address=:9009 \
+    --entryPoints.websecure.address=:9008 \
     --providers.file.watch=true \
     --providers.file.filename=traefik-rules.yml \
     --entrypoints.dashboard.address=:9091 \

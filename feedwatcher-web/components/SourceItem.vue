@@ -46,7 +46,7 @@
     </div>
 
     <div class="sourceitem-layout-link">
-      <a :href="item.url" target="_blank" v-on:click="markReadStatus('read')"
+      <a href="#" v-on:click.prevent="openItemLink()"
         ><i class="bi bi-link source-action"></i
       ></a>
     </div>
@@ -184,6 +184,15 @@ export default {
           this.isSaved = false;
         })
         .catch(handleError);
+    },
+    async openItemLink() {
+      await this.markReadStatus("read");
+      const mode = PreferencesService.getOpenLinksMode();
+      if (mode === "external") {
+        window.open(this.item.url, "_blank");
+      } else {
+        EventBus.emit(EventTypes.OPEN_ITEM, this.item);
+      }
     },
     async markReadStatus(status) {
       axios
