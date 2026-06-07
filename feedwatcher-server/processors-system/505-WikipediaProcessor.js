@@ -2,7 +2,10 @@
 const axios = require("axios");
 const _ = require("lodash");
 
-const headers = { "User-Agent": "FeedWatcher/0.1.0 (https://feedwatcher.app)" };
+const headers = {
+  "User-Agent":
+    "FeedWatcher/0.1.0 (https://github.com/DidierHoarau/feedwatcher)",
+};
 
 // eslint-disable-next-line no-undef
 module.exports = {
