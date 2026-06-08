@@ -29,6 +29,9 @@
       </div>
 
       <footer>
+        <button class="secondary" v-on:click="close()">
+          <i class="bi bi-x-lg"></i> Close
+        </button>
         <button class="secondary" v-on:click="openExternal()">
           <i class="bi bi-box-arrow-up-right"></i> Open
         </button>
@@ -52,6 +55,8 @@
 </template>
 
 <script>
+import { PreferencesService } from "~~/services/PreferencesService";
+
 export default {
   props: {
     modelValue: Boolean,
@@ -83,7 +88,8 @@ export default {
   watch: {
     modelValue(val) {
       if (val) {
-        this.showFullSource = false;
+        this.showFullSource =
+          PreferencesService.getOpenLinksMode() === "dialog-full";
         this.loadingFull = false;
         this.supportsFullSource = this.item?.url?.startsWith("http");
         this.$nextTick(() => {
