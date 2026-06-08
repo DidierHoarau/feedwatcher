@@ -14,14 +14,18 @@
       </header>
       <div class="source-dialog-body">
         <iframe
+          v-if="showFullSource"
           class="source-dialog-frame"
-          :srcdoc="iframeSrcdoc"
+          :src="item.url"
           sandbox="allow-same-origin allow-popups allow-scripts"
           ref="contentFrame"
         ></iframe>
-        <div v-if="loadingFull" class="source-dialog-loading">
-          <div class="loading-indicator"></div>
-        </div>
+        <iframe
+          v-else
+          class="source-dialog-frame"
+          :srcdoc="iframeSrcdoc"
+          sandbox="allow-same-origin allow-popups allow-scripts"
+        ></iframe>
       </div>
 
       <footer>
@@ -48,11 +52,6 @@
 </template>
 
 <script>
-import axios from "axios";
-import Config from "~~/services/Config.ts";
-import { AuthService } from "~~/services/AuthService";
-import { handleError } from "~~/services/EventBus";
-
 export default {
   props: {
     modelValue: Boolean,
@@ -62,8 +61,6 @@ export default {
   data() {
     return {
       showFullSource: false,
-      fullSourceContent: "",
-      loadingFull: false,
       supportsFullSource: false,
     };
   },
@@ -73,9 +70,7 @@ export default {
       const bg = isDark ? "#11191f" : "#ffffff";
       const fg = isDark ? "#c2cfd6" : "#1a1a1a";
       const linkColor = isDark ? "#6ea8fe" : "#1a56db";
-      const content = this.showFullSource
-        ? this.fullSourceContent
-        : this.item?.content || "";
+      const content = this.item?.content || "";
       return `<!DOCTYPE html><html><head><style>
         body { margin: 0; padding: 1em; font-family: sans-serif; font-size: 16px; word-break: break-word; overflow-wrap: break-word; background-color: ${bg}; color: ${fg}; }
         img { max-width: 100%; height: auto; }
@@ -89,7 +84,6 @@ export default {
     modelValue(val) {
       if (val) {
         this.showFullSource = false;
-        this.fullSourceContent = "";
         this.loadingFull = false;
         this.supportsFullSource = this.item?.url?.startsWith("http");
         this.$nextTick(() => {
@@ -113,21 +107,9 @@ export default {
         window.open(this.item.url, "_blank");
       }
     },
-    async loadFull() {
+    loadFull() {
       if (!this.item?.url) return;
-      this.loadingFull = true;
-      try {
-        const res = await axios.post(
-          `${(await Config.get()).SERVER_URL}/items/fetch-url`,
-          { url: this.item.url },
-          await AuthService.getAuthHeader(),
-        );
-        this.fullSourceContent = res.data.content || "";
-        this.showFullSource = true;
-      } catch (error) {
-        handleError(error);
-      }
-      this.loadingFull = false;
+      this.showFullSource = true;
     },
     showSummary() {
       this.showFullSource = false;
@@ -174,14 +156,5 @@ dialog {
   min-height: 100%;
   border: none;
   display: block;
-}
-
-.source-dialog-loading {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-overlay);
 }
 </style>
