@@ -10,7 +10,7 @@
     "test": "echo TODO"
   },
   "devDependencies": {
-    "nuxt": "4.4.7"
+    "nuxt": "4.4.8"
   },
   "dependencies": {
     "@picocss/pico": "^2.1.1",

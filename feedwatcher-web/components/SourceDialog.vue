@@ -4,6 +4,7 @@
     ref="dialogRef"
     v-if="modelValue"
     v-on:click.self="close()"
+    v-on:close="onNativeClose()"
   >
     <article>
       <header>
@@ -106,6 +107,9 @@ export default {
   methods: {
     close() {
       this.$refs.dialogRef?.close();
+      this.$emit("update:modelValue", false);
+    },
+    onNativeClose() {
       this.$emit("update:modelValue", false);
     },
     openExternal() {
