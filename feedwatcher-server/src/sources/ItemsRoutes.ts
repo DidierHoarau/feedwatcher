@@ -1,4 +1,5 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
+import axios from "axios";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { SourcesDataGet } from "./SourcesData";
@@ -121,6 +122,34 @@ export class ItemsRoutes {
         userSession.userId,
       );
       return res.status(201).send({});
+    });
+
+    interface PostFetchUrlRequest extends RequestGenericInterface {
+      Body: {
+        url: string;
+      };
+    }
+    fastify.post<PostFetchUrlRequest>("/fetch-url", async (req, res) => {
+      const userSession = await AuthGetUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      if (!req.body.url || !req.body.url.startsWith("http")) {
+        return res.status(400).send({ error: "Invalid URL" });
+      }
+      try {
+        const response = await axios.get(req.body.url, {
+          timeout: 10000,
+          responseType: "text",
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (compatible; FeedWatcher/1.0; +https://github.com/didierhoarau/feedwatcher)",
+          },
+        });
+        return res.status(200).send({ content: response.data });
+      } catch {
+        return res.status(502).send({ error: "Failed to fetch URL" });
+      }
     });
   }
 }

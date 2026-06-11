@@ -130,6 +130,24 @@
             </label>
           </div>
         </div>
+
+        <div class="preference-row">
+          <div class="preference-label">
+            <i class="bi bi-link-45deg"></i>
+            <span>Open Sources</span>
+          </div>
+          <div class="preference-control">
+            <select
+              v-model="openLinksMode"
+              @change="changeOpenLinksMode"
+              class="preference-select"
+            >
+              <option value="external">Open Links</option>
+              <option value="dialog-summary">Dialog (Summary)</option>
+              <option value="dialog-full">Dialog (Full Source)</option>
+            </select>
+          </div>
+        </div>
       </article>
     </div>
   </div>
@@ -164,6 +182,7 @@ export default {
       isChangePasswordStarted: false,
       isDark,
       autoMarkRead: PreferencesService.isAutoMarkReadEnabled(),
+      openLinksMode: PreferencesService.getOpenLinksMode(),
     };
   },
   async created() {
@@ -276,6 +295,9 @@ export default {
           link.click();
         })
         .catch(handleError);
+    },
+    changeOpenLinksMode() {
+      PreferencesService.setOpenLinksMode(this.openLinksMode);
     },
     toggleTheme() {
       PreferencesService.toggleTheme(this);
@@ -417,5 +439,19 @@ export default {
   width: 1.2em;
   height: 1.2em;
   cursor: pointer;
+}
+
+.preference-select {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--font-body);
+  cursor: pointer;
+}
+
+.preference-select:hover {
+  border-color: var(--color-border-hover);
 }
 </style>

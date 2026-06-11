@@ -1,4 +1,5 @@
 const AUTO_MARK_READ_KEY = "auto_mark_read_on_scroll";
+const OPEN_LINKS_MODE_KEY = "open_links_mode";
 
 export const PreferencesService = {
   //
@@ -11,6 +12,14 @@ export const PreferencesService = {
     const newValue = !current;
     localStorage.setItem(AUTO_MARK_READ_KEY, newValue ? "true" : "false");
     return newValue;
+  },
+
+  getOpenLinksMode(): string {
+    return localStorage.getItem(OPEN_LINKS_MODE_KEY) || "external";
+  },
+
+  setOpenLinksMode(mode: string): void {
+    localStorage.setItem(OPEN_LINKS_MODE_KEY, mode);
   },
 
   toggleTheme(vm: any) {
