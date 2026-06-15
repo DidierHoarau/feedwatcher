@@ -1,0 +1,339 @@
+<template>
+  <div class="podcast-player-page">
+    <div class="podcast-player-header">
+      <button class="podcast-back-btn outline secondary" v-on:click="goBack()">
+        <i class="bi bi-arrow-left"></i>
+      </button>
+      <span class="podcast-header-title">Now Playing</span>
+    </div>
+
+    <div v-if="loading" class="loading-indicator"></div>
+
+    <div v-else-if="item" class="podcast-player-body">
+      <div class="podcast-artwork-container">
+        <img
+          v-if="artwork"
+          :src="artwork"
+          :alt="item.title"
+          class="podcast-artwork"
+        />
+        <div v-else class="podcast-artwork-placeholder">
+          <i class="bi bi-headphones"></i>
+        </div>
+      </div>
+
+      <div class="podcast-info">
+        <h3 class="podcast-title">{{ item.title }}</h3>
+        <p v-if="item.sourceName" class="podcast-source">{{ item.sourceName }}</p>
+        <p v-if="item.info?.author" class="podcast-author">{{ item.info.author }}</p>
+        <p v-if="item.info?.subtitle" class="podcast-subtitle">{{ item.info.subtitle }}</p>
+      </div>
+
+      <div class="podcast-timeline">
+        <span class="podcast-time">{{ playerStore.formattedCurrentTime }}</span>
+        <input
+          type="range"
+          class="podcast-scrubber"
+          min="0"
+          :max="playerStore.duration || 0"
+          :value="playerStore.currentTime"
+          step="1"
+          v-on:input="onScrub($event)"
+        />
+        <span class="podcast-time">{{ playerStore.formattedDuration }}</span>
+      </div>
+
+      <div class="podcast-controls">
+        <button
+          class="podcast-skip-btn outline secondary"
+          v-on:click="playerStore.skipBackward(30)"
+          title="Rewind 30 seconds"
+        >
+          <i class="bi bi-skip-backward-fill"></i>
+          <span class="skip-label">30s</span>
+        </button>
+
+        <button
+          class="podcast-play-btn"
+          v-on:click="playerStore.togglePlayPause()"
+        >
+          <i
+            :class="playerStore.isPlaying ? 'bi bi-pause-circle-fill' : 'bi bi-play-circle-fill'"
+          ></i>
+        </button>
+
+        <button
+          class="podcast-skip-btn outline secondary"
+          v-on:click="playerStore.skipForward(30)"
+          title="Forward 30 seconds"
+        >
+          <span class="skip-label">30s</span>
+          <i class="bi bi-skip-forward-fill"></i>
+        </button>
+      </div>
+    </div>
+
+    <div v-else class="podcast-no-item">
+      <i class="bi bi-headphones"></i>
+      <p>No episode selected</p>
+    </div>
+  </div>
+</template>
+
+<script setup>
+const playerStore = PodcastPlayerStore();
+</script>
+
+<script>
+import axios from "axios";
+import Config from "~~/services/Config.ts";
+import { AuthService } from "~~/services/AuthService";
+
+export default {
+  data() {
+    return {
+      item: null,
+      loading: true,
+    };
+  },
+  computed: {
+    artwork() {
+      return (
+        this.item?.info?.artwork ||
+        this.item?.thumbnail ||
+        null
+      );
+    },
+  },
+  async mounted() {
+    const itemId = this.$route.query.itemId;
+    if (!itemId) {
+      // If no itemId in query, check if player already has an item
+      if (playerStore.currentItem) {
+        this.item = playerStore.currentItem;
+      }
+      this.loading = false;
+      return;
+    }
+
+    // If player already has this item loaded, use it
+    if (playerStore.currentItem?.id === itemId) {
+      this.item = playerStore.currentItem;
+      this.loading = false;
+      return;
+    }
+
+    // Fetch item from server
+    try {
+      const res = await axios.get(
+        `${(await Config.get()).SERVER_URL}/items/${itemId}`,
+        await AuthService.getAuthHeader(),
+      );
+      this.item = res.data;
+      // Auto-play the item
+      if (this.item?.info?.audioUrl) {
+        playerStore.play(this.item);
+      }
+    } catch (err) {
+      console.error("Failed to load podcast item", err);
+    }
+    this.loading = false;
+  },
+  methods: {
+    goBack() {
+      if (window.history.length > 1) {
+        useRouter().back();
+      } else {
+        useRouter().push("/");
+      }
+    },
+    onScrub(event) {
+      const value = parseFloat(event.target.value);
+      playerStore.seek(value);
+    },
+  },
+};
+</script>
+
+<style scoped>
+.podcast-player-page {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--space-base);
+}
+
+.podcast-player-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding-bottom: var(--space-md);
+}
+
+.podcast-back-btn {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-lg);
+}
+
+.podcast-header-title {
+  font-size: var(--font-xl);
+  font-weight: 600;
+}
+
+.podcast-player-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xl);
+  padding: var(--space-xl) var(--space-base);
+  max-width: 32em;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.podcast-artwork-container {
+  width: min(20em, 60vw);
+  aspect-ratio: 1;
+  flex-shrink: 0;
+}
+
+.podcast-artwork {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 24px var(--color-shadow-lg);
+}
+
+.podcast-artwork-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  font-size: 6em;
+  color: var(--color-text-muted);
+}
+
+.podcast-info {
+  text-align: center;
+  width: 100%;
+}
+
+.podcast-title {
+  margin: 0 0 var(--space-xs) 0;
+  font-size: var(--font-xl);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.podcast-source {
+  margin: 0;
+  font-size: var(--font-base);
+  color: var(--color-text-muted);
+}
+
+.podcast-author {
+  margin: var(--space-xs) 0 0 0;
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+}
+
+.podcast-subtitle {
+  margin: var(--space-sm) 0 0 0;
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.podcast-timeline {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-sm);
+  align-items: center;
+  width: 100%;
+}
+
+.podcast-time {
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  min-width: 3.5em;
+  text-align: center;
+}
+
+.podcast-scrubber {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+  margin: 0;
+}
+
+.podcast-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xl);
+}
+
+.podcast-play-btn {
+  background: none;
+  border: none;
+  font-size: 4em;
+  cursor: pointer;
+  color: var(--color-primary);
+  padding: 0;
+  line-height: 1;
+  transition: transform 0.1s;
+}
+
+.podcast-play-btn:hover {
+  transform: scale(1.1);
+}
+
+.podcast-play-btn:active {
+  transform: scale(0.95);
+}
+
+.podcast-skip-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-lg);
+  padding: var(--space-xs) var(--space-sm);
+  cursor: pointer;
+}
+
+.podcast-skip-btn i {
+  font-size: 1.2em;
+}
+
+.skip-label {
+  font-size: var(--font-xs);
+  font-weight: 600;
+}
+
+.podcast-no-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  color: var(--color-text-muted);
+  font-size: 4em;
+  padding: var(--space-3xl);
+}
+
+.podcast-no-item p {
+  font-size: var(--font-base);
+  margin: 0;
+}
+</style>

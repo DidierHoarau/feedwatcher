@@ -7,6 +7,7 @@ export enum EventTypes {
   AUTH_UPDATED = "AUTH_UPDATED",
   ALERT_MESSAGE = "ALERT_MESSAGE",
   OPEN_ITEM = "OPEN_ITEM",
+  PLAY_PODCAST = "PLAY_PODCAST",
 }
 
 export function handleError(error: any): void {

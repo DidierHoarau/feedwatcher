@@ -8,7 +8,10 @@ import {
   SearchItemsDataListForUser,
   SearchItemsDataListItemsForLabel,
 } from "./SearchItemsData";
-import { SourceItemsDataUpdateMultipleStatusForUser } from "./SourceItemsData";
+import {
+  SourceItemsDataGetForUser,
+  SourceItemsDataUpdateMultipleStatusForUser,
+} from "./SourceItemsData";
 import { AuthGetUserSession } from "../users/Auth";
 import { OTelRequestSpan } from "../OTelContext";
 
@@ -16,6 +19,27 @@ export class ItemsRoutes {
   //
   public async getRoutes(fastify: FastifyInstance): Promise<void> {
     //
+    interface GetItemIdRequest extends RequestGenericInterface {
+      Params: {
+        itemId: string;
+      };
+    }
+    fastify.get<GetItemIdRequest>("/:itemId", async (req, res) => {
+      const userSession = await AuthGetUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      const sourceItem = await SourceItemsDataGetForUser(
+        OTelRequestSpan(req),
+        req.params.itemId,
+        userSession.userId,
+      );
+      if (!sourceItem) {
+        return res.status(404).send({ error: "Item Not Found" });
+      }
+      return res.status(200).send(sourceItem);
+    });
+
     interface PostSourceItemsSearchRequest extends RequestGenericInterface {
       Body: {
         searchCriteria: string;

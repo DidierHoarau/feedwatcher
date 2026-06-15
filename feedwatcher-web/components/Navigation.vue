@@ -33,6 +33,14 @@
           <span class="nav-label">Rules</span></NuxtLink
         >
       </li>
+      <li v-if="playerStore.hasActiveItem">
+        <NuxtLink
+          :to="{ path: '/podcast', query: { itemId: playerStore.currentItem?.id } }"
+          :class="activeRoute == 'podcast' ? 'active' : 'inactive'"
+          ><i class="bi bi-headphones"></i>
+          <span class="nav-label">Podcast</span></NuxtLink
+        >
+      </li>
       <li>
         <NuxtLink
           to="/users"
@@ -49,6 +57,7 @@
 import { AuthService } from "~~/services/AuthService";
 import { PreferencesService } from "~/services/PreferencesService";
 const authenticationStore = AuthenticationStore();
+const playerStore = PodcastPlayerStore();
 </script>
 
 <script>
