@@ -20,6 +20,7 @@ export class ItemsRoutes {
       Body: {
         searchCriteria: string;
         page: number;
+        beforeDate: string;
         filterStatus: SourceItemStatus;
         labelName: string;
         sourceId: string;
@@ -46,6 +47,9 @@ export class ItemsRoutes {
 
       const searchOptions = new SearchItemsOptions();
       searchOptions.page = req.body.page || 1;
+      if (req.body.beforeDate) {
+        searchOptions.beforeDate = new Date(req.body.beforeDate);
+      }
       searchOptions.filterStatus =
         req.body.filterStatus || SourceItemStatus.unread;
       searchOptions.isSaved = req.body.isSaved ? true : false;
