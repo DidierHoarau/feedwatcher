@@ -57,11 +57,14 @@ export const PodcastPlayerStore = defineStore("PodcastPlayerStore", {
       });
 
       this._startTimer();
-      this._audio.play().then(() => {
-        this.isPlaying = true;
-      }).catch(() => {
-        this.isPlaying = false;
-      });
+      this._audio
+        .play()
+        .then(() => {
+          this.isPlaying = true;
+        })
+        .catch(() => {
+          this.isPlaying = false;
+        });
     },
 
     pause(): void {
@@ -73,11 +76,14 @@ export const PodcastPlayerStore = defineStore("PodcastPlayerStore", {
 
     resume(): void {
       if (this._audio && !this.isPlaying) {
-        this._audio.play().then(() => {
-          this.isPlaying = true;
-        }).catch(() => {
-          this.isPlaying = false;
-        });
+        this._audio
+          .play()
+          .then(() => {
+            this.isPlaying = true;
+          })
+          .catch(() => {
+            this.isPlaying = false;
+          });
       }
     },
 

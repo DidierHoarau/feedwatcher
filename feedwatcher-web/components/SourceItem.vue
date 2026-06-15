@@ -54,7 +54,11 @@
         title="Play episode"
       >
         <i
-          :class="isCurrentlyPlaying ? 'bi bi-pause-circle-fill' : 'bi bi-play-circle-fill'"
+          :class="
+            isCurrentlyPlaying
+              ? 'bi bi-pause-circle-fill'
+              : 'bi bi-play-circle-fill'
+          "
           class="source-action"
         ></i>
       </a>
@@ -215,6 +219,13 @@ export default {
     },
     async openItemLink() {
       await this.markReadStatus("read");
+      // Podcast items with no webpage URL: open the player page instead
+      if (this.isPodcastItem && !this.item.url) {
+        const store = PodcastPlayerStore();
+        store.play(this.item);
+        useRouter().push({ path: "/podcast", query: { itemId: this.item.id } });
+        return;
+      }
       const mode = PreferencesService.getOpenLinksMode();
       if (mode === "external") {
         window.open(this.item.url, "_blank");

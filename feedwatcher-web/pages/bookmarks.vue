@@ -10,7 +10,6 @@
         v-on:click="refreshAndFetch()"
       ></i>
       <i class="bi bi-arrow-clockwise" v-on:click="refresh()"></i>
-      <NuxtLink to="/sources/new"><i class="bi bi-plus-square"></i></NuxtLink>
       <i
         class="bi bi-caret-up-square sources-actions-menu-toggle"
         v-if="menuOpened"

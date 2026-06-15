@@ -35,7 +35,10 @@
       </li>
       <li v-if="playerStore.hasActiveItem">
         <NuxtLink
-          :to="{ path: '/podcast', query: { itemId: playerStore.currentItem?.id } }"
+          :to="{
+            path: '/podcast',
+            query: { itemId: playerStore.currentItem?.id },
+          }"
           :class="activeRoute == 'podcast' ? 'active' : 'inactive'"
           ><i class="bi bi-headphones"></i>
           <span class="nav-label">Podcast</span></NuxtLink

@@ -33,7 +33,10 @@
         <button class="secondary" v-on:click="close()">
           <i class="bi bi-x-lg"></i> Close
         </button>
-        <button class="secondary" v-on:click="openExternal()">
+        <button v-if="isPodcastItem" class="primary" v-on:click="playPodcast()">
+          <i class="bi bi-play-circle-fill"></i> Play Episode
+        </button>
+        <button v-if="item.url" class="secondary" v-on:click="openExternal()">
           <i class="bi bi-box-arrow-up-right"></i> Open
         </button>
         <button
@@ -71,6 +74,9 @@ export default {
     };
   },
   computed: {
+    isPodcastItem() {
+      return !!(this.item?.info?.isPodcast && this.item?.info?.audioUrl);
+    },
     iframeSrcdoc() {
       const isDark = (localStorage.getItem("UI_THEME") || "dark") === "dark";
       const bg = isDark ? "#11191f" : "#ffffff";
@@ -83,6 +89,7 @@ export default {
         a { color: ${linkColor}; }
         pre { overflow-x: auto; }
         table { max-width: 100%; overflow-x: auto; display: block; }
+        iframe[src*="youtube"] { width: 100%; aspect-ratio: 16/9; height: auto; }
       </style></head><body>${content}</body></html>`;
     },
   },
@@ -116,6 +123,13 @@ export default {
       if (this.item?.url) {
         window.open(this.item.url, "_blank");
       }
+    },
+    playPodcast() {
+      if (!this.item?.info?.audioUrl) return;
+      const store = PodcastPlayerStore();
+      store.play(this.item);
+      this.close();
+      useRouter().push({ path: "/podcast", query: { itemId: this.item.id } });
     },
     loadFull() {
       if (!this.item?.url) return;

@@ -24,9 +24,15 @@
 
       <div class="podcast-info">
         <h3 class="podcast-title">{{ item.title }}</h3>
-        <p v-if="item.sourceName" class="podcast-source">{{ item.sourceName }}</p>
-        <p v-if="item.info?.author" class="podcast-author">{{ item.info.author }}</p>
-        <p v-if="item.info?.subtitle" class="podcast-subtitle">{{ item.info.subtitle }}</p>
+        <p v-if="item.sourceName" class="podcast-source">
+          {{ item.sourceName }}
+        </p>
+        <p v-if="item.info?.author" class="podcast-author">
+          {{ item.info.author }}
+        </p>
+        <p v-if="item.info?.subtitle" class="podcast-subtitle">
+          {{ item.info.subtitle }}
+        </p>
       </div>
 
       <div class="podcast-timeline">
@@ -58,7 +64,11 @@
           v-on:click="playerStore.togglePlayPause()"
         >
           <i
-            :class="playerStore.isPlaying ? 'bi bi-pause-circle-fill' : 'bi bi-play-circle-fill'"
+            :class="
+              playerStore.isPlaying
+                ? 'bi bi-pause-circle-fill'
+                : 'bi bi-play-circle-fill'
+            "
           ></i>
         </button>
 
@@ -81,78 +91,64 @@
 </template>
 
 <script setup>
-const playerStore = PodcastPlayerStore();
-</script>
-
-<script>
 import axios from "axios";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 
-export default {
-  data() {
-    return {
-      item: null,
-      loading: true,
-    };
-  },
-  computed: {
-    artwork() {
-      return (
-        this.item?.info?.artwork ||
-        this.item?.thumbnail ||
-        null
-      );
-    },
-  },
-  async mounted() {
-    const itemId = this.$route.query.itemId;
-    if (!itemId) {
-      // If no itemId in query, check if player already has an item
-      if (playerStore.currentItem) {
-        this.item = playerStore.currentItem;
-      }
-      this.loading = false;
-      return;
-    }
+const playerStore = PodcastPlayerStore();
+const route = useRoute();
+const router = useRouter();
 
-    // If player already has this item loaded, use it
-    if (playerStore.currentItem?.id === itemId) {
-      this.item = playerStore.currentItem;
-      this.loading = false;
-      return;
-    }
+const item = ref(null);
+const loading = ref(true);
 
-    // Fetch item from server
-    try {
-      const res = await axios.get(
-        `${(await Config.get()).SERVER_URL}/items/${itemId}`,
-        await AuthService.getAuthHeader(),
-      );
-      this.item = res.data;
-      // Auto-play the item
-      if (this.item?.info?.audioUrl) {
-        playerStore.play(this.item);
-      }
-    } catch (err) {
-      console.error("Failed to load podcast item", err);
+const artwork = computed(() => {
+  return item.value?.info?.artwork || item.value?.thumbnail || null;
+});
+
+function goBack() {
+  if (window.history.length > 1) {
+    router.back();
+  } else {
+    router.push("/");
+  }
+}
+
+function onScrub(event) {
+  const value = parseFloat(event.target.value);
+  playerStore.seek(value);
+}
+
+onMounted(async () => {
+  const itemId = route.query.itemId;
+  if (!itemId) {
+    if (playerStore.currentItem) {
+      item.value = playerStore.currentItem;
     }
-    this.loading = false;
-  },
-  methods: {
-    goBack() {
-      if (window.history.length > 1) {
-        useRouter().back();
-      } else {
-        useRouter().push("/");
-      }
-    },
-    onScrub(event) {
-      const value = parseFloat(event.target.value);
-      playerStore.seek(value);
-    },
-  },
-};
+    loading.value = false;
+    return;
+  }
+
+  if (playerStore.currentItem?.id === itemId) {
+    item.value = playerStore.currentItem;
+    loading.value = false;
+    return;
+  }
+
+  try {
+    const res = await axios.get(
+      `${(await Config.get()).SERVER_URL}/items/${itemId}`,
+      await AuthService.getAuthHeader(),
+    );
+    item.value = res.data;
+    if (item.value?.info?.audioUrl) {
+      playerStore.play(item.value);
+    }
+  } catch (err) {
+    console.error("Failed to load podcast item", err);
+  }
+  loading.value = false;
+});
 </script>
 
 <style scoped>

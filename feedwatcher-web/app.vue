@@ -46,7 +46,10 @@ function openPodcastPage() {
 </script>
 
 <template>
-  <div id="page-layout" :class="{ 'has-mini-player': playerStore.hasActiveItem }">
+  <div
+    id="page-layout"
+    :class="{ 'has-mini-player': playerStore.hasActiveItem }"
+  >
     <header>
       <Navigation />
     </header>
@@ -63,8 +66,14 @@ function openPodcastPage() {
       v-on:click="openPodcastPage()"
     >
       <img
-        v-if="playerStore.currentItem?.info?.artwork || playerStore.currentItem?.thumbnail"
-        :src="playerStore.currentItem?.info?.artwork || playerStore.currentItem?.thumbnail"
+        v-if="
+          playerStore.currentItem?.info?.artwork ||
+          playerStore.currentItem?.thumbnail
+        "
+        :src="
+          playerStore.currentItem?.info?.artwork ||
+          playerStore.currentItem?.thumbnail
+        "
         class="mini-player-artwork"
         alt=""
       />
@@ -84,7 +93,9 @@ function openPodcastPage() {
         v-on:click.stop="playerStore.togglePlayPause()"
       >
         <i
-          :class="playerStore.isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill'"
+          :class="
+            playerStore.isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill'
+          "
         ></i>
       </button>
     </div>

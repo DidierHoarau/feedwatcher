@@ -86,9 +86,7 @@ module.exports = {
   fetchLatest: async (source, lastSourceItemSaved) => {
     const feed = parseFeed((await axios.get(source.info.url)).data);
     const feedArtwork =
-      getItunesImageUrl(feed.element) ||
-      (feed.image && feed.image.url) ||
-      null;
+      getItunesImageUrl(feed.element) || (feed.image && feed.image.url) || null;
     const feedAuthor = getItunesValue(feed.element, "author");
 
     const sourceItems = [];
@@ -98,7 +96,13 @@ module.exports = {
       if (!audioUrl) return;
 
       const sourceItem = {};
-      sourceItem.url = item.url || audioUrl;
+      // Use the episode webpage URL only; never fall back to audio URL here
+      // (audio URL is stored separately in info.audioUrl)
+      if (item.url) {
+        sourceItem.url = item.url;
+      } else {
+        sourceItem.url = "";
+      }
       sourceItem.title = item.title || "Untitled Episode";
       sourceItem.content = item.content || item.description || "";
       sourceItem.datePublished = new Date(item.published);
