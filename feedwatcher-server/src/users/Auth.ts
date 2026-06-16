@@ -18,7 +18,29 @@ export async function AuthInit(context: Span, configIn: Config) {
     span,
     "SELECT * FROM metadata WHERE type='auth_token'",
   );
-  if (authKeyRaw.length == 0) {
+
+  // Check if a JWT_KEY was explicitly provided via config file or environment
+  // variable (i.e. it is no longer the empty-string default).
+  const configHasKey = configIn.JWT_KEY !== "";
+
+  if (configHasKey) {
+    // Config-provided key takes precedence. Persist it to the DB so that
+    // subsequent starts without an explicit config value stay consistent.
+    if (authKeyRaw.length === 0) {
+      await DbUtilsQuerySQL(
+        span,
+        "INSERT INTO metadata (type, value, dateCreated) VALUES ('auth_token', ?, ?)",
+        [configIn.JWT_KEY, new Date().toISOString()],
+      );
+    } else if (authKeyRaw[0].value !== configIn.JWT_KEY) {
+      await DbUtilsQuerySQL(
+        span,
+        "UPDATE metadata SET value = ? WHERE type = 'auth_token'",
+        [configIn.JWT_KEY],
+      );
+    }
+  } else if (authKeyRaw.length === 0) {
+    // No config key and no DB key – generate a fresh one and persist it.
     configIn.JWT_KEY = uuidv4();
     await DbUtilsQuerySQL(
       span,
@@ -26,6 +48,7 @@ export async function AuthInit(context: Span, configIn: Config) {
       [configIn.JWT_KEY, new Date().toISOString()],
     );
   } else {
+    // No config key – use the one already stored in the database.
     configIn.JWT_KEY = authKeyRaw[0].value;
   }
   span.end();

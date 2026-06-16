@@ -1,6 +1,9 @@
 import { ConfigBase } from "@devopsplaybook.io/common-utils";
 
 export class Config extends ConfigBase {
+  // Override the base-class random default so we can detect whether a real
+  // value was provided via config file or environment variable.
+  public JWT_KEY = "";
   public SOURCE_FETCH_FREQUENCY = 30 * 60 * 1000;
   public PROCESSORS_SYSTEM = "processors-system";
   public PROCESSORS_USER = "processors-user";
@@ -9,9 +12,12 @@ export class Config extends ConfigBase {
   public LLM_MODEL = "deepseek-chat";
   public SUMMARY_SCHEDULE_CRON = "0 0 * * *";
   public PROCESSOR_CONCURRENCY = 2;
+  public PODCAST_INDEX_API_KEY = "";
+  public PODCAST_INDEX_API_SECRET = "";
 
   constructor() {
     super("feedwatcher-server");
+    this.addConfigField({ field: "JWT_KEY", sensitive: true });
     this.addConfigField({ field: "SOURCE_FETCH_FREQUENCY" });
     this.addConfigField({ field: "PROCESSORS_SYSTEM" });
     this.addConfigField({ field: "PROCESSORS_USER" });
@@ -20,5 +26,7 @@ export class Config extends ConfigBase {
     this.addConfigField({ field: "LLM_MODEL" });
     this.addConfigField({ field: "SUMMARY_SCHEDULE_CRON" });
     this.addConfigField({ field: "PROCESSOR_CONCURRENCY" });
+    this.addConfigField({ field: "PODCAST_INDEX_API_KEY" });
+    this.addConfigField({ field: "PODCAST_INDEX_API_SECRET", sensitive: true });
   }
 }
