@@ -51,17 +51,17 @@
 
       <div class="podcast-controls">
         <button
-          class="podcast-skip-btn outline secondary"
+          class="podcast-ctrl-btn outline secondary"
           v-on:click="playerStore.skipBackward(30)"
           title="Rewind 30 seconds"
         >
           <i class="bi bi-skip-backward-fill"></i>
-          <span class="skip-label">30s</span>
         </button>
 
         <button
-          class="podcast-play-btn"
-          v-on:click="playerStore.togglePlayPause()"
+          class="podcast-ctrl-btn outline secondary"
+          v-on:click="handlePlayPause()"
+          :title="playerStore.isPlaying ? 'Pause' : 'Play'"
         >
           <i
             :class="
@@ -73,12 +73,19 @@
         </button>
 
         <button
-          class="podcast-skip-btn outline secondary"
+          class="podcast-ctrl-btn outline secondary"
           v-on:click="playerStore.skipForward(30)"
           title="Forward 30 seconds"
         >
-          <span class="skip-label">30s</span>
           <i class="bi bi-skip-forward-fill"></i>
+        </button>
+
+        <button
+          class="podcast-ctrl-btn outline secondary"
+          v-on:click="stopPlayback()"
+          title="Stop and clear"
+        >
+          <i class="bi bi-stop-circle-fill"></i>
         </button>
       </div>
     </div>
@@ -117,6 +124,19 @@ function goBack() {
 function onScrub(event) {
   const value = parseFloat(event.target.value);
   playerStore.seek(value);
+}
+
+function handlePlayPause() {
+  if (playerStore.isPlaying) {
+    playerStore.pause();
+  } else if (item.value?.info?.audioUrl) {
+    playerStore.play(item.value);
+  }
+}
+
+function stopPlayback() {
+  playerStore.stop();
+  item.value = null;
 }
 
 onMounted(async () => {
@@ -277,44 +297,22 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-xl);
+  gap: var(--space-md);
 }
 
-.podcast-play-btn {
-  background: none;
-  border: none;
-  font-size: 4em;
-  cursor: pointer;
-  color: var(--color-primary);
-  padding: 0;
-  line-height: 1;
-  transition: transform 0.1s;
-}
-
-.podcast-play-btn:hover {
-  transform: scale(1.1);
-}
-
-.podcast-play-btn:active {
-  transform: scale(0.95);
-}
-
-.podcast-skip-btn {
+.podcast-ctrl-btn {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  font-size: var(--font-lg);
-  padding: var(--space-xs) var(--space-sm);
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  font-size: var(--font-xl);
   cursor: pointer;
 }
 
-.podcast-skip-btn i {
-  font-size: 1.2em;
-}
-
-.skip-label {
-  font-size: var(--font-xs);
-  font-weight: 600;
+.podcast-ctrl-btn i {
+  font-size: 1.4em;
 }
 
 .podcast-no-item {

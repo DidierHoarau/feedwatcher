@@ -43,6 +43,10 @@ function openPodcastPage() {
     });
   }
 }
+
+function stopMiniPlayer() {
+  playerStore.stop();
+}
 </script>
 
 <template>
@@ -98,6 +102,13 @@ function openPodcastPage() {
           "
         ></i>
       </button>
+      <button
+        class="mini-player-stop-btn"
+        v-on:click.stop="stopMiniPlayer()"
+        title="Stop"
+      >
+        <i class="bi bi-stop-fill"></i>
+      </button>
     </div>
   </div>
 </template>
@@ -126,7 +137,7 @@ main {
 /* Mini Player */
 .mini-player {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-md);
@@ -190,5 +201,20 @@ main {
 
 .mini-player-play-btn:hover {
   color: var(--color-primary-hover);
+}
+
+.mini-player-stop-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.5rem;
+  color: var(--color-text-muted);
+  padding: 0 var(--space-xs);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.mini-player-stop-btn:hover {
+  color: var(--color-text);
 }
 </style>
