@@ -4,13 +4,27 @@ const { parseFeed } = require("@rowanmanning/feed-parser");
 
 /**
  * Extract the audio enclosure URL from a feed item's raw XML element.
- * Podcast RSS uses <enclosure url="..." type="audio/mpeg" length="..."/>.
+ * Only returns a URL if the enclosure is an audio type (type="audio/...").
+ * Falls back to checking the URL extension if the type attribute is missing.
  */
 function getEnclosureUrl(item) {
   const enclosure = item.element.findElementWithName("enclosure");
-  if (enclosure) {
-    return enclosure.getAttribute("url") || null;
+  if (!enclosure) return null;
+
+  const type = enclosure.getAttribute("type") || "";
+  const url = enclosure.getAttribute("url") || "";
+
+  // Explicit audio MIME type
+  if (type.startsWith("audio/")) return url || null;
+
+  // If type is present but not audio (e.g. video/, image/), skip
+  if (type && !type.startsWith("audio/")) return null;
+
+  // No type attribute — check URL extension as fallback
+  if (url && /\.(mp3|m4a|ogg|opus|wav|flac|aac)(\?|$)/i.test(url)) {
+    return url;
   }
+
   return null;
 }
 
@@ -48,11 +62,12 @@ function getItunesImageUrl(element) {
 
 /**
  * Check if a feed is a podcast (has audio enclosures).
+ * Only counts enclosures with audio MIME types or audio file extensions.
  */
 function isPodcastFeed(feed) {
   if (!feed.items || feed.items.length === 0) return false;
   return feed.items.some((item) => {
-    return item.element.hasElementWithName("enclosure");
+    return getEnclosureUrl(item) !== null;
   });
 }
 
