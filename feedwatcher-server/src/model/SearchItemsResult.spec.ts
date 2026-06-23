@@ -7,6 +7,7 @@ describe("SearchItemsResult", () => {
     const result = new SearchItemsResult();
     expect(result.sourceItems).toEqual([]);
     expect(result.pageHasMore).toBe(false);
+    expect(result.nextCursor).toBe("");
   });
 
   test("should accept items", () => {
@@ -22,5 +23,11 @@ describe("SearchItemsResult", () => {
     const result = new SearchItemsResult();
     result.pageHasMore = true;
     expect(result.pageHasMore).toBe(true);
+  });
+
+  test("should accept a nextCursor", () => {
+    const result = new SearchItemsResult();
+    result.nextCursor = "2024-01-15T10:00:00.000Z";
+    expect(result.nextCursor).toBe("2024-01-15T10:00:00.000Z");
   });
 });

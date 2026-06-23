@@ -46,6 +46,22 @@
     </div>
 
     <div class="sourceitem-layout-link">
+      <a
+        v-if="isPodcastItem"
+        href="#"
+        v-on:click.prevent="playPodcast()"
+        class="podcast-play-icon"
+        title="Play episode"
+      >
+        <i
+          :class="
+            isCurrentlyPlaying
+              ? 'bi bi-pause-circle-fill'
+              : 'bi bi-play-circle-fill'
+          "
+          class="source-action"
+        ></i>
+      </a>
       <a href="#" v-on:click.prevent="openItemLink()"
         ><i class="bi bi-link source-action"></i
       ></a>
@@ -98,6 +114,13 @@ export default {
     };
   },
   computed: {
+    isPodcastItem() {
+      return !!(this.item?.info?.isPodcast && this.item?.info?.audioUrl);
+    },
+    isCurrentlyPlaying() {
+      const store = PodcastPlayerStore();
+      return store.currentItem?.id === this.item?.id && store.isPlaying;
+    },
     iframeContent() {
       const isDark = (localStorage.getItem("UI_THEME") || "dark") === "dark";
       const bg = isDark ? "#11191f" : "#ffffff";
@@ -156,6 +179,15 @@ export default {
       .catch(handleError);
   },
   methods: {
+    async playPodcast() {
+      const store = PodcastPlayerStore();
+      if (this.isCurrentlyPlaying) {
+        store.pause();
+      } else {
+        store.play(this.item);
+        useRouter().push({ path: "/podcast", query: { itemId: this.item.id } });
+      }
+    },
     async clickedItem() {
       this.isActive = !this.isActive;
       if (this.isActive) {
@@ -187,6 +219,13 @@ export default {
     },
     async openItemLink() {
       await this.markReadStatus("read");
+      // Podcast items with no webpage URL: open the player page instead
+      if (this.isPodcastItem && !this.item.url) {
+        const store = PodcastPlayerStore();
+        store.play(this.item);
+        useRouter().push({ path: "/podcast", query: { itemId: this.item.id } });
+        return;
+      }
       const mode = PreferencesService.getOpenLinksMode();
       if (mode === "external") {
         window.open(this.item.url, "_blank");
@@ -291,6 +330,13 @@ export default {
   grid-column: 4;
   text-align: right;
   padding-left: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-xs);
+}
+.podcast-play-icon {
+  color: var(--color-primary);
 }
 .sourceitem-layout-content {
   grid-row: 3;

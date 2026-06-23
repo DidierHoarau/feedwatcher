@@ -10,7 +10,6 @@
         v-on:click="refreshAndFetch()"
       ></i>
       <i class="bi bi-arrow-clockwise" v-on:click="refresh()"></i>
-      <NuxtLink to="/sources/new"><i class="bi bi-plus-square"></i></NuxtLink>
       <i
         class="bi bi-caret-up-square sources-actions-menu-toggle"
         v-if="menuOpened"
@@ -68,7 +67,7 @@
         >
           <LazySourceItem class="fade-in-fast" :item="sourceItem" />
         </div>
-        <div v-on:click="pageNext()" id="sources-items-list-page-next">
+        <div id="sources-items-list-page-next">
           <Loading v-if="sourceItemsStore.loading" />
           <span
             v-if="
@@ -77,10 +76,6 @@
             "
             >No items</span
           >
-          <i
-            v-if="sourceItemsStore.pageHasMore && !sourceItemsStore.loading"
-            class="bi bi-caret-down"
-          ></i>
         </div>
       </div>
     </div>
@@ -108,6 +103,7 @@ export default {
       filterStatus: "all",
       markingUnreead: false,
       searchText: "",
+      scrollObserver: null,
     };
   },
   async created() {
@@ -124,11 +120,19 @@ export default {
     });
     this.onRootSelected();
   },
+  mounted() {
+    this.setupInfiniteScroll();
+  },
+  beforeUnmount() {
+    if (this.scrollObserver) {
+      this.scrollObserver.disconnect();
+      this.scrollObserver = null;
+    }
+  },
   methods: {
     async onSourceSelected(source) {
       const sourceItemsStore = SourceItemsStore();
       sourceItemsStore.selectedSource = source.sourceId;
-      sourceItemsStore.page = 1;
       sourceItemsStore.searchCriteria = "sourceId";
       sourceItemsStore.searchCriteriaValue = source.sourceId;
       sourceItemsStore.filterStatus = this.filterStatus;
@@ -138,7 +142,6 @@ export default {
     async onLabelSelected(source) {
       const sourceItemsStore = SourceItemsStore();
       sourceItemsStore.selectedSource = null;
-      sourceItemsStore.page = 1;
       sourceItemsStore.searchCriteria = "labelName";
       sourceItemsStore.searchCriteriaValue = source.labelName;
       sourceItemsStore.filterStatus = this.filterStatus;
@@ -148,7 +151,6 @@ export default {
     async onRootSelected() {
       const sourceItemsStore = SourceItemsStore();
       sourceItemsStore.selectedSource = null;
-      sourceItemsStore.page = 1;
       sourceItemsStore.searchCriteria = "all";
       sourceItemsStore.filterStatus = this.filterStatus;
       sourceItemsStore.filterSaved = true;
@@ -211,16 +213,27 @@ export default {
     onSearchInput: debounce(function () {
       const sourceItemsStore = SourceItemsStore();
       sourceItemsStore.searchPattern = this.searchText;
-      sourceItemsStore.page = 1;
       sourceItemsStore.fetch();
     }, 300),
-    pageNext() {
-      const sourceItemsStore = SourceItemsStore();
-      if (!sourceItemsStore.pageHasMore) {
-        return;
+    setupInfiniteScroll() {
+      if (this.scrollObserver) {
+        this.scrollObserver.disconnect();
       }
-      sourceItemsStore.page++;
-      sourceItemsStore.fetchMore();
+      const store = SourceItemsStore();
+      const scrollRoot = document.getElementById("sources-items-list-page");
+      const sentinel = document.getElementById("sources-items-list-page-next");
+      this.scrollObserver = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (entry.isIntersecting && store.pageHasMore && !store.loadingMore) {
+            store.fetchMore();
+          }
+        },
+        { root: scrollRoot, rootMargin: "0px" },
+      );
+      if (sentinel) {
+        this.scrollObserver.observe(sentinel);
+      }
     },
     toggleUnreadFIlter() {
       if (this.filterStatus === "all") {
@@ -230,7 +243,6 @@ export default {
       }
       const sourceItemsStore = SourceItemsStore();
       sourceItemsStore.filterStatus = this.filterStatus;
-      sourceItemsStore.page = 1;
       sourceItemsStore.fetch();
     },
   },

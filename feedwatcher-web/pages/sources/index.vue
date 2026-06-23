@@ -71,7 +71,7 @@
           :item="sourceItem"
         />
       </div>
-      <div v-on:click="pageNext()" id="sources-items-list-page-next">
+      <div id="sources-items-list-page-next">
         <Loading v-if="sourceItemsStore.loading" />
         <span
           v-if="
@@ -80,10 +80,6 @@
           "
           >No items</span
         >
-        <i
-          v-if="sourceItemsStore.pageHasMore && !sourceItemsStore.loading"
-          class="bi bi-caret-down"
-        ></i>
       </div>
     </div>
   </div>
@@ -110,6 +106,7 @@ export default {
       filterStatus: "unread",
       markingUnreead: false,
       searchText: "",
+      scrollObserver: null,
     };
   },
   async created() {
@@ -128,9 +125,6 @@ export default {
     if (useRoute().query.filterStatus) {
       this.filterStatus = useRoute().query.filterStatus;
     }
-    if (useRoute().query.filterStatus) {
-      this.filterStatus = useRoute().query.filterStatus;
-    }
     if (useRoute().query.sourceId) {
       this.onSourceSelected({ sourceId: useRoute().query.sourceId });
     } else if (useRoute().query.labelName) {
@@ -139,11 +133,19 @@ export default {
       this.onRootSelected();
     }
   },
+  mounted() {
+    this.setupInfiniteScroll();
+  },
+  beforeUnmount() {
+    if (this.scrollObserver) {
+      this.scrollObserver.disconnect();
+      this.scrollObserver = null;
+    }
+  },
   methods: {
     async onSourceSelected(source) {
       const sourceItemsStore = SourceItemsStore();
       sourceItemsStore.selectedSource = source.sourceId;
-      sourceItemsStore.page = 1;
       sourceItemsStore.searchCriteria = "sourceId";
       sourceItemsStore.searchCriteriaValue = source.sourceId;
       sourceItemsStore.filterStatus = this.filterStatus;
@@ -155,7 +157,6 @@ export default {
     async onLabelSelected(source) {
       const sourceItemsStore = SourceItemsStore();
       sourceItemsStore.selectedSource = null;
-      sourceItemsStore.page = 1;
       sourceItemsStore.searchCriteria = "labelName";
       sourceItemsStore.searchCriteriaValue = source.labelName;
       sourceItemsStore.filterStatus = this.filterStatus;
@@ -167,7 +168,6 @@ export default {
     async onRootSelected() {
       const sourceItemsStore = SourceItemsStore();
       sourceItemsStore.selectedSource = null;
-      sourceItemsStore.page = 1;
       sourceItemsStore.searchCriteria = "all";
       sourceItemsStore.filterStatus = this.filterStatus;
       sourceItemsStore.filterSaved = false;
@@ -247,22 +247,32 @@ export default {
     onSearchInput: debounce(function () {
       const sourceItemsStore = SourceItemsStore();
       sourceItemsStore.searchPattern = this.searchText;
-      sourceItemsStore.page = 1;
       sourceItemsStore.fetch();
     }, 300),
     clearSearchInput() {
       this.searchText = "";
       SourceItemsStore().searchPattern = "";
-      SourceItemsStore().page = 1;
       SourceItemsStore().fetch();
     },
-    pageNext() {
-      const sourceItemsStore = SourceItemsStore();
-      if (!sourceItemsStore.pageHasMore) {
-        return;
+    setupInfiniteScroll() {
+      if (this.scrollObserver) {
+        this.scrollObserver.disconnect();
       }
-      sourceItemsStore.page++;
-      sourceItemsStore.fetchMore();
+      const store = SourceItemsStore();
+      const scrollRoot = document.getElementById("sources-items-list-page");
+      const sentinel = document.getElementById("sources-items-list-page-next");
+      this.scrollObserver = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (entry.isIntersecting && store.pageHasMore && !store.loadingMore) {
+            store.fetchMore();
+          }
+        },
+        { root: scrollRoot, rootMargin: "0px" },
+      );
+      if (sentinel) {
+        this.scrollObserver.observe(sentinel);
+      }
     },
     toggleUnreadFIlter() {
       if (this.filterStatus === "all") {
@@ -272,7 +282,6 @@ export default {
       }
       const sourceItemsStore = SourceItemsStore();
       sourceItemsStore.filterStatus = this.filterStatus;
-      sourceItemsStore.page = 1;
       sourceItemsStore.fetch();
     },
   },

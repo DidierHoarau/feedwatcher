@@ -18,4 +18,16 @@ describe("SearchItemsOptions", () => {
     options.pattern = "";
     expect(options.pattern).toBe("");
   });
+
+  test("should default with no beforeDate", () => {
+    const options = new SearchItemsOptions();
+    expect(options.beforeDate).toBeUndefined();
+  });
+
+  test("should accept a beforeDate", () => {
+    const options = new SearchItemsOptions();
+    const date = new Date("2024-01-15T10:00:00Z");
+    options.beforeDate = date;
+    expect(options.beforeDate).toBe(date);
+  });
 });

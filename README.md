@@ -112,6 +112,16 @@ Configuration values can be set via environment variables or through the `config
 | ------------------------ | ----------------------------------------------- | ------------------- |
 | `JWT_VALIDITY_DURATION`  | JWT token validity duration in seconds          | `8035200` (93 days) |
 | `SOURCE_FETCH_FREQUENCY` | Interval between source fetches in milliseconds | `1800000` (30 min)  |
+| `PROCESSOR_CONCURRENCY`  | Number of concurrent source fetches             | `2`                 |
+
+## Podcast Search
+
+The application supports searching for podcasts via the [Podcast Index](https://podcastindex.org/) API. This feature is enabled when both `PODCAST_INDEX_API_KEY` and `PODCAST_INDEX_API_SECRET` are set. When not configured, the "Search Podcasts" option is hidden from the UI.
+
+| Variable                   | Description              | Default |
+| -------------------------- | ------------------------ | ------- |
+| `PODCAST_INDEX_API_KEY`    | Podcast Index API key    |         |
+| `PODCAST_INDEX_API_SECRET` | Podcast Index API secret |         |
 
 ## LLM (News Summary)
 

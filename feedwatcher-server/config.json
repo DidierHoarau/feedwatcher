@@ -1,6 +1,5 @@
 {
   "CORS_POLICY_ORIGIN": "*",
-  "JWT_KEY": "dev",
   "SOURCE_FETCH_FREQUENCY": 3600000,
   "processors": {
     "system": "processors-system",

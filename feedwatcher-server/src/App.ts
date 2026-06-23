@@ -105,7 +105,12 @@ Promise.resolve().then(async () => {
     prefix: "/api/summary",
   });
   fastify.get("/api/status", async () => {
-    return { started: true };
+    return {
+      started: true,
+      podcastSearchEnabled: !!(
+        config.PODCAST_INDEX_API_KEY && config.PODCAST_INDEX_API_SECRET
+      ),
+    };
   });
 
   fastify.register(fastifyStatic, {
