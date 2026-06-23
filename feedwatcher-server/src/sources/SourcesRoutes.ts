@@ -119,16 +119,20 @@ export class SourcesRoutes {
             image?: string;
             artwork?: string;
           }) => ({
-          title: f.title || "",
-          url: f.url || "",
-          description: f.description || "",
-          author: f.author || "",
-          image: f.image || f.artwork || "",
-        }));
+            title: f.title || "",
+            url: f.url || "",
+            description: f.description || "",
+            author: f.author || "",
+            image: f.image || f.artwork || "",
+          }),
+        );
 
         return res.status(200).send({ feeds });
       } catch (err: unknown) {
-        const e = err as { response?: { status?: number; data?: { description?: string } }; message?: string };
+        const e = err as {
+          response?: { status?: number; data?: { description?: string } };
+          message?: string;
+        };
         const status = e.response?.status || 500;
         const message =
           e.response?.data?.description ||
