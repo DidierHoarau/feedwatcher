@@ -3,6 +3,7 @@ import { EventBus, EventTypes } from "~~/services/EventBus";
 
 const showSourceDialog = ref(false);
 const dialogItem = ref(null);
+const dialogFullSource = ref(false);
 const playerStore = PodcastPlayerStore();
 
 function updateAppHeight() {
@@ -23,8 +24,9 @@ onMounted(() => {
   }
 
   // Listen for open item events
-  EventBus.on(EventTypes.OPEN_ITEM, (item) => {
+  EventBus.on(EventTypes.OPEN_ITEM, ({ item, showFullSource }) => {
     dialogItem.value = item;
+    dialogFullSource.value = showFullSource ?? false;
     showSourceDialog.value = true;
   });
 });
@@ -61,7 +63,7 @@ function stopMiniPlayer() {
       <NuxtPage />
     </main>
     <AlertMessages id="page-alert-messages" />
-    <SourceDialog v-model="showSourceDialog" :item="dialogItem" />
+    <SourceDialog v-model="showSourceDialog" :item="dialogItem" :initial-full="dialogFullSource" />
 
     <!-- Mini Player Bar -->
     <div

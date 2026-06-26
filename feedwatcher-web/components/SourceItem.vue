@@ -189,9 +189,23 @@ export default {
       }
     },
     async clickedItem() {
-      this.isActive = !this.isActive;
-      if (this.isActive) {
-        this.markReadStatus("read");
+      const mode = PreferencesService.getOpenDetailsMode();
+      switch (mode) {
+        case "expand":
+          this.isActive = !this.isActive;
+          if (this.isActive) {
+            this.markReadStatus("read");
+          }
+          break;
+        case "dialog-summary":
+          this.openItemDialog(false);
+          break;
+        case "dialog-full":
+          this.openItemDialog(true);
+          break;
+        case "external":
+          this.openItemExternal();
+          break;
       }
     },
     async saveItem() {
@@ -227,10 +241,24 @@ export default {
         return;
       }
       const mode = PreferencesService.getOpenLinksMode();
-      if (mode === "external") {
+      switch (mode) {
+        case "dialog-summary":
+          this.openItemDialog(false);
+          break;
+        case "dialog-full":
+          this.openItemDialog(true);
+          break;
+        case "external":
+          this.openItemExternal();
+          break;
+      }
+    },
+    openItemDialog(showFullSource) {
+      EventBus.emit(EventTypes.OPEN_ITEM, { item: this.item, showFullSource });
+    },
+    openItemExternal() {
+      if (this.item.url) {
         window.open(this.item.url, "_blank");
-      } else {
-        EventBus.emit(EventTypes.OPEN_ITEM, this.item);
       }
     },
     async markReadStatus(status) {

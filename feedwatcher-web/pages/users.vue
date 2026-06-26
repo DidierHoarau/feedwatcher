@@ -133,8 +133,27 @@
 
         <div class="preference-row">
           <div class="preference-label">
+            <i class="bi bi-card-heading"></i>
+            <span>Open Source Details</span>
+          </div>
+          <div class="preference-control">
+            <select
+              v-model="openDetailsMode"
+              @change="changeOpenDetailsMode"
+              class="preference-select"
+            >
+              <option value="expand">Expand</option>
+              <option value="dialog-summary">Dialog (Summary)</option>
+              <option value="dialog-full">Dialog (Full Source)</option>
+              <option value="external">Open External Link</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="preference-row">
+          <div class="preference-label">
             <i class="bi bi-link-45deg"></i>
-            <span>Open Sources</span>
+            <span>Open Source Link</span>
           </div>
           <div class="preference-control">
             <select
@@ -142,9 +161,9 @@
               @change="changeOpenLinksMode"
               class="preference-select"
             >
-              <option value="external">Open Links</option>
               <option value="dialog-summary">Dialog (Summary)</option>
               <option value="dialog-full">Dialog (Full Source)</option>
+              <option value="external">Open External Link</option>
             </select>
           </div>
         </div>
@@ -182,6 +201,7 @@ export default {
       isChangePasswordStarted: false,
       isDark,
       autoMarkRead: PreferencesService.isAutoMarkReadEnabled(),
+      openDetailsMode: PreferencesService.getOpenDetailsMode(),
       openLinksMode: PreferencesService.getOpenLinksMode(),
     };
   },
@@ -295,6 +315,9 @@ export default {
           link.click();
         })
         .catch(handleError);
+    },
+    changeOpenDetailsMode() {
+      PreferencesService.setOpenDetailsMode(this.openDetailsMode);
     },
     changeOpenLinksMode() {
       PreferencesService.setOpenLinksMode(this.openLinksMode);
