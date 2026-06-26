@@ -63,7 +63,11 @@ function stopMiniPlayer() {
       <NuxtPage />
     </main>
     <AlertMessages id="page-alert-messages" />
-    <SourceDialog v-model="showSourceDialog" :item="dialogItem" :initial-full="dialogFullSource" />
+    <SourceDialog
+      v-model="showSourceDialog"
+      :item="dialogItem"
+      :initial-full="dialogFullSource"
+    />
 
     <!-- Mini Player Bar -->
     <div
