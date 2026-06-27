@@ -59,12 +59,11 @@
 </template>
 
 <script>
-import { PreferencesService } from "~~/services/PreferencesService";
-
 export default {
   props: {
     modelValue: Boolean,
     item: { type: Object, default: null },
+    initialFull: { type: Boolean, default: false },
   },
   emits: ["update:modelValue"],
   data() {
@@ -96,9 +95,7 @@ export default {
   watch: {
     modelValue(val) {
       if (val) {
-        this.showFullSource =
-          PreferencesService.getOpenLinksMode() === "dialog-full";
-        this.loadingFull = false;
+        this.showFullSource = this.initialFull;
         this.supportsFullSource = this.item?.url?.startsWith("http");
         this.$nextTick(() => {
           if (this.$refs.dialogRef) {

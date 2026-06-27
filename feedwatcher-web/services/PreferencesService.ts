@@ -1,4 +1,5 @@
 const AUTO_MARK_READ_KEY = "auto_mark_read_on_scroll";
+const OPEN_DETAILS_MODE_KEY = "open_details_mode";
 const OPEN_LINKS_MODE_KEY = "open_links_mode";
 
 export const PreferencesService = {
@@ -14,8 +15,18 @@ export const PreferencesService = {
     return newValue;
   },
 
+  // Open Source Details — what happens when clicking the item card
+  getOpenDetailsMode(): string {
+    return localStorage.getItem(OPEN_DETAILS_MODE_KEY) || "expand";
+  },
+
+  setOpenDetailsMode(mode: string): void {
+    localStorage.setItem(OPEN_DETAILS_MODE_KEY, mode);
+  },
+
+  // Open Source Link — what happens when clicking the item link icon
   getOpenLinksMode(): string {
-    return localStorage.getItem(OPEN_LINKS_MODE_KEY) || "external";
+    return localStorage.getItem(OPEN_LINKS_MODE_KEY) || "dialog-summary";
   },
 
   setOpenLinksMode(mode: string): void {
