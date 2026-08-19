@@ -1,6 +1,12 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   ssr: false,
+  vite: {
+    build: {
+      // lightningcss minifier fails on bootstrap-icons CSS
+      cssMinify: "esbuild",
+    },
+  },
   app: {
     head: {
       charset: "utf-16",
