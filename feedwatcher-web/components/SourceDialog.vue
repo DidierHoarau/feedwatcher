@@ -59,6 +59,11 @@
 </template>
 
 <script>
+import axios from "axios";
+import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
+import Config from "~~/services/Config.ts";
+import { AuthService } from "~~/services/AuthService";
+
 export default {
   props: {
     modelValue: Boolean,
@@ -97,6 +102,7 @@ export default {
       if (val) {
         this.showFullSource = this.initialFull;
         this.supportsFullSource = this.item?.url?.startsWith("http");
+        this.markItemAsRead();
         this.$nextTick(() => {
           if (this.$refs.dialogRef) {
             this.$refs.dialogRef.showModal();
@@ -116,8 +122,25 @@ export default {
     onNativeClose() {
       this.$emit("update:modelValue", false);
     },
+    async markItemAsRead() {
+      if (!this.item || this.item.status === "read") {
+        return;
+      }
+      axios
+        .put(
+          `${(await Config.get()).SERVER_URL}/items/status`,
+          { status: "read", itemIds: [this.item.id] },
+          await AuthService.getAuthHeader(),
+        )
+        .then((res) => {
+          this.item.status = "read";
+          EventBus.emit(EventTypes.ITEMS_UPDATED, {});
+        })
+        .catch(handleError);
+    },
     openExternal() {
       if (this.item?.url) {
+        this.markItemAsRead();
         window.open(this.item.url, "_blank");
       }
     },
