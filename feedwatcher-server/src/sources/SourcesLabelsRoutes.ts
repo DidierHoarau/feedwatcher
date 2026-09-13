@@ -6,6 +6,8 @@ import {
 import { SourceLabelsDataListForUser } from "./SourceLabelsData";
 import { AuthGetUserSession } from "../users/Auth";
 import { OTelRequestSpan } from "../OTelContext";
+import { SourceGetHealth } from "../model/SourceHealth";
+import { Config } from "../Config";
 
 export class SourcesLabelsRoutes {
   //
@@ -20,6 +22,16 @@ export class SourcesLabelsRoutes {
         OTelRequestSpan(req),
         userSession.userId
       );
+      const config = new Config();
+      await config.reload();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const sourceLabel of sourceLabels as any[]) {
+        sourceLabel.sourceInfo.health = SourceGetHealth(
+          sourceLabel.sourceInfo,
+          config.SOURCE_STALE_THRESHOLD,
+          config.SOURCE_ERROR_THRESHOLD,
+        );
+      }
       return res.status(201).send({ sourceLabels });
     });
 
