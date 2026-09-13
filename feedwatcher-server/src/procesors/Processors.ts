@@ -200,6 +200,9 @@ export async function ProcessorsFetchSourceItems(
         }
       }
     }
+    if (!source.info) {
+      source.info = {};
+    }
     source.info.lastAttemptDate = new Date();
     if (!processed) {
       source.info.fetchErrorCount = (Number(source.info.fetchErrorCount) || 0) + 1;
