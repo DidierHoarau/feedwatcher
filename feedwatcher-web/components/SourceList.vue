@@ -38,6 +38,14 @@
               ><i :class="'bi bi-' + source.icon"></i>&nbsp;</span
             >
             {{ source.displayName }}
+            <span
+              v-if="sourceHealth(source)"
+              class="source-health"
+              :class="'source-health-' + sourceHealth(source)"
+              :title="sourceHealthTitle(source)"
+            >
+              <i :class="sourceHealthIcon(source)"></i>
+            </span>
           </div>
           <div
             v-if="displayCount"
@@ -130,6 +138,41 @@ export default {
     this.scrollToSelectedIndex();
   },
   methods: {
+    sourceHealth(source) {
+      const health = source.sourceInfo?.health;
+      if (source.isLabel || !health || health === "ok") {
+        return null;
+      }
+      return health;
+    },
+    sourceHealthIcon(source) {
+      if (source.sourceInfo?.health === "failing") {
+        return "bi bi-exclamation-triangle-fill";
+      }
+      return "bi bi-hourglass-split";
+    },
+    sourceHealthTitle(source) {
+      const info = source.sourceInfo || {};
+      if (info.health === "failing") {
+        const parts = [
+          `Fetch failing (${info.fetchErrorCount || 0} consecutive errors)`,
+        ];
+        if (info.lastFetchError) {
+          parts.push(`Last error: ${info.lastFetchError}`);
+        }
+        if (info.lastFetchErrorDate) {
+          parts.push(
+            `Failing since: ${new Date(info.lastFetchErrorDate).toLocaleString()}`,
+          );
+        }
+        return parts.join("\n");
+      }
+      const lastUpdate = info.lastItemDate || info.dateFetched;
+      if (lastUpdate) {
+        return `No new items since ${new Date(lastUpdate).toLocaleDateString()}`;
+      }
+      return "Source not updated for a long time";
+    },
     onSourceSelected(source, index) {
       this.knownSelectedIndex = index;
       SourcesStore().selectedIndex = index;
@@ -211,5 +254,19 @@ export default {
   height: 2.4rem;
   margin-bottom: 0;
   border-radius: var(--radius-md);
+}
+
+.source-health {
+  font-size: 0.75em;
+  margin-left: var(--space-2xs, 0.25rem);
+  opacity: 0.7;
+}
+
+.source-health-failing {
+  color: var(--color-danger);
+}
+
+.source-health-stale {
+  color: var(--color-warning);
 }
 </style>

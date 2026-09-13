@@ -14,6 +14,8 @@ import {
 } from "./SourceLabelsData";
 import { AuthGetUserSession } from "../users/Auth";
 import { OTelRequestSpan } from "../OTelContext";
+import { SourceGetHealth } from "../model/SourceHealth";
+import { Config } from "../Config";
 
 export class SourcesIdRoutes {
   //
@@ -36,7 +38,15 @@ export class SourcesIdRoutes {
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      return res.status(200).send(source);
+      const config = new Config();
+      await config.reload();
+      const sourceJson = source.toJson();
+      sourceJson.health = SourceGetHealth(
+        source.info,
+        config.SOURCE_STALE_THRESHOLD,
+        config.SOURCE_ERROR_THRESHOLD,
+      );
+      return res.status(200).send(sourceJson);
     });
 
     interface GetSourceIdLabelsRequest extends RequestGenericInterface {

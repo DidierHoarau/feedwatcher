@@ -10,6 +10,7 @@ import {
   SourceItemsDataGetCount,
 } from "./SourceItemsData";
 import { PromisePool } from "../utils-std-ts/PromisePool";
+import { SourceIsDueForFetch } from "../model/SourceHealth";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { OTelLogger, OTelMeter, OTelTracer } from "../OTelContext";
 
@@ -87,9 +88,12 @@ async function SourcesSchedulerStartSchedule() {
 
     for (const source of await SourcesDataListAll(span0)) {
       if (
-        !source.info.dateFetched ||
-        now - new Date(source.info.dateFetched).getTime() >
-          config.SOURCE_FETCH_FREQUENCY
+        SourceIsDueForFetch(
+          source.info,
+          config.SOURCE_FETCH_FREQUENCY,
+          now,
+          config.SOURCE_BACKOFF_MAX,
+        )
       ) {
         promisePool.add(async () => {
           const span = OTelTracer().startSpan("FetchSourceItems");

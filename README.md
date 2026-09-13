@@ -114,6 +114,16 @@ Configuration values can be set via environment variables or through the `config
 | `SOURCE_FETCH_FREQUENCY` | Interval between source fetches in milliseconds | `1800000` (30 min)  |
 | `PROCESSOR_CONCURRENCY`  | Number of concurrent source fetches             | `2`                 |
 
+### Source Health
+
+Sources that need attention are flagged in the source list: a source is marked **stale** when it hasn't published new items for a long time, and **failing** when its fetch keeps erroring. Failing sources are also retried with an exponential backoff (up to the maximum) to avoid hitting the rate limits of the target sites.
+
+| Variable                 | Description                                                                       | Default                 |
+| ------------------------ | --------------------------------------------------------------------------------- | ----------------------- |
+| `SOURCE_STALE_THRESHOLD` | Time without new items after which a source is marked stale, in milliseconds      | `31536000000` (365 days)|
+| `SOURCE_ERROR_THRESHOLD` | Number of consecutive fetch errors after which a source is marked failing         | `5`                     |
+| `SOURCE_BACKOFF_MAX`     | Maximum backoff between fetches for failing sources, in milliseconds              | `86400000` (24 hours)   |
+
 ## Podcast Search
 
 The application supports searching for podcasts via the [Podcast Index](https://podcastindex.org/) API. This feature is enabled when both `PODCAST_INDEX_API_KEY` and `PODCAST_INDEX_API_SECRET` are set. When not configured, the "Search Podcasts" option is hidden from the UI.

@@ -1,6 +1,40 @@
 <template>
   <div>
     <h1>Update Source: {{ source.info.url }}</h1>
+    <div v-if="hasHealthInfo" class="source-health-details">
+      <div
+        v-if="source.health && source.health !== 'ok'"
+        class="source-health-status"
+        :class="'source-health-' + source.health"
+      >
+        <i
+          :class="
+            source.health === 'failing'
+              ? 'bi bi-exclamation-triangle-fill'
+              : 'bi bi-hourglass-split'
+          "
+        ></i>
+        <span v-if="source.health === 'failing'">
+          Fetch failing
+          <span v-if="source.info.fetchErrorCount"
+            >({{ source.info.fetchErrorCount }} consecutive errors)</span
+          >
+        </span>
+        <span v-else>No new items for a long time</span>
+      </div>
+      <div v-if="source.info.lastFetchError" class="source-health-line">
+        Last error: {{ source.info.lastFetchError }}
+        <span v-if="source.info.lastFetchErrorDate"
+          >({{ formatDate(source.info.lastFetchErrorDate) }})</span
+        >
+      </div>
+      <div v-if="source.info.dateFetched" class="source-health-line">
+        Last successful fetch: {{ formatDate(source.info.dateFetched) }}
+      </div>
+      <div v-if="source.info.lastItemDate" class="source-health-line">
+        Last item published: {{ formatDate(source.info.lastItemDate) }}
+      </div>
+    </div>
     <label>Name</label>
     <input v-model="source.name" type="text" />
     <label>Labels</label>
@@ -35,6 +69,17 @@ export default {
       isSelectLabel: false,
     };
   },
+  computed: {
+    hasHealthInfo() {
+      const info = this.source.info || {};
+      return Boolean(
+        (this.source.health && this.source.health !== "ok") ||
+          info.lastFetchError ||
+          info.dateFetched ||
+          info.lastItemDate,
+      );
+    },
+  },
   async created() {
     axios
       .get(
@@ -56,6 +101,9 @@ export default {
       .catch(handleError);
   },
   methods: {
+    formatDate(value) {
+      return new Date(value).toLocaleString();
+    },
     async updateSource() {
       const labels = [];
       for (const label of this.labels) {
@@ -133,6 +181,23 @@ export default {
 <style scoped>
 h1 {
   word-break: break-all;
+}
+.source-health-details {
+  margin-bottom: var(--space-2xl);
+  font-size: 0.9em;
+  color: var(--color-text-secondary, inherit);
+}
+.source-health-status {
+  margin-bottom: var(--space-xs);
+}
+.source-health-failing {
+  color: var(--color-danger);
+}
+.source-health-stale {
+  color: var(--color-warning);
+}
+.source-health-line {
+  margin-bottom: var(--space-2xs, 0.25rem);
 }
 kbd {
   margin-right: var(--space-2xl);

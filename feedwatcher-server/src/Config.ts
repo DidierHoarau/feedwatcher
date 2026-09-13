@@ -5,6 +5,9 @@ export class Config extends ConfigBase {
   // value was provided via config file or environment variable.
   public JWT_KEY = "";
   public SOURCE_FETCH_FREQUENCY = 30 * 60 * 1000;
+  public SOURCE_STALE_THRESHOLD = 365 * 24 * 60 * 60 * 1000;
+  public SOURCE_ERROR_THRESHOLD = 5;
+  public SOURCE_BACKOFF_MAX = 24 * 60 * 60 * 1000;
   public PROCESSORS_SYSTEM = "processors-system";
   public PROCESSORS_USER = "processors-user";
   public LLM_API_KEY = "";
@@ -19,6 +22,9 @@ export class Config extends ConfigBase {
     super("feedwatcher-server");
     this.addConfigField({ field: "JWT_KEY", sensitive: true });
     this.addConfigField({ field: "SOURCE_FETCH_FREQUENCY" });
+    this.addConfigField({ field: "SOURCE_STALE_THRESHOLD" });
+    this.addConfigField({ field: "SOURCE_ERROR_THRESHOLD" });
+    this.addConfigField({ field: "SOURCE_BACKOFF_MAX" });
     this.addConfigField({ field: "PROCESSORS_SYSTEM" });
     this.addConfigField({ field: "PROCESSORS_USER" });
     this.addConfigField({ field: "LLM_API_KEY", sensitive: true });

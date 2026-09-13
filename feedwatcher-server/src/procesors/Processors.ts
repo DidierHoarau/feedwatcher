@@ -138,6 +138,7 @@ export async function ProcessorsFetchSourceItems(
 
   try {
     let processed = false;
+    let lastError: Error = null;
     const lastSourceItemSaved = await SourceItemsDataGetLastForSource(
       context,
       source.id,
@@ -148,11 +149,18 @@ export async function ProcessorsFetchSourceItems(
           const processor = await import(processorsFile.path);
           if (await processor.test(source)) {
             let nbNewItem = 0;
+            let lastItemDate: Date = null;
             const newSourceItems = await processor.fetchLatest(
               source,
               lastSourceItemSaved,
             );
             for (const newSourceItem of newSourceItems) {
+              const itemDate = new Date(newSourceItem.datePublished);
+              if (!isNaN(itemDate.getTime())) {
+                if (!lastItemDate || itemDate.getTime() > lastItemDate.getTime()) {
+                  lastItemDate = itemDate;
+                }
+              }
               if (
                 !lastSourceItemSaved ||
                 newSourceItem.datePublished > lastSourceItemSaved.datePublished
@@ -178,15 +186,33 @@ export async function ProcessorsFetchSourceItems(
             }
             source.info.processorPath = processorsFile.path;
             source.info.dateFetched = new Date();
+            source.info.lastAttemptDate = new Date();
+            source.info.fetchErrorCount = 0;
+            if (lastItemDate) {
+              source.info.lastItemDate = lastItemDate;
+            }
             await SourcesDataUpdate(context, source);
             processed = true;
           }
         } catch (err) {
           logger.error("Error Fetching Source", err);
+          lastError = err;
         }
       }
     }
+    if (!source.info) {
+      source.info = {};
+    }
+    source.info.lastAttemptDate = new Date();
     if (!processed) {
+      source.info.fetchErrorCount = (Number(source.info.fetchErrorCount) || 0) + 1;
+      source.info.lastFetchError = lastError
+        ? lastError.message
+          ? lastError.message
+          : String(lastError)
+        : "No processor found for this source";
+      source.info.lastFetchErrorDate = new Date();
+      await SourcesDataUpdate(context, source);
       logger.warn(
         `No processor found for ${source.id} (${source.name})`,
         context,

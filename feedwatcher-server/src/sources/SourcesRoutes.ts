@@ -10,6 +10,7 @@ import {
 } from "../procesors/Processors";
 import { AuthGetUserSession } from "../users/Auth";
 import { SourcesDataAdd, SourcesDataListForUser } from "./SourcesData";
+import { SourceGetHealth } from "../model/SourceHealth";
 import { Config } from "../Config";
 
 export class SourcesRoutes {
@@ -25,7 +26,19 @@ export class SourcesRoutes {
         OTelRequestSpan(req),
         userSession.userId,
       );
-      return res.status(200).send({ sources });
+      const config = new Config();
+      await config.reload();
+      return res.status(200).send({
+        sources: sources.map((source) => {
+          const json = source.toJson();
+          json.health = SourceGetHealth(
+            source.info,
+            config.SOURCE_STALE_THRESHOLD,
+            config.SOURCE_ERROR_THRESHOLD,
+          );
+          return json;
+        }),
+      });
     });
 
     interface PostSource extends RequestGenericInterface {
