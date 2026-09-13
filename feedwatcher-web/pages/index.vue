@@ -150,6 +150,8 @@
       </div>
     </div>
 
+    <SourcesAttention v-if="authenticated" />
+
     <p>These are the types of URLs that you can follow on this server:</p>
     <div class="processor-info-list">
       <div
@@ -192,6 +194,7 @@ export default {
       newShowUnreadOnly: true,
       summaryShowUnreadOnly: true,
       loading: false,
+      authenticated: false,
     };
   },
   computed: {
@@ -270,6 +273,8 @@ export default {
         this.processorInfos = res.data;
       });
     if (await AuthService.isAuthenticated()) {
+      this.authenticated = true;
+      SourcesStore().fetch();
       this.loading = true;
       const headers = await AuthService.getAuthHeader();
 
