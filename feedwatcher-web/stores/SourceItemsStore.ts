@@ -27,6 +27,7 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
       this.sourceItems = [];
       this.nextCursor = "";
       this.pageHasMore = false;
+      this.loadingMore = false;
       await this.fetchMore();
     },
     async fetchMore(): Promise<void> {

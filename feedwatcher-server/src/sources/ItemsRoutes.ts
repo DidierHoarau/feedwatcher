@@ -99,6 +99,9 @@ export class ItemsRoutes {
           OTelRequestSpan(req),
           req.body.sourceId,
         );
+        if (!source) {
+          return res.status(404).send({ error: "Source Not Found" });
+        }
         if (source.userId !== userSession.userId) {
           return res.status(403).send({ error: "Access Denied" });
         }
