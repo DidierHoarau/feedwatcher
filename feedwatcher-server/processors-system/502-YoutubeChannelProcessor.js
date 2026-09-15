@@ -74,16 +74,43 @@ function extractChannelIdFromPage(pageRaw) {
   return null;
 }
 
-async function resolveChannelId(source) {
+async function resolveChannelIdAndPage(source) {
   if (isValidChannelId(source.info.channelId)) {
-    return source.info.channelId;
+    return { channelId: source.info.channelId, pageRaw: null };
   }
   const channelIdFromUrl = extractChannelIdFromUrl(source.info.url);
   if (channelIdFromUrl) {
-    return channelIdFromUrl;
+    return { channelId: channelIdFromUrl, pageRaw: null };
   }
   const pageRaw = await fetchWithRetry(source.info.url, REQUEST_HEADERS);
-  return extractChannelIdFromPage(pageRaw);
+  return { channelId: extractChannelIdFromPage(pageRaw), pageRaw };
+}
+
+async function resolveChannelId(source) {
+  return (await resolveChannelIdAndPage(source)).channelId;
+}
+
+function decodeHtmlEntities(text) {
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+function extractChannelTitleFromPage(pageRaw) {
+  const patterns = [
+    /<meta[^>]+property="og:title"[^>]+content="([^"]+)"/,
+    /<meta[^>]+content="([^"]+)"[^>]+property="og:title"/,
+  ];
+  for (const pattern of patterns) {
+    const match = pattern.exec(pageRaw);
+    if (match && match[1].trim()) {
+      return decodeHtmlEntities(match[1].trim());
+    }
+  }
+  return null;
 }
 
 // eslint-disable-next-line no-undef
@@ -104,18 +131,43 @@ module.exports = {
       if (!CHANNEL_URL_PATTERN.test(source.info.url)) {
         return null;
       }
-      const channelId = await resolveChannelId(source);
+      if (source.info.processorPath && isValidChannelId(source.info.channelId)) {
+        // Already a registered YouTube source: skip the network validation
+        // that YouTube rate-limits, and skip a feed fetch on every cycle.
+        return { name: source.name, icon: "youtube", channelId: source.info.channelId };
+      }
+      const { channelId, pageRaw } = await resolveChannelIdAndPage(source);
       if (!channelId) {
         return null;
       }
-      const feed = parseFeed(
-        await fetchWithRetry(
-          `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
-          REQUEST_HEADERS
-        )
-      );
-      if (feed.title) {
-        return { name: feed.title, icon: "youtube", channelId };
+      try {
+        const feed = parseFeed(
+          await fetchWithRetry(
+            `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
+            REQUEST_HEADERS
+          )
+        );
+        if (feed.title) {
+          return { name: feed.title, icon: "youtube", channelId };
+        }
+      } catch (err) {
+        // The RSS feed endpoint is unreachable for some IPs/regions (or the
+        // intermittent 404s outlasted the retries): accept the source anyway
+        // with the channel name taken from the page, instead of failing the
+        // add with "no processor matching".
+        let html = pageRaw;
+        if (!html) {
+          html = await fetchWithRetry(source.info.url, REQUEST_HEADERS);
+        }
+        const pageTitle = extractChannelTitleFromPage(html);
+        if (pageTitle) {
+          console.warn(
+            `YouTube processor: feed unreachable for ${channelId} (${
+              err && err.message ? err.message : err
+            }), accepting source via page title`
+          );
+          return { name: pageTitle, icon: "youtube", channelId };
+        }
       }
     } catch (err) {
       console.warn(
@@ -143,12 +195,20 @@ module.exports = {
         `Could not resolve YouTube channel ID for ${source.info.url}`
       );
     }
-    const feed = parseFeed(
-      await fetchWithRetry(
+    let feedRaw = null;
+    try {
+      feedRaw = await fetchWithRetry(
         `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
         REQUEST_HEADERS
-      )
-    );
+      );
+    } catch (err) {
+      throw new Error(
+        `YouTube feed not reachable for channel ${channelId} (${
+          err && err.message ? err.message : err
+        })`
+      );
+    }
+    const feed = parseFeed(feedRaw);
     const sourceItems = [];
     for (let item of feed.items) {
       const sourceItem = {};

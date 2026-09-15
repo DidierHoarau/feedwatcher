@@ -37,6 +37,9 @@ const SNIPPET_EXTERNAL_ID = `window["ytInitialData"] = {"metadata":{"channelMeta
 const SNIPPET_META_IDENTIFIER = `<meta itemprop="identifier" content="${CHANNEL_ID}">`;
 const SNIPPET_CANONICAL_LINK = `<link rel="canonical" href="https://www.youtube.com/channel/${CHANNEL_ID}">`;
 const SNIPPET_CHANNEL_ID_JSON = `{"responseContext":{},"channelId":"${CHANNEL_ID}"}`;
+const SNIPPET_PAGE_TITLE = `<meta property="og:title" content="RiskReversal Media">`;
+const SNIPPET_PAGE_TITLE_ENCODED = `<meta property="og:title" content="A &amp; B Show">`;
+const PAGE_WITH_ID_AND_TITLE = `<html><head>${SNIPPET_PAGE_TITLE}</head><body>${SNIPPET_EXTERNAL_ID}</body></html>`;
 
 function reply(data: unknown): AxiosResponse {
   return { data } as AxiosResponse;
@@ -299,6 +302,77 @@ describe("YouTube processor: channel ID resolution", () => {
     expect(result.channelId).toBe(CHANNEL_ID);
     expect(feedCalls).toBe(2);
   });
+
+  test("Registered source with stored channelId returns without network calls", async () => {
+    const spy = mockNetworkBlocked();
+    const source = newSource("https://www.youtube.com/@riskreversalmedia");
+    source.info.channelId = CHANNEL_ID;
+    source.info.processorPath = "/processors/502-YoutubeChannelProcessor.js";
+    const result = await processor.test(source);
+    expect(result).toEqual({
+      name: source.name,
+      icon: "youtube",
+      channelId: CHANNEL_ID,
+    });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  test("Feed endpoint blocked: source is accepted with the page title", async () => {
+    let feedCalls = 0;
+    jest
+      .spyOn(axios, "get")
+      .mockImplementation(async (url: string): Promise<AxiosResponse> => {
+        if (url.startsWith("https://www.youtube.com/feeds/videos.xml")) {
+          feedCalls++;
+          throw new Error("Request failed with status code 404");
+        }
+        return reply(PAGE_WITH_ID_AND_TITLE);
+      });
+    const result = await processor.test(
+      newSource("https://www.youtube.com/@riskreversalmedia")
+    );
+    expect(result).not.toBeNull();
+    expect(result.name).toBe("RiskReversal Media");
+    expect(result.channelId).toBe(CHANNEL_ID);
+    expect(feedCalls).toBeGreaterThan(0);
+  });
+
+  test("Feed endpoint blocked with /channel/ URL: page is fetched for the title", async () => {
+    let pageCalls = 0;
+    jest
+      .spyOn(axios, "get")
+      .mockImplementation(async (url: string): Promise<AxiosResponse> => {
+        if (url.startsWith("https://www.youtube.com/feeds/videos.xml")) {
+          throw new Error("Request failed with status code 404");
+        }
+        pageCalls++;
+        return reply(PAGE_WITH_ID_AND_TITLE);
+      });
+    const result = await processor.test(
+      newSource(`https://www.youtube.com/channel/${CHANNEL_ID}`)
+    );
+    expect(result).not.toBeNull();
+    expect(result.name).toBe("RiskReversal Media");
+    expect(result.channelId).toBe(CHANNEL_ID);
+    expect(pageCalls).toBe(1);
+  });
+
+  test("Page title HTML entities are decoded", async () => {
+    const html = `<html><head>${SNIPPET_PAGE_TITLE_ENCODED}</head><body>${SNIPPET_EXTERNAL_ID}</body></html>`;
+    jest
+      .spyOn(axios, "get")
+      .mockImplementation(async (url: string): Promise<AxiosResponse> => {
+        if (url.startsWith("https://www.youtube.com/feeds/videos.xml")) {
+          throw new Error("Request failed with status code 404");
+        }
+        return reply(html);
+      });
+    const result = await processor.test(
+      newSource("https://www.youtube.com/@riskreversalmedia")
+    );
+    expect(result).not.toBeNull();
+    expect(result.name).toBe("A & B Show");
+  });
 });
 
 describe("YouTube processor: fetchLatest", () => {
@@ -330,6 +404,19 @@ describe("YouTube processor: fetchLatest", () => {
     const source = newSource("https://www.youtube.com/@riskreversalmedia");
     await expect(processor.fetchLatest(source, null)).rejects.toThrow(
       `Could not resolve YouTube channel ID for ${source.info.url}`
+    );
+  });
+
+  test("Throws a meaningful error when the feed is unreachable", async () => {
+    jest
+      .spyOn(axios, "get")
+      .mockImplementation(async (): Promise<AxiosResponse> => {
+        throw new Error("Request failed with status code 404");
+      });
+    const source = newSource("https://www.youtube.com/@riskreversalmedia");
+    source.info.channelId = CHANNEL_ID;
+    await expect(processor.fetchLatest(source, null)).rejects.toThrow(
+      `YouTube feed not reachable for channel ${CHANNEL_ID}`
     );
   });
 });
