@@ -121,7 +121,6 @@ export default {
         SourceItemsStore().fetch();
       }
     });
-    this.onRootSelected();
     if (useRoute().query.filterStatus) {
       this.filterStatus = useRoute().query.filterStatus;
     }

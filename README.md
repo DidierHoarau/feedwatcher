@@ -116,7 +116,7 @@ Configuration values can be set via environment variables or through the `config
 
 ### Source Health
 
-Sources that need attention are flagged in the source list: a source is marked **stale** when it hasn't published new items for a long time, and **failing** when its fetch keeps erroring. Failing sources are also retried with an exponential backoff (up to the maximum) to avoid hitting the rate limits of the target sites.
+Sources that need attention are flagged in the source list: a source is marked **stale** when it hasn't published new items for a long time, and **failing** when its fetch keeps erroring. Failing sources are also retried with an exponential backoff (up to the maximum) to avoid hitting the rate limits of the target sites. They are also listed in the "Sources needing attention" section of the home page (above the list of URL types), each entry linking to the source's items on the sources page.
 
 | Variable                 | Description                                                                       | Default                 |
 | ------------------------ | --------------------------------------------------------------------------------- | ----------------------- |
