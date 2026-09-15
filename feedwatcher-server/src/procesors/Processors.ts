@@ -79,8 +79,12 @@ export async function ProcessorsGetInfos(
   return processorInfos;
 }
 
-export async function ProcessorsCheckSource(context: Span, source: Source) {
+export async function ProcessorsCheckSource(
+  context: Span,
+  source: Source,
+): Promise<string | null> {
   const span = OTelTracer().startSpan("ProcessorsCheckSource", context);
+  let lastError: Error = null;
   if (!source.info.processorPath) {
     userProcessorInfoStatusStart(span, source.userId);
     let processed = false;
@@ -99,15 +103,23 @@ export async function ProcessorsCheckSource(context: Span, source: Source) {
             await SourcesDataUpdate(span, source);
             processed = true;
           }
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (err) {
-          // Nothing to do
+          logger.warn(
+            `Processor ${processorsFile.name} failed to test source ${source.id} (${source.info.url}): ${err.message}`,
+            span,
+          );
+          lastError = err;
         }
       }
-      userProcessorInfoStatusStop(span, source.userId);
     }
+    userProcessorInfoStatusStop(span, source.userId);
   }
   span.end();
+  return lastError
+    ? lastError.message
+      ? lastError.message
+      : String(lastError)
+    : null;
 }
 
 export async function ProcessorsFetchSourceItemsForUser(

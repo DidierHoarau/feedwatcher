@@ -55,11 +55,16 @@ export class SourcesRoutes {
       source.name = req.body.url;
       source.info = { url: req.body.url };
       source.userId = userSession.userId;
-      await ProcessorsCheckSource(OTelRequestSpan(req), source);
+      const checkError = await ProcessorsCheckSource(
+        OTelRequestSpan(req),
+        source,
+      );
       if (!source.info.processorPath) {
-        return res
-          .status(400)
-          .send({ error: "Source Not Supported (No Processor Matching)" });
+        return res.status(400).send({
+          error: checkError
+            ? `Source Not Supported (No Processor Matching): ${checkError}`
+            : "Source Not Supported (No Processor Matching)",
+        });
       }
       await SourcesDataAdd(OTelRequestSpan(req), source);
       ProcessorsFetchSourceItems(OTelRequestSpan(req), source);
