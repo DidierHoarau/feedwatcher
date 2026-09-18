@@ -22,8 +22,8 @@
           <span
             v-on:click="toggleLabelCollapsed(source, index)"
             class="source-name-indent"
+            :style="indentStyle(source)"
           >
-            <span v-html="getIndentation(source)"></span>
             <i
               v-if="source.isLabel && source.isCollapsed"
               class="bi bi-caret-right-fill"
@@ -36,6 +36,14 @@
           >
             <span v-if="!source.isLabel"
               ><i :class="'bi bi-' + source.icon"></i>&nbsp;</span
+            >
+            <span
+              v-else-if="!source.isRoot"
+              ><i
+                :class="
+                  source.isCollapsed ? 'bi bi-folder-fill' : 'bi bi-folder2-open'
+                "
+              >&nbsp;</i></span
             >
             {{ source.displayName }}
             <span
@@ -51,6 +59,7 @@
             v-if="displayCount"
             v-on:click="onSourceSelected(source, index)"
             class="source-name-count"
+            :class="{ 'source-name-count-zero': source[displayCount] === 0 }"
           >
             {{ source[displayCount] }}
           </div>
@@ -171,12 +180,10 @@ export default {
       }
       return true;
     },
-    getIndentation(source) {
-      let indent = "";
-      for (let i = 0; i < source.depth; i++) {
-        indent += "&nbsp;&nbsp;&nbsp;&nbsp;";
-      }
-      return indent;
+    indentStyle(source) {
+      return {
+        width: `calc(${source.depth} * 1rem + 0.25rem)`,
+      };
     },
     toggleLabelCollapsed(label, index) {
       SourcesStore().toggleLabelCollapsed(index);
@@ -240,5 +247,46 @@ export default {
 
 .source-health-stale {
   color: var(--color-warning);
+}
+
+/* Touch-friendly rows */
+.source-name-layout {
+  align-items: center;
+  min-height: 2.6rem;
+}
+
+.source-name-indent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  min-width: 1.2rem;
+}
+
+.source-name-indent i {
+  padding: 0.35rem 0.3rem;
+}
+
+/* Unread counts as badges; zero counts dimmed */
+.source-name-count {
+  font-weight: 600;
+  font-size: var(--font-xs);
+  background-color: var(--color-primary-light);
+  color: var(--color-primary-text);
+  border-radius: var(--radius-full);
+  padding: 0.1rem 0.5rem;
+  min-width: 1.4rem;
+  text-align: center;
+}
+
+.source-name-count-zero {
+  background: none;
+  color: var(--color-text-muted);
+  font-weight: 400;
+  opacity: 0.55;
+}
+
+:root[data-theme="dark"] .source-name-count-zero {
+  opacity: 0.4;
 }
 </style>
