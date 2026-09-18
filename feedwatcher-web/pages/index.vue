@@ -10,20 +10,23 @@
             <i
               v-if="displayedRecentItems.length > 0"
               v-on:click="markAllRead(displayedRecentItems)"
-              class="bi bi-archive"
+              class="bi bi-check2-square"
               title="Mark all as read"
+              aria-label="Mark all as read"
             ></i>
             <i
               v-if="recentShowUnreadOnly"
               v-on:click="toggleFilter('recent')"
               class="bi bi-envelope"
               title="Show all"
+              aria-label="Show all"
             ></i>
             <i
               v-else
               v-on:click="toggleFilter('recent')"
               class="bi bi-envelope-open"
               title="Show unread only"
+              aria-label="Show unread only"
             ></i>
           </span>
         </div>
@@ -44,7 +47,7 @@
           class="items-mark-read-bottom"
         >
           <button v-on:click="markAllRead(displayedRecentItems)">
-            <i class="bi bi-archive"></i> Mark all as read
+            <i class="bi bi-check2-square"></i> Mark all as read
           </button>
         </div>
       </div>
@@ -58,20 +61,23 @@
             <i
               v-if="displayedNewItems.length > 0"
               v-on:click="markAllRead(displayedNewItems)"
-              class="bi bi-archive"
+              class="bi bi-check2-square"
               title="Mark all as read"
+              aria-label="Mark all as read"
             ></i>
             <i
               v-if="newShowUnreadOnly"
               v-on:click="toggleFilter('new')"
               class="bi bi-envelope"
               title="Show all"
+              aria-label="Show all"
             ></i>
             <i
               v-else
               v-on:click="toggleFilter('new')"
               class="bi bi-envelope-open"
               title="Show unread only"
+              aria-label="Show unread only"
             ></i>
           </span>
         </div>
@@ -89,7 +95,7 @@
         </div>
         <div v-if="displayedNewItems.length > 0" class="items-mark-read-bottom">
           <button v-on:click="markAllRead(displayedNewItems)">
-            <i class="bi bi-archive"></i> Mark all as read
+            <i class="bi bi-check2-square"></i> Mark all as read
           </button>
         </div>
       </div>
@@ -110,20 +116,23 @@
             <i
               v-if="displayedSummaryItems.length > 0"
               v-on:click="markAllRead(displayedSummaryItems)"
-              class="bi bi-archive"
+              class="bi bi-check2-square"
               title="Mark all as read"
+              aria-label="Mark all as read"
             ></i>
             <i
               v-if="summaryShowUnreadOnly"
               v-on:click="toggleFilter('summary')"
               class="bi bi-envelope"
               title="Show all"
+              aria-label="Show all"
             ></i>
             <i
               v-else
               v-on:click="toggleFilter('summary')"
               class="bi bi-envelope-open"
               title="Show unread only"
+              aria-label="Show unread only"
             ></i>
           </span>
         </div>
@@ -144,7 +153,7 @@
           class="items-mark-read-bottom"
         >
           <button v-on:click="markAllRead(displayedSummaryItems)">
-            <i class="bi bi-archive"></i> Mark all as read
+            <i class="bi bi-check2-square"></i> Mark all as read
           </button>
         </div>
       </div>

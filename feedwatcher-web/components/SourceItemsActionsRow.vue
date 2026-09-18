@@ -11,19 +11,31 @@
     <NuxtLink
       v-if="sourceItemsStore.selectedSource"
       :to="'/sources/' + sourceItemsStore.selectedSource"
+      title="Edit the selected source"
+      aria-label="Edit the selected source"
       ><i class="bi bi-pencil-square"></i
     ></NuxtLink>
     <i
       v-if="sourceItemsStore.sourceItems.length > 0"
       v-on:click="markAllRead()"
-      class="bi bi-archive"
+      class="bi bi-check2-square"
+      title="Mark all displayed items as read"
+      aria-label="Mark all displayed items as read"
     ></i>
     <i
       v-if="filterStatus == 'unread'"
       v-on:click="toggleUnreadFIlter()"
       class="bi bi-envelope"
+      title="Currently showing unread only — show all items"
+      aria-label="Show all items"
     ></i>
-    <i v-else v-on:click="toggleUnreadFIlter()" class="bi bi-envelope-open"></i>
+    <i
+      v-else
+      v-on:click="toggleUnreadFIlter()"
+      class="bi bi-envelope-open"
+      title="Currently showing all items — show unread only"
+      aria-label="Show unread items only"
+    ></i>
   </div>
 </template>
 

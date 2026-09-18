@@ -5,11 +5,15 @@
         v-if="item.status == 'read'"
         class="bi bi-envelope-open source-action"
         v-on:click="markReadStatus('unread')"
+        title="Mark as unread"
+        aria-label="Mark as unread"
       ></i>
       <i
         v-else
         class="bi bi-envelope source-action"
         v-on:click="markReadStatus('read')"
+        title="Mark as read"
+        aria-label="Mark as read"
       ></i>
 
       <br />
@@ -18,11 +22,15 @@
         v-if="isSaved"
         class="bi bi-bookmark-check-fill source-action"
         v-on:click="unSaveItem()"
+        title="Remove bookmark"
+        aria-label="Remove bookmark"
       ></i>
       <i
         v-else
         class="bi bi-bookmark-plus source-action"
         v-on:click="saveItem()"
+        title="Save bookmark"
+        aria-label="Save bookmark"
       ></i>
     </div>
 
@@ -63,6 +71,7 @@
         v-on:click.prevent="playPodcast()"
         class="podcast-play-icon"
         title="Play episode"
+        aria-label="Play episode"
       >
         <i
           :class="
@@ -73,7 +82,11 @@
           class="source-action"
         ></i>
       </a>
-      <a href="#" v-on:click.prevent="openItemLink()"
+      <a
+        href="#"
+        v-on:click.prevent="openItemLink()"
+        title="Open link"
+        aria-label="Open link"
         ><i class="bi bi-link source-action"></i
       ></a>
     </div>

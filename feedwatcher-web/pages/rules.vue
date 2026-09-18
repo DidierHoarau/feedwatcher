@@ -7,7 +7,12 @@
     @onRootSelected="onRootSelected"
   >
     <template #actions>
-      <i class="bi bi-save" v-on:click="saveRules()"></i>
+      <i
+        class="bi bi-save"
+        v-on:click="saveRules()"
+        title="Save rules"
+        aria-label="Save rules"
+      ></i>
     </template>
     <div id="sources-rules">
       <article>
@@ -18,8 +23,10 @@
           class="rule-layout"
         >
           <i
-            class="bi bi-trash-fill"
+            class="bi bi-trash-fill rule-action"
             v-on:click="removeAutoArchive(rule.pattern)"
+            title="Remove auto-archive rule"
+            aria-label="Remove auto-archive rule"
           ></i>
           <div class="rule-separator"></div>
           <div>
@@ -33,7 +40,12 @@
             </label>
           </div>
         </div>
-        <i class="bi bi-plus-square" v-on:click="addAutoArchive()"></i>
+        <i
+          class="bi bi-plus-square rule-action"
+          v-on:click="addAutoArchive()"
+          title="Add an auto-archive rule"
+          aria-label="Add an auto-archive rule"
+        ></i>
       </article>
       <article>
         <header>Auto-Delete</header>
@@ -43,8 +55,10 @@
           class="rule-layout"
         >
           <i
-            class="bi bi-trash-fill"
+            class="bi bi-trash-fill rule-action"
             v-on:click="removeAutoDelete(rule.pattern)"
+            title="Remove auto-delete rule"
+            aria-label="Remove auto-delete rule"
           ></i>
           <div class="rule-separator"></div>
           <div>
@@ -58,7 +72,12 @@
             </label>
           </div>
         </div>
-        <i class="bi bi-plus-square" v-on:click="addAutoDelete()"></i>
+        <i
+          class="bi bi-plus-square rule-action"
+          v-on:click="addAutoDelete()"
+          title="Add an auto-delete rule"
+          aria-label="Add an auto-delete rule"
+        ></i>
       </article>
     </div>
   </SourceItemsLayout>
