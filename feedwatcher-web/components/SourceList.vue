@@ -113,7 +113,6 @@ import {
 export default {
   props: {
     displayCount: false,
-    displaySaved: false,
   },
   data() {
     return {
