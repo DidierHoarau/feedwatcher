@@ -9,9 +9,20 @@
           class="bi bi-cloud-arrow-down"
           :class="{ blink: userProcessorInfoStore.status !== 'idle' }"
           v-on:click="refreshAndFetch()"
+          title="Fetch all sources now"
+          aria-label="Fetch all sources now"
         ></i>
-        <i class="bi bi-arrow-clockwise" v-on:click="refresh()"></i>
-        <NuxtLink v-if="showAddSource" to="/sources/new"
+        <i
+          class="bi bi-arrow-clockwise"
+          v-on:click="refresh()"
+          title="Refresh the list"
+          aria-label="Refresh the list"
+        ></i>
+        <NuxtLink
+          v-if="showAddSource"
+          to="/sources/new"
+          title="Add a source"
+          aria-label="Add a source"
           ><i class="bi bi-plus-square"></i
         ></NuxtLink>
       </slot>
@@ -20,11 +31,15 @@
           class="bi bi-caret-up-square sources-actions-menu-toggle"
           v-if="menuOpened"
           v-on:click="openListMenu()"
+          title="Hide the sources list"
+          aria-label="Hide the sources list"
         ></i>
         <i
           class="bi bi-caret-down-square sources-actions-menu-toggle"
           v-else
           v-on:click="openListMenu()"
+          title="Show the sources list"
+          aria-label="Show the sources list"
         ></i>
       </template>
     </div>

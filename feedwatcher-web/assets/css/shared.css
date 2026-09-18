@@ -88,6 +88,42 @@
   margin-left: var(--space-sm);
   margin-right: var(--space-sm);
   color: var(--color-text);
+  border-radius: var(--radius-md);
+  transition: background-color 0.15s ease;
+}
+
+.actions a {
+  border-radius: var(--radius-md);
+  text-decoration: none;
+}
+
+/* Rules page icon actions (outside .actions containers) */
+.rule-action {
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background-color 0.15s ease;
+}
+
+@media (max-width: 700px) {
+  /* ~44px touch targets on mobile */
+  .actions i,
+  .actions a,
+  .rule-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.6rem;
+    margin-left: 0.1rem;
+    margin-right: 0.1rem;
+  }
+  .actions i:active,
+  .actions a:active,
+  .rule-action:active {
+    background-color: var(--color-bg-hover);
+  }
 }
 
 /* ---------- 44px tap targets (touch-friendly icon buttons) ---------- */
