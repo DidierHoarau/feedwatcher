@@ -241,6 +241,10 @@ export default {
   opacity: 0.7;
 }
 
+.source-health-disabled {
+  color: var(--color-text-muted);
+}
+
 .source-health-failing {
   color: var(--color-danger);
 }

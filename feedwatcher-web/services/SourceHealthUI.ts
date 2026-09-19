@@ -7,6 +7,9 @@ export function sourceHealth(source: any): string | null {
 }
 
 export function sourceHealthIcon(source: any): string {
+  if (source.sourceInfo?.health === "disabled") {
+    return "bi bi-slash-circle";
+  }
   if (source.sourceInfo?.health === "failing") {
     return "bi bi-exclamation-triangle-fill";
   }
@@ -15,6 +18,19 @@ export function sourceHealthIcon(source: any): string {
 
 export function sourceHealthTitle(source: any): string {
   const info = source.sourceInfo || {};
+  if (info.health === "disabled") {
+    const parts = [
+      `Fetching paused automatically (${info.fetchErrorCount || 0} consecutive errors)`,
+    ];
+    if (info.autoDisabledDate) {
+      parts.push(`Paused on: ${new Date(info.autoDisabledDate).toLocaleString()}`);
+    }
+    if (info.lastFetchError) {
+      parts.push(`Last error: ${info.lastFetchError}`);
+    }
+    parts.push("Trigger a fetch to resume automatic fetching");
+    return parts.join("\n");
+  }
   if (info.health === "failing") {
     const parts = [
       `Fetch failing (${info.fetchErrorCount || 0} consecutive errors)`,
