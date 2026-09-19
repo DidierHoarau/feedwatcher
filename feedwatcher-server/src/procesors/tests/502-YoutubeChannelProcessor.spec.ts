@@ -45,6 +45,13 @@ function reply(data: unknown): AxiosResponse {
   return { data } as AxiosResponse;
 }
 
+function httpError(status: number): Error {
+  return Object.assign(
+    new Error(`Request failed with status code ${status}`),
+    { response: { status, headers: {}, data: "" } }
+  );
+}
+
 function mockYouTubeResponses(
   pageHtml: string | null,
   opts?: { isShort?: boolean }
@@ -281,7 +288,46 @@ describe("YouTube processor: channel ID resolution", () => {
       expect(result).toBeNull();
     }
   });
-  test("Retries the feed fetch when YouTube intermittently returns 404", async () => {
+  test("Does not retry a 404 feed response (dead channel)", async () => {
+    let feedCalls = 0;
+    jest
+      .spyOn(axios, "get")
+      .mockImplementation(async (url: string): Promise<AxiosResponse> => {
+        if (url.startsWith("https://www.youtube.com/feeds/videos.xml")) {
+          feedCalls++;
+          throw httpError(404);
+        }
+        return reply(PAGE_WITH_ID_AND_TITLE);
+      });
+    const result = await processor.test(
+      newSource("https://www.youtube.com/@riskreversalmedia")
+    );
+    // The source is still accepted via the page title, but the feed is only
+    // requested once: a 4xx never recovers within the retry delays.
+    expect(result).not.toBeNull();
+    expect(result.name).toBe("RiskReversal Media");
+    expect(feedCalls).toBe(1);
+  });
+
+  test("Does not retry a 429 feed response (rate limited)", async () => {
+    let feedCalls = 0;
+    jest
+      .spyOn(axios, "get")
+      .mockImplementation(async (url: string): Promise<AxiosResponse> => {
+        if (url.startsWith("https://www.youtube.com/feeds/videos.xml")) {
+          feedCalls++;
+          throw httpError(429);
+        }
+        return reply(PAGE_WITH_ID_AND_TITLE);
+      });
+    const result = await processor.test(
+      newSource("https://www.youtube.com/@riskreversalmedia")
+    );
+    expect(result).not.toBeNull();
+    expect(feedCalls).toBe(1);
+  });
+
+  test("Retries the feed fetch on a 5xx response", async () => {
     let feedCalls = 0;
     jest
       .spyOn(axios, "get")
@@ -289,7 +335,7 @@ describe("YouTube processor: channel ID resolution", () => {
         if (url.startsWith("https://www.youtube.com/feeds/videos.xml")) {
           feedCalls++;
           if (feedCalls === 1) {
-            throw new Error("Request failed with status code 404");
+            throw httpError(500);
           }
           return reply(FEED_XML);
         }
@@ -300,6 +346,29 @@ describe("YouTube processor: channel ID resolution", () => {
     );
     expect(result).not.toBeNull();
     expect(result.channelId).toBe(CHANNEL_ID);
+    expect(feedCalls).toBe(2);
+  });
+
+  test("Retries the feed fetch on a network error", async () => {
+    let feedCalls = 0;
+    jest
+      .spyOn(axios, "get")
+      .mockImplementation(async (url: string): Promise<AxiosResponse> => {
+        if (url.startsWith("https://www.youtube.com/feeds/videos.xml")) {
+          feedCalls++;
+          if (feedCalls === 1) {
+            throw Object.assign(new Error("socket hang up"), {
+              code: "ECONNRESET",
+            });
+          }
+          return reply(FEED_XML);
+        }
+        return reply(SNIPPET_LEGACY_CHANNEL_ID);
+      });
+    const result = await processor.test(
+      newSource("https://www.youtube.com/@riskreversalmedia")
+    );
+    expect(result).not.toBeNull();
     expect(feedCalls).toBe(2);
   });
 
@@ -324,7 +393,7 @@ describe("YouTube processor: channel ID resolution", () => {
       .mockImplementation(async (url: string): Promise<AxiosResponse> => {
         if (url.startsWith("https://www.youtube.com/feeds/videos.xml")) {
           feedCalls++;
-          throw new Error("Request failed with status code 404");
+          throw httpError(404);
         }
         return reply(PAGE_WITH_ID_AND_TITLE);
       });
@@ -343,7 +412,7 @@ describe("YouTube processor: channel ID resolution", () => {
       .spyOn(axios, "get")
       .mockImplementation(async (url: string): Promise<AxiosResponse> => {
         if (url.startsWith("https://www.youtube.com/feeds/videos.xml")) {
-          throw new Error("Request failed with status code 404");
+          throw httpError(404);
         }
         pageCalls++;
         return reply(PAGE_WITH_ID_AND_TITLE);
@@ -363,7 +432,7 @@ describe("YouTube processor: channel ID resolution", () => {
       .spyOn(axios, "get")
       .mockImplementation(async (url: string): Promise<AxiosResponse> => {
         if (url.startsWith("https://www.youtube.com/feeds/videos.xml")) {
-          throw new Error("Request failed with status code 404");
+          throw httpError(404);
         }
         return reply(html);
       });
@@ -411,7 +480,7 @@ describe("YouTube processor: fetchLatest", () => {
     jest
       .spyOn(axios, "get")
       .mockImplementation(async (): Promise<AxiosResponse> => {
-        throw new Error("Request failed with status code 404");
+        throw httpError(404);
       });
     const source = newSource("https://www.youtube.com/@riskreversalmedia");
     source.info.channelId = CHANNEL_ID;

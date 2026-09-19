@@ -1,6 +1,11 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { Config } from "../Config";
 import { SourceItemStatus } from "../model/SourceItemStatus";
+import {
+  SourceFetchErrorClassify,
+  SourceFetchErrorInfo,
+} from "../model/SourceFetchError";
+import { SourceShouldAutoDisable } from "../model/SourceHealth";
 import * as fs from "fs-extra";
 import * as path from "path";
 import { find, merge, sortBy } from "lodash";
@@ -151,6 +156,7 @@ export async function ProcessorsFetchSourceItems(
   try {
     let processed = false;
     let lastError: Error = null;
+    let lastErrorInfo: SourceFetchErrorInfo = null;
     const lastSourceItemSaved = await SourceItemsDataGetLastForSource(
       context,
       source.id,
@@ -200,6 +206,10 @@ export async function ProcessorsFetchSourceItems(
             source.info.dateFetched = new Date();
             source.info.lastAttemptDate = new Date();
             source.info.fetchErrorCount = 0;
+            delete source.info.autoDisabled;
+            delete source.info.autoDisabledDate;
+            delete source.info.autoDisabledReason;
+            delete source.info.retryAfterUntil;
             if (lastItemDate) {
               source.info.lastItemDate = lastItemDate;
             }
@@ -207,7 +217,14 @@ export async function ProcessorsFetchSourceItems(
             processed = true;
           }
         } catch (err) {
-          logger.error("Error Fetching Source", err);
+          lastErrorInfo = SourceFetchErrorClassify(err);
+          context.setAttributes({
+            "feedwatcher.source.id": source.id,
+            "feedwatcher.source.fetch.error.class": lastErrorInfo.errorClass,
+            "feedwatcher.source.fetch.error.status":
+              lastErrorInfo.status ?? undefined,
+          });
+          logger.error("Error Fetching Source", err, context);
           lastError = err;
         }
       }
@@ -217,13 +234,41 @@ export async function ProcessorsFetchSourceItems(
     }
     source.info.lastAttemptDate = new Date();
     if (!processed) {
-      source.info.fetchErrorCount = (Number(source.info.fetchErrorCount) || 0) + 1;
+      const fetchErrorCount = (Number(source.info.fetchErrorCount) || 0) + 1;
+      source.info.fetchErrorCount = fetchErrorCount;
       source.info.lastFetchError = lastError
         ? lastError.message
           ? lastError.message
           : String(lastError)
         : "No processor found for this source";
       source.info.lastFetchErrorDate = new Date();
+      source.info.lastFetchErrorStatus = lastErrorInfo
+        ? lastErrorInfo.status
+        : null;
+      source.info.lastFetchErrorClass = lastErrorInfo
+        ? lastErrorInfo.errorClass
+        : "unknown";
+      if (lastErrorInfo && lastErrorInfo.retryAfterSeconds) {
+        source.info.retryAfterUntil = new Date(
+          Date.now() +
+            Math.min(
+              lastErrorInfo.retryAfterSeconds * 1000,
+              config.SOURCE_BACKOFF_MAX,
+            ),
+        );
+      }
+      if (
+        !source.info.autoDisabled &&
+        SourceShouldAutoDisable(fetchErrorCount, config.SOURCE_DISABLE_THRESHOLD)
+      ) {
+        source.info.autoDisabled = true;
+        source.info.autoDisabledDate = new Date();
+        source.info.autoDisabledReason = source.info.lastFetchError;
+        logger.warn(
+          `Source ${source.id} (${source.name}) auto-disabled after ${fetchErrorCount} consecutive fetch errors: ${source.info.lastFetchError}`,
+          context,
+        );
+      }
       await SourcesDataUpdate(context, source);
       logger.warn(
         `No processor found for ${source.id} (${source.name})`,
