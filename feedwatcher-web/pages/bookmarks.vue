@@ -41,6 +41,7 @@ const { onSourceSelected, onLabelSelected, onRootSelected } =
   useSourceItemsPage({
     filterStatus,
     filterSaved: true,
+    syncSourcesStore: true,
   });
 useSourceItemsInfiniteScroll();
 </script>

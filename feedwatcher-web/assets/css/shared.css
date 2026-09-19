@@ -97,6 +97,26 @@
   text-decoration: none;
 }
 
+/* Sources tree toggle button (Pico styles bare buttons as primary — reset) */
+.actions button.sources-actions-menu-toggle {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  margin: 0 var(--space-sm);
+  color: var(--color-text);
+  font-size: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background-color 0.15s ease;
+}
+.actions button.sources-actions-menu-toggle:hover,
+.actions button.sources-actions-menu-toggle:focus {
+  background-color: transparent;
+}
+.actions button.sources-actions-menu-toggle i {
+  font-size: var(--font-xl);
+}
+
 /* Rules page icon actions (outside .actions containers) */
 .rule-action {
   cursor: pointer;
@@ -108,6 +128,7 @@
   /* ~44px touch targets on mobile */
   .actions i,
   .actions a,
+  .actions button.sources-actions-menu-toggle,
   .rule-action {
     display: inline-flex;
     align-items: center;
@@ -121,6 +142,7 @@
   }
   .actions i:active,
   .actions a:active,
+  .actions button.sources-actions-menu-toggle:active,
   .rule-action:active {
     background-color: var(--color-bg-hover);
   }
@@ -271,12 +293,34 @@
   .sources-list-closed {
     height: 0px !important;
   }
+  #sources-header {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+  }
+  .sources-scope {
+    min-width: 0;
+    max-width: 45vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 @media (min-width: 701px) {
   .sources-actions-menu-toggle {
     display: none;
   }
+  .sources-scope {
+    display: none;
+  }
+}
+
+/* Current scope next to the page title (mobile, tree collapsed) */
+.sources-scope {
+  color: var(--color-text-muted);
+  font-size: var(--font-sm);
+  margin-left: var(--space-sm);
 }
 
 /* ---------- Grid layout media queries ---------- */
