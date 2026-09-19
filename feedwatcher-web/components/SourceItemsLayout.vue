@@ -2,6 +2,15 @@
   <div id="sources-layout">
     <div id="sources-header">
       <h4>{{ title }}</h4>
+      <span
+        v-if="
+          showTreeToggle &&
+          !sourcesStore.listMenuOpened &&
+          sourcesStore.scopeText
+        "
+        class="sources-scope"
+        >{{ sourcesStore.scopeText }}</span
+      >
     </div>
     <div id="sources-actions" class="actions">
       <slot name="actions">
@@ -26,24 +35,35 @@
           ><i class="bi bi-plus-square"></i
         ></NuxtLink>
       </slot>
-      <template v-if="showTreeToggle">
+      <button
+        v-if="showTreeToggle"
+        class="sources-actions-menu-toggle"
+        :aria-expanded="sourcesStore.listMenuOpened"
+        :aria-label="
+          sourcesStore.listMenuOpened
+            ? 'Hide the sources list'
+            : 'Show the sources list'
+        "
+        :title="
+          sourcesStore.listMenuOpened
+            ? 'Hide the sources list'
+            : 'Show the sources list'
+        "
+        v-on:click="sourcesStore.toggleListMenu()"
+      >
         <i
-          class="bi bi-caret-up-square sources-actions-menu-toggle"
-          v-if="menuOpened"
-          v-on:click="openListMenu()"
-          title="Hide the sources list"
-          aria-label="Hide the sources list"
+          :class="
+            sourcesStore.listMenuOpened
+              ? 'bi bi-layout-sidebar'
+              : 'bi bi-layout-sidebar-inset'
+          "
         ></i>
-        <i
-          class="bi bi-caret-down-square sources-actions-menu-toggle"
-          v-else
-          v-on:click="openListMenu()"
-          title="Show the sources list"
-          aria-label="Show the sources list"
-        ></i>
-      </template>
+      </button>
     </div>
-    <div id="sources-list" :class="{ 'sources-list-closed': !menuOpened }">
+    <div
+      id="sources-list"
+      :class="{ 'sources-list-closed': showTreeToggle && !sourcesStore.listMenuOpened }"
+    >
       <SourceList
         v-if="!lazyTree"
         :displayCount="displayCount"
@@ -84,11 +104,7 @@ const emit = defineEmits([
 ]);
 
 const userProcessorInfoStore = UserProcessorInfoStore();
-const menuOpened = ref(true);
-
-function openListMenu() {
-  menuOpened.value = !menuOpened.value;
-}
+const sourcesStore = SourcesStore();
 
 async function refreshAndFetch() {
   await axios

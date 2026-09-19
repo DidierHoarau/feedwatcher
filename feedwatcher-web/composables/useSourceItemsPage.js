@@ -39,14 +39,14 @@ export function useSourceItemsPage({
         filterStatus.value = useRoute().query.filterStatus;
       }
       if (useRoute().query.sourceId) {
-        onSourceSelected({ sourceId: useRoute().query.sourceId });
+        onSourceSelected({ sourceId: useRoute().query.sourceId }, false);
       } else if (useRoute().query.labelName) {
-        onLabelSelected({ labelName: useRoute().query.labelName });
+        onLabelSelected({ labelName: useRoute().query.labelName }, false);
       } else {
-        onRootSelected();
+        onRootSelected(false);
       }
     } else {
-      onRootSelected();
+      onRootSelected(false);
     }
   })();
   return { onSourceSelected, onLabelSelected, onRootSelected };
@@ -106,7 +106,7 @@ function useSourceItemsSelection({
     useRouter().push({ query });
   }
 
-  async function onSourceSelected(source) {
+  async function onSourceSelected(source, userAction = true) {
     const sourceItemsStore = SourceItemsStore();
     sourceItemsStore.selectedSource = source.sourceId;
     sourceItemsStore.searchCriteria = "sourceId";
@@ -116,13 +116,16 @@ function useSourceItemsSelection({
     sourceItemsStore.fetch();
     if (syncSourcesStore) {
       SourcesStore().setSelectedSourceId(source.sourceId);
+      if (userAction) {
+        SourcesStore().collapseListMenuOnMobile();
+      }
     }
     if (syncRoute) {
       updateRouteQuery();
     }
   }
 
-  async function onLabelSelected(source) {
+  async function onLabelSelected(source, userAction = true) {
     const sourceItemsStore = SourceItemsStore();
     sourceItemsStore.selectedSource = null;
     sourceItemsStore.searchCriteria = "labelName";
@@ -132,13 +135,16 @@ function useSourceItemsSelection({
     sourceItemsStore.fetch();
     if (syncSourcesStore) {
       SourcesStore().setSelectedLabel(source.labelName);
+      if (userAction) {
+        SourcesStore().collapseListMenuOnMobile();
+      }
     }
     if (syncRoute) {
       updateRouteQuery();
     }
   }
 
-  async function onRootSelected() {
+  async function onRootSelected(userAction = true) {
     const sourceItemsStore = SourceItemsStore();
     sourceItemsStore.selectedSource = null;
     sourceItemsStore.searchCriteria = "all";
@@ -147,6 +153,9 @@ function useSourceItemsSelection({
     sourceItemsStore.fetch();
     if (syncSourcesStore) {
       SourcesStore().setSelectedRoot();
+      if (userAction) {
+        SourcesStore().collapseListMenuOnMobile();
+      }
     }
     if (syncRoute) {
       updateRouteQuery();

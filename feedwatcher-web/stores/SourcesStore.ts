@@ -5,6 +5,27 @@ import axios from "axios";
 import { find, findIndex, sortBy } from "lodash";
 import { PreferencesLabels } from "~~/services/PreferencesLabels";
 
+const PREFERENCES_SOURCES_LIST_DISPLAY = "preferences_sources_list_display";
+
+function readListMenuOpened(): boolean {
+  try {
+    const preferences =
+      JSON.parse(
+        localStorage.getItem(PREFERENCES_SOURCES_LIST_DISPLAY) as string,
+      ) || {};
+    return preferences.isCollapsed !== true;
+  } catch {
+    return true;
+  }
+}
+
+function persistListMenuOpened(open: boolean) {
+  localStorage.setItem(
+    PREFERENCES_SOURCES_LIST_DISPLAY,
+    JSON.stringify({ isCollapsed: !open }),
+  );
+}
+
 export const SourcesStore = defineStore("SourcesStore", {
   state: () => ({
     sourcesStr: "",
@@ -15,11 +36,45 @@ export const SourcesStore = defineStore("SourcesStore", {
     selectedSourceId: "",
     selectedLabel: "",
     selectedRoot: true,
+    listMenuOpened: readListMenuOpened(),
   }),
 
-  getters: {},
+  getters: {
+    scopeText(): string {
+      if (this.selectedRoot) {
+        return "All";
+      }
+      if (this.selectedSourceId !== "") {
+        const source = find(this.sources, {
+          sourceId: this.selectedSourceId,
+        }) as any;
+        return source ? source.displayName : "";
+      }
+      if (this.selectedLabel !== "") {
+        const label = find(this.sources, {
+          labelName: this.selectedLabel,
+          isLabel: true,
+        }) as any;
+        return label ? label.displayName : "";
+      }
+      return "";
+    },
+  },
 
   actions: {
+    toggleListMenu() {
+      this.listMenuOpened = !this.listMenuOpened;
+      persistListMenuOpened(this.listMenuOpened);
+    },
+    collapseListMenuOnMobile() {
+      if (
+        this.listMenuOpened &&
+        window.matchMedia("(max-width: 700px)").matches
+      ) {
+        this.listMenuOpened = false;
+        persistListMenuOpened(false);
+      }
+    },
     setSelectedSourceId(sourceId: string) {
       this.selectedSourceId = sourceId;
       this.selectedLabel = "";
