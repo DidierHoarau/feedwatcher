@@ -4,8 +4,10 @@ const { parseFeed } = require("@rowanmanning/feed-parser");
 
 const CHANNEL_ID_PATTERN = /^UC[A-Za-z0-9_-]{22}$/;
 
-// YouTube's RSS feed endpoint intermittently fails with 404 or network
-// errors (seen for every channel); retrying the same request usually works.
+// YouTube's RSS feed endpoint intermittently fails with 5xx or network
+// errors; retrying the same request usually works. 4xx responses (dead
+// channel 404, rate-limit 429) are not retried: they do not recover within
+// milliseconds and retrying them only amplifies the request storm.
 const FETCH_RETRY_DELAYS_MS = [250, 500, 1000];
 
 // Supported URL forms: @handle, /channel/UC..., /user/..., /c/...
@@ -40,6 +42,11 @@ function isValidChannelId(channelId) {
   return typeof channelId === "string" && CHANNEL_ID_PATTERN.test(channelId);
 }
 
+function isClientError(err) {
+  const status = err && err.response ? err.response.status : undefined;
+  return typeof status === "number" && status >= 400 && status < 500;
+}
+
 async function fetchWithRetry(url, config) {
   let lastError = null;
   for (let attempt = 0; attempt <= FETCH_RETRY_DELAYS_MS.length; attempt++) {
@@ -53,6 +60,9 @@ async function fetchWithRetry(url, config) {
       // eslint-disable-next-line no-await-in-loop
       return (await axios.get(url, config)).data;
     } catch (err) {
+      if (isClientError(err)) {
+        throw err;
+      }
       lastError = err;
     }
   }
@@ -187,7 +197,8 @@ module.exports = {
       throw new Error(
         `Could not resolve YouTube channel ID for ${source.info.url}: ${
           err && err.message ? err.message : err
-        }`
+        }`,
+        { cause: err }
       );
     }
     if (!channelId) {
@@ -205,7 +216,8 @@ module.exports = {
       throw new Error(
         `YouTube feed not reachable for channel ${channelId} (${
           err && err.message ? err.message : err
-        })`
+        })`,
+        { cause: err }
       );
     }
     const feed = parseFeed(feedRaw);

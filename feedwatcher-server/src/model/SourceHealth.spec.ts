@@ -2,9 +2,11 @@ import {
   SourceBackoffMs,
   SourceGetHealth,
   SourceHealthLastUpdate,
+  SourceIsAutoDisabled,
   SourceIsDueForFetch,
   SourceIsFailing,
   SourceIsStale,
+  SourceShouldAutoDisable,
 } from "./SourceHealth";
 
 const HOUR = 3600000;
@@ -118,6 +120,57 @@ describe("SourceHealth", () => {
       };
       expect(SourceGetHealth(info, YEAR, 5, NOW)).toBe("failing");
     });
+
+    test("should report disabled with priority over failing and stale", () => {
+      const info = {
+        dateFetched: new Date(NOW - YEAR - DAY).toISOString(),
+        fetchErrorCount: 12,
+        autoDisabled: true,
+      };
+      expect(SourceGetHealth(info, YEAR, 5, NOW)).toBe("disabled");
+    });
+
+    test("should not report disabled when the flag is cleared", () => {
+      const info = {
+        dateFetched: new Date(NOW - HOUR).toISOString(),
+        fetchErrorCount: 0,
+        autoDisabled: false,
+      };
+      expect(SourceGetHealth(info, YEAR, 5, NOW)).toBe("ok");
+    });
+  });
+
+  describe("SourceIsAutoDisabled", () => {
+    //
+    test("should reflect the autoDisabled flag", () => {
+      expect(SourceIsAutoDisabled({ autoDisabled: true })).toBe(true);
+      expect(SourceIsAutoDisabled({ autoDisabled: false })).toBe(false);
+      expect(SourceIsAutoDisabled({})).toBe(false);
+      expect(SourceIsAutoDisabled(null)).toBe(false);
+    });
+  });
+
+  describe("SourceShouldAutoDisable", () => {
+    //
+    test("should disable at the threshold and above", () => {
+      expect(SourceShouldAutoDisable(10, 10)).toBe(true);
+      expect(SourceShouldAutoDisable(11, 10)).toBe(true);
+    });
+
+    test("should not disable below the threshold", () => {
+      expect(SourceShouldAutoDisable(9, 10)).toBe(false);
+      expect(SourceShouldAutoDisable(0, 10)).toBe(false);
+    });
+
+    test("should never disable when the threshold is not positive", () => {
+      expect(SourceShouldAutoDisable(100, 0)).toBe(false);
+      expect(SourceShouldAutoDisable(100, -1)).toBe(false);
+    });
+
+    test("should ignore non numeric error counts", () => {
+      expect(SourceShouldAutoDisable(Number.NaN, 10)).toBe(false);
+      expect(SourceShouldAutoDisable(undefined, 10)).toBe(false);
+    });
   });
 
   describe("SourceBackoffMs", () => {
@@ -209,6 +262,42 @@ describe("SourceHealth", () => {
       expect(SourceIsDueForFetch({ dateFetched: "invalid" }, HOUR, NOW, DAY)).toBe(
         true,
       );
+    });
+
+    test("should never be due when auto-disabled", () => {
+      const info = {
+        dateFetched: new Date(NOW - 10 * DAY).toISOString(),
+        fetchErrorCount: 12,
+        autoDisabled: true,
+      };
+      expect(SourceIsDueForFetch(info, HOUR, NOW, DAY)).toBe(false);
+    });
+
+    test("should not be due while the Retry-After delay has not elapsed", () => {
+      const info = {
+        lastAttemptDate: new Date(NOW - HOUR).toISOString(),
+        fetchErrorCount: 1,
+        retryAfterUntil: new Date(NOW + HOUR).toISOString(),
+      };
+      expect(SourceIsDueForFetch(info, HOUR, NOW, DAY)).toBe(false);
+    });
+
+    test("should be due again once the Retry-After delay elapsed", () => {
+      const info = {
+        lastAttemptDate: new Date(NOW - 3 * HOUR).toISOString(),
+        fetchErrorCount: 1,
+        retryAfterUntil: new Date(NOW - HOUR).toISOString(),
+      };
+      // Normal backoff applies again: 1 error = 1h from the last attempt.
+      expect(SourceIsDueForFetch(info, HOUR, NOW, DAY)).toBe(true);
+    });
+
+    test("should ignore an invalid Retry-After date", () => {
+      const info = {
+        dateFetched: new Date(NOW - 2 * HOUR).toISOString(),
+        retryAfterUntil: "not-a-date",
+      };
+      expect(SourceIsDueForFetch(info, HOUR, NOW, DAY)).toBe(true);
     });
   });
 });

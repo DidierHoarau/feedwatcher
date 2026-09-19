@@ -1,4 +1,4 @@
-export type SourceHealth = "ok" | "stale" | "failing";
+export type SourceHealth = "ok" | "stale" | "failing" | "disabled";
 
 export function SourceHealthLastUpdate(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -52,6 +52,9 @@ export function SourceGetHealth(
   errorThreshold: number,
   now: number = Date.now(),
 ): SourceHealth {
+  if (SourceIsAutoDisabled(info)) {
+    return "disabled";
+  }
   if (SourceIsFailing(info, errorThreshold)) {
     return "failing";
   }
@@ -59,6 +62,23 @@ export function SourceGetHealth(
     return "stale";
   }
   return "ok";
+}
+
+export function SourceIsAutoDisabled(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  info: any,
+): boolean {
+  return Boolean((info || {}).autoDisabled);
+}
+
+export function SourceShouldAutoDisable(
+  fetchErrorCount: number,
+  threshold: number,
+): boolean {
+  if (!threshold || threshold <= 0) {
+    return false;
+  }
+  return (Number(fetchErrorCount) || 0) >= threshold;
 }
 
 export function SourceBackoffMs(
@@ -83,6 +103,19 @@ export function SourceIsDueForFetch(
   maxBackoffMs: number,
 ): boolean {
   const data = info || {};
+  if (data.autoDisabled) {
+    return false;
+  }
+  const retryAfterUntil = data.retryAfterUntil
+    ? new Date(data.retryAfterUntil)
+    : null;
+  if (
+    retryAfterUntil &&
+    !isNaN(retryAfterUntil.getTime()) &&
+    retryAfterUntil.getTime() > now
+  ) {
+    return false;
+  }
   const errorCount = Number(data.fetchErrorCount) || 0;
   const frequency = Number(data.fetchFrequency) || baseFrequencyMs;
   const attemptDate =

@@ -116,13 +116,18 @@ Configuration values can be set via environment variables or through the `config
 
 ### Source Health
 
-Sources that need attention are flagged in the source list: a source is marked **stale** when it hasn't published new items for a long time, and **failing** when its fetch keeps erroring. Failing sources are also retried with an exponential backoff (up to the maximum) to avoid hitting the rate limits of the target sites. They are also listed in the "Sources needing attention" section of the home page (above the list of URL types), each entry linking to the source's items on the sources page.
+Sources that need attention are flagged in the source list: a source is marked **stale** when it hasn't published new items for a long time, **failing** when its fetch keeps erroring, and **disabled** when the scheduler stopped fetching it automatically (see below). Failing sources are retried with an exponential backoff (up to the maximum) to avoid hitting the rate limits of the target sites. They are also listed in the "Sources needing attention" section of the home page (above the list of URL types), each entry linking to the source's items on the sources page.
 
-| Variable                 | Description                                                                       | Default                 |
-| ------------------------ | --------------------------------------------------------------------------------- | ----------------------- |
-| `SOURCE_STALE_THRESHOLD` | Time without new items after which a source is marked stale, in milliseconds      | `31536000000` (365 days)|
-| `SOURCE_ERROR_THRESHOLD` | Number of consecutive fetch errors after which a source is marked failing         | `5`                     |
-| `SOURCE_BACKOFF_MAX`     | Maximum backoff between fetches for failing sources, in milliseconds              | `86400000` (24 hours)   |
+When a source keeps failing (typically a feed that is gone for good), retrying it every day only generates errors: after `SOURCE_DISABLE_THRESHOLD` consecutive fetch errors the source is **automatically disabled** and is no longer picked up by the scheduler. Disabled sources are reported with their reason in the "Sources needing attention" section and on the source edit page, where a manual fetch resumes automatic fetching as soon as it succeeds (a successful fetch always resets the error counters). Set `SOURCE_DISABLE_THRESHOLD` to `0` to never disable a source automatically.
+
+Rate-limited sources are treated with extra care: when a `429` or `503` response carries a `Retry-After` header, the next fetch is not attempted before that delay (capped at `SOURCE_BACKOFF_MAX`).
+
+| Variable                    | Description                                                                                | Default                  |
+| --------------------------- | ------------------------------------------------------------------------------------------ | ------------------------ |
+| `SOURCE_STALE_THRESHOLD`    | Time without new items after which a source is marked stale, in milliseconds                | `31536000000` (365 days) |
+| `SOURCE_ERROR_THRESHOLD`    | Number of consecutive fetch errors after which a source is marked failing                   | `5`                      |
+| `SOURCE_BACKOFF_MAX`        | Maximum backoff between fetches for failing sources, in milliseconds                        | `86400000` (24 hours)    |
+| `SOURCE_DISABLE_THRESHOLD`  | Number of consecutive fetch errors after which a source is disabled (`0` to never disable)  | `10`                     |
 
 ## Podcast Search
 
