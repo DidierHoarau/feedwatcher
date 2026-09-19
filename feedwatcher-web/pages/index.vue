@@ -9,7 +9,7 @@
           <span class="items-actions-icons">
             <i
               v-if="displayedRecentItems.length > 0"
-              v-on:click="markAllRead(displayedRecentItems)"
+              v-on:click="markAllRead('recent', $event)"
               class="bi bi-check2-square"
               title="Mark all as read"
               aria-label="Mark all as read"
@@ -46,7 +46,7 @@
           v-if="displayedRecentItems.length > 0"
           class="items-mark-read-bottom"
         >
-          <button v-on:click="markAllRead(displayedRecentItems)">
+          <button v-on:click="markAllRead('recent', $event)">
             <i class="bi bi-check2-square"></i> Mark all as read
           </button>
         </div>
@@ -60,7 +60,7 @@
           <span class="items-actions-icons">
             <i
               v-if="displayedNewItems.length > 0"
-              v-on:click="markAllRead(displayedNewItems)"
+              v-on:click="markAllRead('new', $event)"
               class="bi bi-check2-square"
               title="Mark all as read"
               aria-label="Mark all as read"
@@ -94,7 +94,7 @@
           </div>
         </div>
         <div v-if="displayedNewItems.length > 0" class="items-mark-read-bottom">
-          <button v-on:click="markAllRead(displayedNewItems)">
+          <button v-on:click="markAllRead('new', $event)">
             <i class="bi bi-check2-square"></i> Mark all as read
           </button>
         </div>
@@ -115,7 +115,7 @@
           <span class="items-actions-icons">
             <i
               v-if="displayedSummaryItems.length > 0"
-              v-on:click="markAllRead(displayedSummaryItems)"
+              v-on:click="markAllRead('summary', $event)"
               class="bi bi-check2-square"
               title="Mark all as read"
               aria-label="Mark all as read"
@@ -152,7 +152,7 @@
           v-if="displayedSummaryItems.length > 0"
           class="items-mark-read-bottom"
         >
-          <button v-on:click="markAllRead(displayedSummaryItems)">
+          <button v-on:click="markAllRead('summary', $event)">
             <i class="bi bi-check2-square"></i> Mark all as read
           </button>
         </div>
@@ -160,6 +160,17 @@
     </div>
 
     <SourcesAttention v-if="authenticated" />
+
+    <ConfirmPopover
+      v-model="confirmOpen"
+      :anchor="confirmAnchor"
+      title="Mark all items as read?"
+      description="You can undo this for a few seconds."
+      confirm-label="Mark read"
+      cancel-label="Cancel"
+      @confirm="confirmMarkAll"
+      @cancel="cancelMarkAll"
+    />
 
     <p>These are the types of URLs that you can follow on this server:</p>
     <div class="processor-info-list">
@@ -187,6 +198,7 @@ import axios from "axios";
 import { marked } from "marked";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService.ts";
+import { EventBus, EventTypes } from "~~/services/EventBus";
 
 export default {
   data() {
@@ -204,6 +216,9 @@ export default {
       summaryShowUnreadOnly: true,
       loading: false,
       authenticated: false,
+      confirmOpen: false,
+      confirmAnchor: null,
+      pendingMarkAllSection: null,
     };
   },
   computed: {
@@ -247,29 +262,83 @@ export default {
       this[filterMap[listName]] = !this[filterMap[listName]];
       this.rebuildDisplayed(listName);
     },
-    async markAllRead(items) {
+    async markAllRead(listName, event) {
+      const items = this.displayedListFor(listName);
       if (!items || items.length === 0) return;
-      let confirmed = false;
       if (items.length > 1) {
-        confirmed = confirm("Mark all items as read?");
-      } else {
-        confirmed = true;
+        this.pendingMarkAllSection = listName;
+        this.confirmAnchor = event?.currentTarget || null;
+        this.confirmOpen = true;
+        return;
       }
-      if (confirmed) {
-        const headers = await AuthService.getAuthHeader();
-        const itemIds = items.map((item) => item.id);
-        try {
-          await axios.put(
-            `${(await Config.get()).SERVER_URL}/items/status`,
-            { status: "read", itemIds },
-            headers,
-          );
-          for (const item of items) {
-            item.status = "read";
-          }
-        } catch (error) {
-          console.error("Failed to mark items as read", error);
+      await this.applyMarkAllRead(listName);
+    },
+    displayedListFor(listName) {
+      const displayMap = {
+        recent: "displayedRecentItems",
+        new: "displayedNewItems",
+        summary: "displayedSummaryItems",
+      };
+      return this[displayMap[listName]];
+    },
+    confirmMarkAll() {
+      const listName = this.pendingMarkAllSection;
+      this.pendingMarkAllSection = null;
+      if (listName) {
+        this.applyMarkAllRead(listName);
+      }
+    },
+    cancelMarkAll() {
+      this.pendingMarkAllSection = null;
+    },
+    async applyMarkAllRead(listName) {
+      const items = this.displayedListFor(listName);
+      if (!items || items.length === 0) return;
+      const restoreIds = items
+        .filter((item) => item.status !== "read")
+        .map((item) => item.id);
+      const itemIds = items.map((item) => item.id);
+      try {
+        await axios.put(
+          `${(await Config.get()).SERVER_URL}/items/status`,
+          { status: "read", itemIds },
+          await AuthService.getAuthHeader(),
+        );
+        for (const item of items) {
+          item.status = "read";
         }
+        EventBus.emit(EventTypes.ALERT_MESSAGE, {
+          text: "All items marked as read",
+          actionLabel: "Undo",
+          durationMs: 6000,
+          onAction: () => this.undoMarkAllRead(listName, restoreIds),
+        });
+      } catch (error) {
+        console.error("Failed to mark items as read", error);
+      }
+    },
+    async undoMarkAllRead(listName, restoreIds) {
+      if (!restoreIds || restoreIds.length === 0) return;
+      const sourceMap = {
+        recent: "recentItems",
+        new: "newItems",
+        summary: "summaryItems",
+      };
+      const source = this[sourceMap[listName]] || [];
+      try {
+        await axios.put(
+          `${(await Config.get()).SERVER_URL}/items/status`,
+          { status: "unread", itemIds: restoreIds },
+          await AuthService.getAuthHeader(),
+        );
+        for (const item of source) {
+          if (restoreIds.includes(item.id)) {
+            item.status = "unread";
+          }
+        }
+        this.rebuildDisplayed(listName);
+      } catch (error) {
+        console.error("Failed to restore items as unread", error);
       }
     },
   },

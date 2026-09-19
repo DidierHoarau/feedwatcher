@@ -17,7 +17,7 @@
     ></NuxtLink>
     <i
       v-if="sourceItemsStore.sourceItems.length > 0"
-      v-on:click="markAllRead()"
+      v-on:click="markAllRead($event)"
       class="bi bi-check2-square"
       title="Mark all displayed items as read"
       aria-label="Mark all displayed items as read"
@@ -36,6 +36,16 @@
       title="Currently showing all items — show unread only"
       aria-label="Show unread items only"
     ></i>
+    <ConfirmPopover
+      v-model="confirmOpen"
+      :anchor="confirmAnchor"
+      title="Mark all items as read?"
+      description="You can undo this for a few seconds."
+      confirm-label="Mark read"
+      cancel-label="Cancel"
+      @confirm="onConfirmMarkAll"
+      @cancel="onCancelMarkAll"
+    />
   </div>
 </template>
 
@@ -56,6 +66,8 @@ const emit = defineEmits(["update:filterStatus"]);
 
 const sourceItemsStore = SourceItemsStore();
 const searchText = ref("");
+const confirmOpen = ref(false);
+const confirmAnchor = ref(null);
 
 const onSearchInput = debounce(function () {
   sourceItemsStore.searchPattern = searchText.value;
@@ -73,39 +85,76 @@ function toggleUnreadFIlter() {
   sourceItemsStore.fetch();
 }
 
-async function markAllRead() {
+async function markAllRead(event) {
   const sourceItemsStore = SourceItemsStore();
-  let confirmed = false;
-  if (sourceItemsStore.sourceItems.length > 1) {
-    confirmed = confirm("Mark all item read?");
-  } else {
-    confirmed = true;
+  const items = sourceItemsStore.sourceItems;
+  if (items.length === 0) {
+    return;
   }
-  if (confirmed === true) {
-    const itemIds = [];
-    for (const item of sourceItemsStore.sourceItems) {
-      itemIds.push(item.id);
-    }
-    await axios
-      .put(
-        `${(await Config.get()).SERVER_URL}/items/status`,
-        { status: "read", itemIds },
-        await AuthService.getAuthHeader(),
-      )
-      .then(() => {
-        for (const item of sourceItemsStore.sourceItems) {
-          item.status = "read";
-        }
-        EventBus.emit(EventTypes.ALERT_MESSAGE, {
-          text: "All displayed items marked as read",
-        });
-        EventBus.emit(EventTypes.ITEMS_UPDATED, {});
-        return Timeout.wait(1000);
-      })
-      .then(() => {
-        sourceItemsStore.fetch();
-      })
-      .catch(handleError);
+  if (items.length > 1) {
+    confirmAnchor.value = event?.currentTarget || null;
+    confirmOpen.value = true;
+    return;
   }
+  await applyMarkAllRead(items);
+}
+
+function onConfirmMarkAll() {
+  const sourceItemsStore = SourceItemsStore();
+  const items = [...sourceItemsStore.sourceItems];
+  applyMarkAllRead(items);
+}
+
+function onCancelMarkAll() {
+  confirmAnchor.value = null;
+}
+
+async function applyMarkAllRead(items) {
+  const sourceItemsStore = SourceItemsStore();
+  const restoreIds = items
+    .filter((item) => item.status !== "read")
+    .map((item) => item.id);
+  const itemIds = items.map((item) => item.id);
+  await axios
+    .put(
+      `${(await Config.get()).SERVER_URL}/items/status`,
+      { status: "read", itemIds },
+      await AuthService.getAuthHeader(),
+    )
+    .then(() => {
+      for (const item of items) {
+        item.status = "read";
+      }
+      EventBus.emit(EventTypes.ALERT_MESSAGE, {
+        text: "All displayed items marked as read",
+        actionLabel: "Undo",
+        durationMs: 6000,
+        onAction: () => undoMarkAllRead(restoreIds),
+      });
+      EventBus.emit(EventTypes.ITEMS_UPDATED, {});
+      return Timeout.wait(1000);
+    })
+    .then(() => {
+      sourceItemsStore.fetch();
+    })
+    .catch(handleError);
+}
+
+async function undoMarkAllRead(restoreIds) {
+  if (!restoreIds || restoreIds.length === 0) {
+    return;
+  }
+  const sourceItemsStore = SourceItemsStore();
+  await axios
+    .put(
+      `${(await Config.get()).SERVER_URL}/items/status`,
+      { status: "unread", itemIds: restoreIds },
+      await AuthService.getAuthHeader(),
+    )
+    .then(() => {
+      EventBus.emit(EventTypes.ITEMS_UPDATED, {});
+      return sourceItemsStore.fetch();
+    })
+    .catch(handleError);
 }
 </script>
