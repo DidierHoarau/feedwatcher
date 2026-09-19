@@ -140,6 +140,27 @@ main {
   overflow: hidden;
 }
 
+/* Mobile: nav becomes a bottom tab bar (grid placement, DOM order unchanged) */
+@media (max-width: 700px) {
+  #page-layout,
+  #page-layout.has-mini-player {
+    grid-template-rows: 1fr auto auto;
+  }
+  main {
+    grid-row: 1;
+    grid-column: 1;
+  }
+  .mini-player {
+    grid-row: 2;
+    grid-column: 1;
+  }
+  header {
+    grid-row: 3;
+    grid-column: 1;
+    padding: 0;
+  }
+}
+
 /* Mini Player */
 .mini-player {
   display: grid;
