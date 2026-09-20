@@ -149,6 +149,11 @@
     min-height: 0;
     padding: 0;
   }
+  /* anchors wrap an icon that is already a 44px touch target — their own
+     padding would stack on top and inflate the whole row (e.g. "add source") */
+  .actions a {
+    padding: 0;
+  }
   .actions i:active,
   .actions a:active,
   .actions button.sources-actions-menu-toggle:active,
