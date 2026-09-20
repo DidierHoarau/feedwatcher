@@ -66,15 +66,6 @@ export const SourcesStore = defineStore("SourcesStore", {
       this.listMenuOpened = !this.listMenuOpened;
       persistListMenuOpened(this.listMenuOpened);
     },
-    collapseListMenuOnMobile() {
-      if (
-        this.listMenuOpened &&
-        window.matchMedia("(max-width: 700px)").matches
-      ) {
-        this.listMenuOpened = false;
-        persistListMenuOpened(false);
-      }
-    },
     setSelectedSourceId(sourceId: string) {
       this.selectedSourceId = sourceId;
       this.selectedLabel = "";
