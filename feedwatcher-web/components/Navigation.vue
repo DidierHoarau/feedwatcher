@@ -11,6 +11,15 @@
     <ul class="menu-links">
       <li v-if="authenticationStore.isAuthenticated">
         <NuxtLink
+          to="/"
+          :class="activeRoute == '' ? 'active' : 'inactive'"
+          aria-label="Dashboard"
+          ><i class="bi bi-house-fill"></i>
+          <span class="nav-label">Dashboard</span></NuxtLink
+        >
+      </li>
+      <li v-if="authenticationStore.isAuthenticated">
+        <NuxtLink
           to="/sources"
           :class="activeRoute == 'sources' ? 'active' : 'inactive'"
           aria-label="Sources"
@@ -104,7 +113,7 @@ export default {
   },
   methods: {
     routeUpdated(newRoute) {
-      this.activeRoute = newRoute.fullPath.split("/")[1];
+      this.activeRoute = newRoute.path.split("/")[1];
     },
   },
 };
