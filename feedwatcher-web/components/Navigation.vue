@@ -53,7 +53,7 @@
           to="/users"
           :class="activeRoute == 'users' ? 'active' : 'inactive'"
           aria-label="Account and settings"
-          ><i class="bi bi-person-circle"></i>
+          ><i class="bi bi-person-fill"></i>
           <span class="nav-label">Users</span></NuxtLink
         >
       </li>
@@ -163,7 +163,8 @@ export default {
     padding: 0;
     padding-bottom: env(safe-area-inset-bottom, 0px);
     border-top: 1px solid var(--color-border);
-    background-color: var(--color-bg-secondary);
+    background-color: var(--color-bg);
+    box-shadow: 0 -2px 10px var(--color-shadow-sm);
   }
   .menu-links {
     display: flex;
@@ -188,7 +189,7 @@ export default {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 3px;
     min-height: 3.5rem;
     padding: var(--space-xs) 0;
     box-sizing: border-box;
@@ -196,23 +197,34 @@ export default {
   }
   .menu-links i {
     margin-right: 0;
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     line-height: 1;
+    padding: 2px 16px;
+    border-radius: var(--radius-full);
   }
   .nav-label {
     display: block;
-    font-size: 0.65rem;
-    font-weight: 500;
+    font-size: 0.7rem;
+    font-weight: 600;
   }
   .menu-links .inactive {
-    opacity: 0.55;
+    opacity: 1;
+    color: var(--color-text-muted);
   }
   .menu-links .active {
     color: var(--color-primary);
     opacity: 1;
   }
+  .menu-links .active i {
+    background-color: var(--color-primary-light);
+  }
   :root[data-theme="light"] .menu-links .inactive {
-    opacity: 0.55;
+    /* color-text-muted (#78909c) is only ~3.35:1 on white — below WCAG AA 4.5:1 for 0.7rem labels */
+    color: var(--color-text-secondary);
+    opacity: 1;
+  }
+  :root[data-theme="light"] .menu-links .active {
+    color: var(--color-primary-dark);
   }
 }
 </style>
