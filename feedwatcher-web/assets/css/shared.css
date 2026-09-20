@@ -140,6 +140,20 @@
     margin-left: 0.1rem;
     margin-right: 0.1rem;
   }
+  /* the toggle button's inner icon must not inflate the button */
+  .actions button.sources-actions-menu-toggle {
+    padding: 0;
+  }
+  .actions button.sources-actions-menu-toggle i {
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+  }
+  /* anchors wrap an icon that is already a 44px touch target — their own
+     padding would stack on top and inflate the whole row (e.g. "add source") */
+  .actions a {
+    padding: 0;
+  }
   .actions i:active,
   .actions a:active,
   .actions button.sources-actions-menu-toggle:active,
@@ -295,8 +309,18 @@
   }
   #sources-header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     min-width: 0;
+  }
+  #sources-header h4 {
+    margin: 0;
+    font-size: 1.1em;
+    line-height: 1.2;
+  }
+  #sources-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
   }
   .sources-scope {
     min-width: 0;
@@ -350,6 +374,8 @@
     display: flex;
     justify-content: right;
     align-items: center;
+    padding-top: 0;
+    padding-bottom: 0;
   }
 }
 

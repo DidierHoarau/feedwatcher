@@ -14,10 +14,14 @@
     <div id="sources-items-list">
       <div id="sources-items-list-page">
         <div
+          class="item-list-card"
           v-for="sourceItem in sourceItemsStore.sourceItems"
           v-bind:key="sourceItem.id"
         >
-          <LazySourceItem class="fade-in-fast" :item="sourceItem" />
+          <LazySourceItem
+            class="fade-in-fast item-list-card"
+            :item="sourceItem"
+          />
         </div>
         <div id="sources-items-list-page-next">
           <Loading v-if="sourceItemsStore.loading" />
