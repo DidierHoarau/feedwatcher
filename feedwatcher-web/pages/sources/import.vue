@@ -73,9 +73,6 @@ export default {
     };
   },
   async created() {
-    if (!(await AuthenticationStore().ensureAuthenticated())) {
-      useRouter().push({ path: "/users" });
-    }
     EventBus.on(EventTypes.ITEMS_UPDATED, (message) => {
       if (
         SourceItemsStore().sourceItems.length === 0 &&

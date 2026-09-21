@@ -236,10 +236,6 @@ function truncate(text, maxLen) {
 }
 
 onMounted(async () => {
-  if (!(await AuthenticationStore().ensureAuthenticated())) {
-    router.push({ path: "/users" });
-    return;
-  }
   sourcesStore.fetch();
   try {
     const res = await axios.get(`${(await Config.get()).SERVER_URL}/status`);
