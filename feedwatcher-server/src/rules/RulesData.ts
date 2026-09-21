@@ -70,7 +70,6 @@ export async function RulesDataUpdate(
   span.end();
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function fromRaw(rulesRaw: any): Rules {
   const rules = new Rules();
   rules.id = rulesRaw.id;

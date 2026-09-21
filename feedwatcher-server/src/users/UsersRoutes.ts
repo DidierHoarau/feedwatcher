@@ -115,7 +115,7 @@ export class UsersRoutes {
         return res.status(403).send({ error: "Access Denied" });
       }
       const user = await UsersDataGet(OTelRequestSpan(req), userSession.userId);
-      if (!req.body.password || !req.body.password) {
+      if (!req.body.password) {
         return res.status(400).send({ error: "Missing: Password" });
       }
       if (

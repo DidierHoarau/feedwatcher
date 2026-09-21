@@ -1,7 +1,6 @@
 export type SourceHealth = "ok" | "stale" | "failing" | "disabled";
 
 export function SourceHealthLastUpdate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   info: any,
 ): Date | null {
   const data = info || {};
@@ -17,7 +16,6 @@ export function SourceHealthLastUpdate(
 }
 
 export function SourceIsStale(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   info: any,
   staleThresholdMs: number,
   now: number = Date.now(),
@@ -33,7 +31,6 @@ export function SourceIsStale(
 }
 
 export function SourceIsFailing(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   info: any,
   errorThreshold: number,
 ): boolean {
@@ -46,7 +43,6 @@ export function SourceIsFailing(
 }
 
 export function SourceGetHealth(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   info: any,
   staleThresholdMs: number,
   errorThreshold: number,
@@ -65,7 +61,6 @@ export function SourceGetHealth(
 }
 
 export function SourceIsAutoDisabled(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   info: any,
 ): boolean {
   return Boolean((info || {}).autoDisabled);
@@ -96,7 +91,6 @@ export function SourceBackoffMs(
 }
 
 export function SourceIsDueForFetch(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   info: any,
   baseFrequencyMs: number,
   now: number,

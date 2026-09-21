@@ -25,7 +25,6 @@ const NETWORK_ERROR_CODES = [
 ];
 
 export function SourceFetchErrorClassify(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   err: any,
 ): SourceFetchErrorInfo {
   const response = errorResponse(err);
@@ -58,7 +57,6 @@ export function SourceFetchErrorClassify(
 
 // Private Functions
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function errorResponse(err: any): any {
   if (err?.response) {
     return err.response;
@@ -66,7 +64,6 @@ function errorResponse(err: any): any {
   return err?.cause?.response ? err.cause.response : null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sourceFetchRetryAfterSeconds(response: any): number | null {
   const header =
     response?.headers?.["retry-after"] ?? response?.headers?.["Retry-After"];

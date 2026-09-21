@@ -1,10 +1,13 @@
 module.exports = {
+  coverageProvider: "v8",
   moduleFileExtensions: ["ts", "js"],
   transform: {
     "^.+\\.(ts|tsx)$": [
-      "ts-jest",
+      "@swc/jest",
       {
-        tsconfig: "tsconfig.spec.json",
+        jsc: {
+          target: "es2020",
+        },
       },
     ],
   },

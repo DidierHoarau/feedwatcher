@@ -2,7 +2,6 @@ import { v4 as uuidv4 } from "uuid";
 
 export class User {
   //
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static fromJson(json: any): User {
     if (!json) {
       return null;
@@ -24,7 +23,6 @@ export class User {
     this.id = uuidv4();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public toJson(): any {
     return {
       id: this.id,

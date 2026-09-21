@@ -24,7 +24,6 @@ export class SourcesLabelsRoutes {
       );
       const config = new Config();
       await config.reload();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const sourceLabel of sourceLabels as any[]) {
         sourceLabel.sourceInfo.health = SourceGetHealth(
           sourceLabel.sourceInfo,

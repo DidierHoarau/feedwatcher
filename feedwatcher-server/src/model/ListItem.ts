@@ -6,7 +6,6 @@ export class ListItem {
   public itemId: string;
   public userId: string;
   public name: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public info: any;
 
   constructor() {
