@@ -94,7 +94,6 @@ const rules = ref({ info: [] });
 const currentRule = ref({ autoDelete: [], autoRead: [] });
 
 (async () => {
-  await ensureAuthenticatedUser();
   axios
     .get(
       `${(await Config.get()).SERVER_URL}/rules`,

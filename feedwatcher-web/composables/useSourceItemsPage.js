@@ -1,14 +1,7 @@
-import { AuthenticationStore } from "~~/stores/AuthenticationStore";
 import { SourceItemsStore } from "~~/stores/SourceItemsStore";
 import { SourcesStore } from "~~/stores/SourcesStore";
 import { UserProcessorInfoStore } from "~~/stores/UserProcessorInfoStore";
 import { EventBus, EventTypes } from "~~/services/EventBus";
-
-export async function ensureAuthenticatedUser() {
-  if (!(await AuthenticationStore().ensureAuthenticated())) {
-    useRouter().push({ path: "/users" });
-  }
-}
 
 export function useSourceItemsPage({
   filterStatus,
@@ -25,7 +18,6 @@ export function useSourceItemsPage({
       syncRoute,
     });
   (async () => {
-    await ensureAuthenticatedUser();
     EventBus.on(EventTypes.ITEMS_UPDATED, (message) => {
       if (
         SourceItemsStore().sourceItems.length === 0 &&
