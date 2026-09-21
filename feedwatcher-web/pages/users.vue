@@ -152,23 +152,6 @@
 
         <div class="preference-row">
           <div class="preference-label">
-            <i class="bi bi-hand-index"></i>
-            <span>Item action icons</span>
-          </div>
-          <div class="preference-control">
-            <label class="switch-label">
-              <input
-                type="checkbox"
-                v-model="itemActionsOverlay"
-                @change="changeItemActionsOverlay"
-              />
-              Show action icons as an overlay on cards (mobile)
-            </label>
-          </div>
-        </div>
-
-        <div class="preference-row">
-          <div class="preference-label">
             <i class="bi bi-link-45deg"></i>
             <span>Open Source Link</span>
           </div>
@@ -220,7 +203,6 @@ export default {
       autoMarkRead: PreferencesService.isAutoMarkReadEnabled(),
       openDetailsMode: PreferencesService.getOpenDetailsMode(),
       openLinksMode: PreferencesService.getOpenLinksMode(),
-      itemActionsOverlay: PreferencesService.isItemActionsOverlayEnabled(),
     };
   },
   async created() {
@@ -339,9 +321,6 @@ export default {
     },
     changeOpenLinksMode() {
       PreferencesService.setOpenLinksMode(this.openLinksMode);
-    },
-    changeItemActionsOverlay() {
-      PreferencesService.setItemActionsOverlayEnabled(this.itemActionsOverlay);
     },
     toggleTheme() {
       PreferencesService.toggleTheme(this);
