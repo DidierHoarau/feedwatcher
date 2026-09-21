@@ -58,6 +58,7 @@
         ref="actionsTrigger"
         type="button"
         class="tap tap-overflow sourceitem-overflow-trigger"
+        :class="{ 'sourceitem-overflow-hidden': isItemActionsOverlayEnabled }"
         aria-haspopup="menu"
         aria-label="Item actions"
         :aria-expanded="isActionsSheetOpen ? 'true' : 'false'"
@@ -93,6 +94,45 @@
 
     <div class="sourceitem-layout-meta">
       {{ item.sourceName }}
+    </div>
+
+    <div
+      v-if="isItemActionsOverlayEnabled"
+      class="sourceitem-actions-overlay"
+    >
+      <button
+        type="button"
+        class="sourceitem-overlay-btn"
+        :title="item.status == 'read' ? 'Mark as unread' : 'Mark as read'"
+        :aria-label="item.status == 'read' ? 'Mark as unread' : 'Mark as read'"
+        @click.stop="markReadStatus(item.status == 'read' ? 'unread' : 'read')"
+      >
+        <i
+          :class="item.status == 'read' ? 'bi bi-envelope-open' : 'bi bi-envelope'"
+          class="source-action"
+        ></i>
+      </button>
+      <button
+        type="button"
+        class="sourceitem-overlay-btn"
+        :title="isSaved ? 'Remove bookmark' : 'Save bookmark'"
+        :aria-label="isSaved ? 'Remove bookmark' : 'Save bookmark'"
+        @click.stop="isSaved ? unSaveItem() : saveItem()"
+      >
+        <i
+          :class="isSaved ? 'bi bi-bookmark-check-fill' : 'bi bi-bookmark-plus'"
+          class="source-action"
+        ></i>
+      </button>
+      <button
+        type="button"
+        class="sourceitem-overlay-btn"
+        title="Open link"
+        aria-label="Open link"
+        @click.stop="openItemLink()"
+      >
+        <i class="bi bi-box-arrow-up-right source-action"></i>
+      </button>
     </div>
 
     <div
@@ -143,6 +183,7 @@ export default {
       isActive: false,
       isSaved: false,
       isActionsSheetOpen: false,
+      isItemActionsOverlayEnabled: PreferencesService.isItemActionsOverlayEnabled(),
       frameHeight: 200,
       autoMarkReadObserver: null,
       wasIntersected: false,
@@ -376,6 +417,7 @@ export default {
   width: 100%;
   height: auto;
   grid-gap: var(--space-sm);
+  position: relative;
 }
 .sourceitem-layout-title {
   grid-row: 1;
@@ -454,6 +496,30 @@ export default {
   }
 }
 
+.sourceitem-actions-overlay {
+  display: none;
+}
+.sourceitem-overlay-btn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  border-radius: var(--radius-full);
+}
+.sourceitem-overlay-btn:active {
+  background: var(--color-bg-hover);
+}
+.sourceitem-overlay-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
 @media (max-width: 700px) {
   .sourceitem-layout {
     grid-template-columns: 4em 1fr auto;
@@ -488,6 +554,22 @@ export default {
   }
   .sourceitem-overflow-trigger {
     border: none;
+  }
+  .sourceitem-overflow-trigger.sourceitem-overflow-hidden {
+    display: none;
+  }
+  .sourceitem-actions-overlay {
+    display: flex;
+    position: absolute;
+    right: var(--space-sm);
+    bottom: var(--space-sm);
+    z-index: 2;
+    gap: var(--space-xs);
+    padding: var(--space-xs);
+    border-radius: var(--radius-full);
+    border: 1px solid var(--color-border);
+    background: color-mix(in srgb, var(--color-bg) 75%, transparent);
+    backdrop-filter: blur(2px);
   }
   .sourceitem-layout-meta {
     grid-column: 2 / 4;

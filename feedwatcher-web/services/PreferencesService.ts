@@ -1,6 +1,7 @@
 const AUTO_MARK_READ_KEY = "auto_mark_read_on_scroll";
 const OPEN_DETAILS_MODE_KEY = "open_details_mode";
 const OPEN_LINKS_MODE_KEY = "open_links_mode";
+const ITEM_ACTIONS_OVERLAY_KEY = "item_actions_overlay";
 
 export const PreferencesService = {
   //
@@ -13,6 +14,15 @@ export const PreferencesService = {
     const newValue = !current;
     localStorage.setItem(AUTO_MARK_READ_KEY, newValue ? "true" : "false");
     return newValue;
+  },
+
+  // Item action icons overlay — show main actions as icons on the card (mobile)
+  isItemActionsOverlayEnabled(): boolean {
+    return localStorage.getItem(ITEM_ACTIONS_OVERLAY_KEY) === "true";
+  },
+
+  setItemActionsOverlayEnabled(value: boolean): void {
+    localStorage.setItem(ITEM_ACTIONS_OVERLAY_KEY, value ? "true" : "false");
   },
 
   // Open Source Details — what happens when clicking the item card
