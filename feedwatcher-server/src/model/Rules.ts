@@ -3,7 +3,6 @@ import { RulesInfo } from "./RulesInfo";
 
 export class Rules {
   //
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static fromJson(json: any): Rules {
     if (!json) {
       return null;
@@ -30,7 +29,6 @@ export class Rules {
     this.info = [];
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public toJson(): any {
     return {
       id: this.id,

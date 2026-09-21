@@ -131,7 +131,6 @@ function getLimitQuery(searchOptions: SearchItemsOptions): string {
   return `LIMIT ${PAGE_SIZE + 1}`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getSearchResultsfromRaw(sourceItemsRaw: any): SearchItemsResult {
   const searchItemsResult = new SearchItemsResult();
   for (const sourceItem of sourceItemsRaw) {

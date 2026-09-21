@@ -62,7 +62,6 @@ export async function SourceLabelsDataSetSourceLabels(
 export async function SourceLabelsDataGetSourceLabels(
   context: Span,
   sourceId: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[]> {
   const span = OTelTracer().startSpan(
     "SourceLabelsDataGetSourceLabels",

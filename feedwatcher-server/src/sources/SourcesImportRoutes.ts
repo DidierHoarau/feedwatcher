@@ -19,7 +19,6 @@ export class SourcesImportRoutes {
         return res.status(403).send({ error: "Access Denied" });
       }
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data = await (req as any).file();
         const opmlText = (await data.toBuffer()).toString();
         const opmlData = await opmlLoad(opmlText);
@@ -54,9 +53,7 @@ export class SourcesImportRoutes {
         },
       };
       for (const source of sourceLabels) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sourceLabel = source as any;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const newOutline: any = {
           text: sourceLabel.sourceName,
           type: sourceLabel.sourceInfo.icon,
@@ -85,7 +82,6 @@ export class SourcesImportRoutes {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function opmlLoad(text: string): Promise<any> {
   return new Promise((resolve, reject) => {
     opml.parse(text, (err, opmlObject) => {
@@ -99,14 +95,12 @@ function opmlLoad(text: string): Promise<any> {
 }
 
 async function opmlProcessSub(
+  // oxlint-disable-next-line only-used-in-recursion
   context: Span,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   opmlSub: any[],
   parentFolder: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sourcesOpml: any[],
   userId: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   for (const feed of opmlSub) {
     if (feed.xmlUrl || feed.url) {

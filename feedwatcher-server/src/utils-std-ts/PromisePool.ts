@@ -1,7 +1,6 @@
 export class PromisePool {
   private maxConcurrency: number;
   private currentConcurrency: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private queue: any[];
   private timeout: number;
 

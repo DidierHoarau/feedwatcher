@@ -7,11 +7,8 @@ import {
 } from "@devopsplaybook.io/common-utils";
 import { TimeoutWait } from "@devopsplaybook.io/common-utils";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cacheUserCounts: any = {};
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cacheUserSavedCounts: any = {};
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cacheInProgress: any = {};
 
 export async function SourcesDataGet(
@@ -53,7 +50,6 @@ export async function SourcesDataListCountsForUser(
   context: Span,
   userId: string,
   skipCache = false,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[]> {
   const span = OTelTracer().startSpan("SourcesDataListCountsForUser", context);
   if (cacheUserCounts[userId] && !skipCache) {
@@ -80,7 +76,6 @@ export async function SourcesDataListCountsSavedForUser(
   context: Span,
   userId: string,
   skipCache = false,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[]> {
   const span = OTelTracer().startSpan(
     "SourcesDataListCountsSavedForUser",
@@ -214,7 +209,6 @@ export async function SourcesDataListCountsSaved(
   return count;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function fromRaw(sourceRaw: any): Source {
   const source = new Source();
   source.id = sourceRaw.id;

@@ -5,7 +5,6 @@ export class Source {
   public id: string;
   public name: string;
   public userId: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public info: any;
   public labels?: string[];
 
@@ -14,7 +13,6 @@ export class Source {
     this.info = {};
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public toJson(): any {
     return {
       id: this.id,

@@ -12,14 +12,12 @@ export class SourceItem {
   public url: string;
   public thumbnail: string;
   public status: SourceItemStatus;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public info: any;
 
   constructor() {
     this.id = uuidv4();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static fromRaw(itemRaw: any): SourceItem {
     const sourceItem = new SourceItem();
     sourceItem.id = itemRaw.id;
