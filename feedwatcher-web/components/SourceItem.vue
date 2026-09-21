@@ -54,17 +54,6 @@
     </div>
 
     <div class="sourceitem-layout-link">
-      <button
-        ref="actionsTrigger"
-        type="button"
-        class="tap tap-overflow sourceitem-overflow-trigger"
-        aria-haspopup="menu"
-        aria-label="Item actions"
-        :aria-expanded="isActionsSheetOpen ? 'true' : 'false'"
-        v-on:click="isActionsSheetOpen = true"
-      >
-        <i class="bi bi-three-dots"></i>
-      </button>
       <a
         v-if="isPodcastItem"
         href="#"
@@ -95,6 +84,42 @@
       {{ item.sourceName }}
     </div>
 
+    <div class="sourceitem-actions-overlay">
+      <button
+        type="button"
+        class="sourceitem-overlay-btn"
+        :title="item.status == 'read' ? 'Mark as unread' : 'Mark as read'"
+        :aria-label="item.status == 'read' ? 'Mark as unread' : 'Mark as read'"
+        @click.stop="markReadStatus(item.status == 'read' ? 'unread' : 'read')"
+      >
+        <i
+          :class="item.status == 'read' ? 'bi bi-envelope-open' : 'bi bi-envelope'"
+          class="source-action"
+        ></i>
+      </button>
+      <button
+        type="button"
+        class="sourceitem-overlay-btn"
+        :title="isSaved ? 'Remove bookmark' : 'Save bookmark'"
+        :aria-label="isSaved ? 'Remove bookmark' : 'Save bookmark'"
+        @click.stop="isSaved ? unSaveItem() : saveItem()"
+      >
+        <i
+          :class="isSaved ? 'bi bi-bookmark-check-fill' : 'bi bi-bookmark-plus'"
+          class="source-action"
+        ></i>
+      </button>
+      <button
+        type="button"
+        class="sourceitem-overlay-btn"
+        title="Open link"
+        aria-label="Open link"
+        @click.stop="openItemLink()"
+      >
+        <i class="bi bi-box-arrow-up-right source-action"></i>
+      </button>
+    </div>
+
     <div
       :class="{
         'sourceitem-active': isActive,
@@ -114,16 +139,6 @@
         ></iframe>
       </Transition>
     </div>
-
-    <ItemActionsSheet
-      :open="isActionsSheetOpen"
-      :item="item"
-      :is-saved="isSaved"
-      @close="closeActionsSheet"
-      @toggle-read="markReadStatus(item.status == 'read' ? 'unread' : 'read')"
-      @toggle-save="isSaved ? unSaveItem() : saveItem()"
-      @open-link="openItemLink()"
-    />
   </article>
 </template>
 
@@ -142,7 +157,6 @@ export default {
     return {
       isActive: false,
       isSaved: false,
-      isActionsSheetOpen: false,
       frameHeight: 200,
       autoMarkReadObserver: null,
       wasIntersected: false,
@@ -214,12 +228,6 @@ export default {
       .catch(handleError);
   },
   methods: {
-    closeActionsSheet() {
-      this.isActionsSheetOpen = false;
-      if (this.$refs.actionsTrigger) {
-        this.$refs.actionsTrigger.focus();
-      }
-    },
     async playPodcast() {
       const store = PodcastPlayerStore();
       if (this.isCurrentlyPlaying) {
@@ -376,6 +384,7 @@ export default {
   width: 100%;
   height: auto;
   grid-gap: var(--space-sm);
+  position: relative;
 }
 .sourceitem-layout-title {
   grid-row: 1;
@@ -437,21 +446,31 @@ export default {
   font-size: 1.4em;
 }
 
-.sourceitem-overflow-trigger {
+.sourceitem-actions-overlay {
+  display: none;
+}
+.sourceitem-overlay-btn {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: none;
   background: transparent;
-  border: 1px solid var(--color-border);
   color: var(--color-text);
   padding: 0;
   margin: 0;
+  cursor: pointer;
+  border-radius: var(--radius-full);
 }
-.sourceitem-overflow-trigger:focus-visible {
+.sourceitem-overlay-btn .source-action {
+  font-size: 1em;
+}
+.sourceitem-overlay-btn:active {
+  background: var(--color-bg-hover);
+}
+.sourceitem-overlay-btn:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
-}
-@media (min-width: 701px) {
-  .sourceitem-overflow-trigger {
-    display: none;
-  }
 }
 
 @media (max-width: 700px) {
@@ -486,8 +505,18 @@ export default {
   .sourceitem-layout-link > a:not(.podcast-play-icon) {
     display: none;
   }
-  .sourceitem-overflow-trigger {
-    border: none;
+  .sourceitem-actions-overlay {
+    display: flex;
+    position: absolute;
+    right: var(--space-sm);
+    bottom: var(--space-sm);
+    z-index: 2;
+    gap: var(--space-xs);
+    padding: var(--space-xs);
+    border-radius: var(--radius-full);
+    border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+    background: color-mix(in srgb, var(--color-bg) 45%, transparent);
+    backdrop-filter: blur(2px);
   }
   .sourceitem-layout-meta {
     grid-column: 2 / 4;

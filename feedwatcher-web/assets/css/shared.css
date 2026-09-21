@@ -176,69 +176,6 @@
 .tap:active {
   background: var(--color-bg-hover);
 }
-.tap-overflow {
-  border: 1px solid var(--color-border);
-}
-
-/* ---------- Item actions sheet (mobile overflow menu) ---------- */
-.item-actions-sheet-backdrop {
-  position: fixed;
-  inset: 0;
-  background: var(--color-overlay);
-  z-index: 40;
-}
-.item-actions-sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 50;
-  background: var(--color-bg);
-  border-top: 1px solid var(--color-border);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: var(--space-md) var(--space-md)
-    calc(var(--space-md) + env(safe-area-inset-bottom));
-  box-shadow: 0 -4px 16px var(--color-shadow-lg);
-}
-.item-actions-sheet-handle {
-  width: 3em;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--color-border);
-  margin: 0 auto var(--space-md);
-}
-.item-actions-sheet-title {
-  font-size: var(--font-sm);
-  color: var(--color-text-muted);
-  margin: 0 0 var(--space-sm) 0.5rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.item-actions-sheet-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  min-height: 44px;
-  padding: var(--space-sm);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-}
-.item-actions-sheet-item:active,
-.item-actions-sheet-item:focus-visible {
-  background: var(--color-bg-hover);
-}
-.item-actions-sheet-item i {
-  font-size: 1.25rem;
-  color: var(--color-text-secondary);
-  width: 1.5em;
-  text-align: center;
-}
-.item-actions-sheet-item .hint {
-  margin-left: auto;
-  font-size: var(--font-sm);
-  color: var(--color-text-muted);
-}
 
 /* ---------- Page alert messages ---------- */
 #page-alert-messages {
