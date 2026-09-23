@@ -392,3 +392,147 @@
   margin: 0;
   padding: 0;
 }
+
+/* ============================================================
+   Settings Pages — login, settings tabs & cards
+   ============================================================ */
+
+/* Login / registration card */
+.settings-auth-content {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-2xl);
+}
+
+.settings-auth-content .settings-card {
+  width: min(100%, 28em);
+}
+
+/* Settings tab content (Me, Import/Export) */
+.settings-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  padding: var(--space-base) 0;
+  max-width: 50em;
+}
+
+.settings-card {
+  margin: 0;
+}
+
+.settings-card header h4 {
+  margin: 0;
+  font-size: 1.1em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.settings-card header h4 i {
+  font-size: var(--font-xl);
+}
+
+.settings-card-actions {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.settings-card-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+/* Change password form */
+.change-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* Preference rows */
+.preference-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md) 0;
+  gap: var(--space-base);
+}
+
+.preference-row + .preference-row {
+  border-top: 1px solid var(--pico-muted-border-color, var(--color-border));
+}
+
+.preference-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  font-weight: 500;
+}
+
+.preference-label i {
+  font-size: var(--font-xl);
+  opacity: 0.8;
+}
+
+.preference-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* Icon button for dark mode */
+.icon-btn {
+  background: none;
+  border: 1px solid var(--pico-muted-border-color, var(--color-border));
+  cursor: pointer;
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--pico-border-radius);
+  color: var(--pico-color);
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-body);
+}
+
+.icon-btn:hover {
+  background: var(
+    --pico-card-sectioning-background-color,
+    rgba(255, 255, 255, 0.05)
+  );
+  border-color: var(--pico-primary);
+}
+
+/* Checkbox switch label */
+.switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-body);
+  cursor: pointer;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.switch-label input[type="checkbox"] {
+  width: 1.2em;
+  height: 1.2em;
+  cursor: pointer;
+}
+
+.preference-select {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--font-body);
+  cursor: pointer;
+}
+
+.preference-select:hover {
+  border-color: var(--color-border-hover);
+}

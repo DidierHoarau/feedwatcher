@@ -36,15 +36,6 @@
           <span class="nav-label">Bookmarks</span></NuxtLink
         >
       </li>
-      <li v-if="authenticationStore.isAuthenticated">
-        <NuxtLink
-          to="/rules"
-          :class="activeRoute == 'rules' ? 'active' : 'inactive'"
-          aria-label="Rules"
-          ><i class="bi bi-robot"></i>
-          <span class="nav-label">Rules</span></NuxtLink
-        >
-      </li>
       <li v-if="playerStore.hasActiveItem">
         <NuxtLink
           :to="{
@@ -57,13 +48,13 @@
           <span class="nav-label">Podcast</span></NuxtLink
         >
       </li>
-      <li>
+      <li v-if="authenticationStore.isAuthenticated">
         <NuxtLink
-          to="/users"
-          :class="activeRoute == 'users' ? 'active' : 'inactive'"
-          aria-label="Account and settings"
-          ><i class="bi bi-person-fill"></i>
-          <span class="nav-label">Users</span></NuxtLink
+          to="/settings"
+          :class="activeRoute == 'settings' ? 'active' : 'inactive'"
+          aria-label="Settings"
+          ><i class="bi bi-gear-fill"></i>
+          <span class="nav-label">Settings</span></NuxtLink
         >
       </li>
     </ul>
