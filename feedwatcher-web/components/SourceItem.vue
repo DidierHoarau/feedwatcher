@@ -461,12 +461,18 @@ export default {
   margin: 0;
   cursor: pointer;
   border-radius: var(--radius-full);
+  opacity: 0.75;
 }
 .sourceitem-overlay-btn .source-action {
   font-size: 1em;
 }
 .sourceitem-overlay-btn:active {
   background: var(--color-bg-hover);
+  opacity: 1;
+}
+/* Pico draws its ring on :focus (not :focus-visible), which leaves it stuck after a tap/click */
+.sourceitem-overlay-btn:focus {
+  --pico-box-shadow: none;
 }
 .sourceitem-overlay-btn:focus-visible {
   outline: 2px solid var(--color-primary);
@@ -514,8 +520,8 @@ export default {
     gap: var(--space-xs);
     padding: var(--space-xs);
     border-radius: var(--radius-full);
-    border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
-    background: color-mix(in srgb, var(--color-bg) 45%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-border) 35%, transparent);
+    background: color-mix(in srgb, var(--color-bg) 30%, transparent);
     backdrop-filter: blur(2px);
   }
   .sourceitem-layout-meta {
