@@ -97,6 +97,14 @@ import axios from "axios";
 import Config from "~~/services/Config.ts";
 import { EventBus, EventTypes } from "~~/services/EventBus";
 
+// Counts refresh cadences (ms): all triggers funnel into the throttled
+// SourcesStore.fetchCountsIfStale, so worst case is 2 small GETs per window.
+const COUNTS_TICK_MS = 30 * 1000;
+const COUNTS_MIN_AGE_IDLE_MS = 5 * 60 * 1000;
+const COUNTS_MIN_AGE_BUSY_MS = 60 * 1000;
+const COUNTS_MIN_AGE_ROUTE_MS = 60 * 1000;
+const COUNTS_MIN_AGE_RETURN_MS = 30 * 1000;
+
 export default {
   watch: {
     $route(to, from) {
@@ -106,20 +114,15 @@ export default {
   data() {
     return {
       activeRoute: "",
-      countsRequested: false,
+      countsTimer: null,
     };
   },
   async created() {
     this.routeUpdated(this.$route);
-    EventBus.on(EventTypes.ITEMS_UPDATED, () => {
-      if (!AuthenticationStore().isAuthenticated) {
-        return;
-      }
-      this.refreshCounts();
-      setTimeout(() => {
-        this.refreshCounts();
-      }, 2000);
-    });
+    EventBus.on(EventTypes.ITEMS_UPDATED, this.itemsUpdated);
+    document.addEventListener("visibilitychange", this.visibilityChanged);
+    window.addEventListener("focus", this.windowFocused);
+    this.countsTimer = setInterval(this.countsTick, COUNTS_TICK_MS);
     if (await AuthenticationStore().ensureAuthenticated()) {
       this.refreshCounts();
       setTimeout(async () => {
@@ -138,24 +141,63 @@ export default {
     UserProcessorInfoStore().check();
     PreferencesService.applyTheme();
   },
+  beforeUnmount() {
+    EventBus.off(EventTypes.ITEMS_UPDATED, this.itemsUpdated);
+    document.removeEventListener("visibilitychange", this.visibilityChanged);
+    window.removeEventListener("focus", this.windowFocused);
+    clearInterval(this.countsTimer);
+  },
   methods: {
     routeUpdated(newRoute) {
       this.activeRoute = newRoute.path.split("/")[1];
       if (!AuthenticationStore().isAuthenticated) {
         // Reset so a later login (client-side navigation) fetches the counts
-        this.countsRequested = false;
+        SourcesStore().countsFetchedAt = 0;
         return;
       }
-      if (!this.countsRequested) {
-        this.refreshCounts();
+      this.refreshCountsIfStale(COUNTS_MIN_AGE_ROUTE_MS);
+    },
+    itemsUpdated() {
+      if (!AuthenticationStore().isAuthenticated) {
+        return;
       }
+      // The change may not be visible server-side yet: refresh, then once more shortly after
+      this.refreshCounts();
+      setTimeout(() => {
+        this.refreshCounts();
+      }, 2000);
+    },
+    visibilityChanged() {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+      this.refreshCountsIfStale(COUNTS_MIN_AGE_RETURN_MS);
+    },
+    windowFocused() {
+      this.refreshCountsIfStale(COUNTS_MIN_AGE_RETURN_MS);
+    },
+    countsTick() {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+      // Poll faster while the server is fetching (counts climb), slower when idle
+      this.refreshCountsIfStale(
+        UserProcessorInfoStore().status === "idle"
+          ? COUNTS_MIN_AGE_IDLE_MS
+          : COUNTS_MIN_AGE_BUSY_MS,
+      );
     },
     refreshCounts() {
       if (!AuthenticationStore().isAuthenticated) {
         return;
       }
-      this.countsRequested = true;
-      SourcesStore().fetchCounts();
+      return SourcesStore().fetchCounts();
+    },
+    refreshCountsIfStale(maxAgeMs) {
+      if (!AuthenticationStore().isAuthenticated) {
+        return;
+      }
+      return SourcesStore().fetchCountsIfStale(maxAgeMs);
     },
   },
 };

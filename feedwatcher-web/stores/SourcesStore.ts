@@ -33,6 +33,8 @@ export const SourcesStore = defineStore("SourcesStore", {
     selectedIndex: -1,
     sourceCounts: [],
     savedCounts: [],
+    countsFetchedAt: 0,
+    countsFetchPromise: null as Promise<unknown> | null,
     selectedSourceId: "",
     selectedLabel: "",
     selectedRoot: true,
@@ -234,26 +236,42 @@ export const SourcesStore = defineStore("SourcesStore", {
         .catch(handleError);
     },
     async fetchCounts() {
-      await axios
-        .get(
-          `${(await Config.get()).SERVER_URL}/sources/labels/counts/unread`,
-          await AuthService.getAuthHeader(),
-        )
-        .then((res) => {
-          this.sourceCounts = res.data.counts;
-          assignCounts(this.sources, this.sourceCounts, "unreadCount");
-        })
-        .catch(handleError);
-      await axios
-        .get(
-          `${(await Config.get()).SERVER_URL}/sources/labels/counts/saved`,
-          await AuthService.getAuthHeader(),
-        )
-        .then((res) => {
-          this.savedCounts = res.data.counts;
-          assignCounts(this.sources, this.savedCounts, "savedCount");
-        })
-        .catch(handleError);
+      if (this.countsFetchPromise) {
+        return this.countsFetchPromise;
+      }
+      this.countsFetchPromise = Promise.all([
+        axios
+          .get(
+            `${(await Config.get()).SERVER_URL}/sources/labels/counts/unread`,
+            await AuthService.getAuthHeader(),
+          )
+          .then((res) => {
+            this.sourceCounts = res.data.counts;
+            assignCounts(this.sources, this.sourceCounts, "unreadCount");
+          })
+          .catch(handleError),
+        axios
+          .get(
+            `${(await Config.get()).SERVER_URL}/sources/labels/counts/saved`,
+            await AuthService.getAuthHeader(),
+          )
+          .then((res) => {
+            this.savedCounts = res.data.counts;
+            assignCounts(this.sources, this.savedCounts, "savedCount");
+          })
+          .catch(handleError),
+      ]).finally(() => {
+        // Errors count as attempts too, so failing requests retry at the caller's cadence
+        this.countsFetchedAt = Date.now();
+        this.countsFetchPromise = null;
+      });
+      return this.countsFetchPromise;
+    },
+    async fetchCountsIfStale(maxAgeMs: number) {
+      if (Date.now() - this.countsFetchedAt < maxAgeMs) {
+        return;
+      }
+      return this.fetchCounts();
     },
 
     toggleLabelCollapsed(index: number) {

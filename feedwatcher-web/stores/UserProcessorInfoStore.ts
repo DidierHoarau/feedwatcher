@@ -1,4 +1,3 @@
-import { Timeout } from "~~/services/Timeout";
 import { AuthService } from "~~/services/AuthService";
 import Config from "~~/services/Config";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
@@ -10,6 +9,7 @@ export const UserProcessorInfoStore = defineStore("UserProcessorInfoStore", {
     status: "idle",
     checkFrequency: 10 * 1000,
     checking: false,
+    nextCheck: null as ReturnType<typeof setTimeout> | null,
   }),
 
   getters: {},
@@ -20,14 +20,16 @@ export const UserProcessorInfoStore = defineStore("UserProcessorInfoStore", {
         return;
       }
       this.checking = true;
-      if (!(await AuthService.getAuthHeader())) {
+      const authHeader = await AuthService.getAuthHeader();
+      if (!authHeader.headers) {
+        // Not authenticated: /processors/status answers 403, skip the request
         this.checkFrequency = 10 * 1000;
       } else {
         try {
           let sourcesUpdated = false;
           let itemsUpdated = false;
           const info = (
-            await axios.get(`${(await Config.get()).SERVER_URL}/processors/status`, await AuthService.getAuthHeader())
+            await axios.get(`${(await Config.get()).SERVER_URL}/processors/status`, authHeader)
           ).data;
           this.checkFrequency = Math.min(this.checkFrequency * 2, 5 * 60 * 1000);
           if (info.status !== "idle" || this.lastUpdate < new Date(info.lastUpdate)) {
@@ -53,9 +55,14 @@ export const UserProcessorInfoStore = defineStore("UserProcessorInfoStore", {
         }
       }
       this.checking = false;
-      Timeout.wait(this.checkFrequency).then(() => {
+      if (this.nextCheck) {
+        // Every caller would otherwise schedule its own polling loop
+        clearTimeout(this.nextCheck);
+      }
+      this.nextCheck = setTimeout(() => {
+        this.nextCheck = null;
         this.check();
-      });
+      }, this.checkFrequency);
     },
   },
 });
