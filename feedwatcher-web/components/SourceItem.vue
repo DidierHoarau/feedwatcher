@@ -1,39 +1,5 @@
 <template>
   <article class="sourceitem-layout">
-    <div class="sourceitem-layout-read-status">
-      <i
-        v-if="item.status == 'read'"
-        class="bi bi-envelope-open source-action"
-        v-on:click="markReadStatus('unread')"
-        title="Mark as unread"
-        aria-label="Mark as unread"
-      ></i>
-      <i
-        v-else
-        class="bi bi-envelope source-action"
-        v-on:click="markReadStatus('read')"
-        title="Mark as read"
-        aria-label="Mark as read"
-      ></i>
-
-      <br />
-
-      <i
-        v-if="isSaved"
-        class="bi bi-bookmark-check-fill source-action"
-        v-on:click="unSaveItem()"
-        title="Remove bookmark"
-        aria-label="Remove bookmark"
-      ></i>
-      <i
-        v-else
-        class="bi bi-bookmark-plus source-action"
-        v-on:click="saveItem()"
-        title="Save bookmark"
-        aria-label="Save bookmark"
-      ></i>
-    </div>
-
     <div class="sourceitem-layout-thumbnail">
       <div
         v-if="item.thumbnail"
@@ -53,14 +19,18 @@
       {{ item.title }}
     </div>
 
-    <div class="sourceitem-layout-link">
-      <a
+    <div class="sourceitem-layout-meta">
+      {{ item.sourceName }}
+    </div>
+
+    <div class="sourceitem-actions-overlay">
+      <button
         v-if="isPodcastItem"
-        href="#"
-        v-on:click.prevent="playPodcast()"
-        class="podcast-play-icon"
-        title="Play episode"
-        aria-label="Play episode"
+        type="button"
+        class="sourceitem-overlay-btn podcast-play-icon"
+        :title="isCurrentlyPlaying ? 'Pause episode' : 'Play episode'"
+        :aria-label="isCurrentlyPlaying ? 'Pause episode' : 'Play episode'"
+        @click.stop="playPodcast()"
       >
         <i
           :class="
@@ -70,21 +40,7 @@
           "
           class="source-action"
         ></i>
-      </a>
-      <a
-        href="#"
-        v-on:click.prevent="openItemLink()"
-        title="Open link"
-        aria-label="Open link"
-        ><i class="bi bi-link source-action"></i
-      ></a>
-    </div>
-
-    <div class="sourceitem-layout-meta">
-      {{ item.sourceName }}
-    </div>
-
-    <div class="sourceitem-actions-overlay">
+      </button>
       <button
         type="button"
         class="sourceitem-overlay-btn"
@@ -379,8 +335,7 @@ export default {
 .sourceitem-layout {
   display: grid;
   grid-template-rows: auto auto 1fr;
-  grid-template-columns: auto auto 1fr auto;
-  height: calc(100vh - 5em);
+  grid-template-columns: auto 1fr;
   width: 100%;
   height: auto;
   grid-gap: var(--space-sm);
@@ -388,37 +343,24 @@ export default {
 }
 .sourceitem-layout-title {
   grid-row: 1;
-  grid-column: 3;
+  grid-column: 2;
   word-break: break-word;
   overflow-wrap: break-word;
 }
 .sourceitem-layout-thumbnail {
   grid-row: 1 / 3;
-  grid-column: 2;
-}
-.sourceitem-layout-read-status {
-  grid-row: 1 / 3;
   grid-column: 1;
-  text-align: center;
-  padding: var(--space-sm);
-  background-color: #33333344;
 }
-.sourceitem-layout-link {
-  grid-row: 1;
-  grid-column: 4;
-  text-align: right;
-  padding-left: var(--space-sm);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-xs);
-}
-.podcast-play-icon {
-  color: var(--color-primary);
+.sourceitem-thumbnail {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  height: 100%;
+  width: min(7em, 20vw);
 }
 .sourceitem-layout-content {
   grid-row: 3;
-  grid-column: 1 / 5;
+  grid-column: 1 / 3;
   overflow: hidden;
 }
 .sourceitem-content-frame {
@@ -428,9 +370,9 @@ export default {
 }
 .sourceitem-layout-meta {
   grid-row: 2;
-  grid-column: 3 / 5;
-  font-size: 0.5em;
-  text-align: right;
+  grid-column: 2 / 3;
+  font-size: var(--font-xs);
+  text-align: left;
 }
 .sourceitem-date {
   font-size: var(--font-xs);
@@ -438,7 +380,6 @@ export default {
 }
 .sourceitem-read,
 .sourceitem-date,
-.sourceitem-read,
 .sourceitem-layout-meta {
   opacity: 0.5;
 }
@@ -447,7 +388,17 @@ export default {
 }
 
 .sourceitem-actions-overlay {
-  display: none;
+  display: flex;
+  position: absolute;
+  right: var(--space-sm);
+  bottom: var(--space-sm);
+  z-index: 2;
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--color-border) 35%, transparent);
+  background: color-mix(in srgb, var(--color-bg) 30%, transparent);
+  backdrop-filter: blur(2px);
 }
 .sourceitem-overlay-btn {
   width: 32px;
@@ -466,6 +417,9 @@ export default {
 .sourceitem-overlay-btn .source-action {
   font-size: 1em;
 }
+.sourceitem-overlay-btn.podcast-play-icon {
+  color: var(--color-primary);
+}
 .sourceitem-overlay-btn:active {
   background: var(--color-bg-hover);
   opacity: 1;
@@ -481,79 +435,14 @@ export default {
 
 @media (max-width: 700px) {
   .sourceitem-layout {
-    grid-template-columns: 4em 1fr auto;
+    grid-template-columns: 4em 1fr;
     grid-gap: var(--space-xs) var(--space-sm);
     padding: var(--space-sm) 0;
   }
-  .sourceitem-layout-read-status {
-    display: none;
-  }
   .sourceitem-layout-thumbnail {
-    grid-column: 1;
     grid-row: 1;
     align-self: start;
   }
-  .sourceitem-thumbnail {
-    width: 4em;
-    height: 4em;
-    border-radius: var(--radius-md);
-  }
-  .sourceitem-layout-title {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .sourceitem-layout-link {
-    grid-column: 3;
-    grid-row: 1;
-    align-items: center;
-    align-self: start;
-  }
-  .sourceitem-layout-link > a:not(.podcast-play-icon) {
-    display: none;
-  }
-  .sourceitem-actions-overlay {
-    display: flex;
-    position: absolute;
-    right: var(--space-sm);
-    bottom: var(--space-sm);
-    z-index: 2;
-    gap: var(--space-xs);
-    padding: var(--space-xs);
-    border-radius: var(--radius-full);
-    border: 1px solid color-mix(in srgb, var(--color-border) 35%, transparent);
-    background: color-mix(in srgb, var(--color-bg) 30%, transparent);
-    backdrop-filter: blur(2px);
-  }
-  .sourceitem-layout-meta {
-    grid-column: 2 / 4;
-    grid-row: 2;
-    font-size: var(--font-xs);
-    text-align: left;
-  }
-  .sourceitem-layout-content {
-    grid-column: 1 / 4;
-  }
-  .sourceitem-layout-link > a {
-    width: 44px;
-    height: 44px;
-    display: grid;
-    place-items: center;
-    border-radius: var(--radius-md);
-  }
-  .sourceitem-layout-link > a:active {
-    background: var(--color-bg-hover);
-  }
-}
-
-.sourceitem-thumbnail {
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  height: 100%;
-  width: min(7em, 20vw);
-}
-
-@media (max-width: 700px) {
   .sourceitem-thumbnail {
     width: 4em;
     height: 4em;
