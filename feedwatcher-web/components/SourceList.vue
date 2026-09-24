@@ -133,12 +133,6 @@ export default {
       SourcesStore().selectedIndex = 0;
     }
     SourcesStore().fetch();
-    EventBus.on(EventTypes.ITEMS_UPDATED, (message) => {
-      SourcesStore().fetchCounts();
-      setTimeout(() => {
-        SourcesStore().fetchCounts();
-      }, 2000);
-    });
     EventBus.on(EventTypes.SOURCES_UPDATED, (message) => {
       SourcesStore().fetch();
     });

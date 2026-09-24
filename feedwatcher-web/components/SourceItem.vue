@@ -222,6 +222,7 @@ export default {
         )
         .then((res) => {
           this.isSaved = true;
+          EventBus.emit(EventTypes.ITEMS_UPDATED, {});
         })
         .catch(handleError);
     },
@@ -233,6 +234,7 @@ export default {
         )
         .then((res) => {
           this.isSaved = false;
+          EventBus.emit(EventTypes.ITEMS_UPDATED, {});
         })
         .catch(handleError);
     },

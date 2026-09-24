@@ -63,6 +63,13 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Live API GETs (nav counters, processor status): Network-first, so a single
+  // request returns fresh data; the cache is only used as offline fallback
+  if (isLiveApiRequest(url)) {
+    event.respondWith(networkFirst(request, DYNAMIC_CACHE));
+    return;
+  }
+
   // API GET requests: Stale-while-revalidate
   if (isApiRequest(url)) {
     event.respondWith(staleWhileRevalidate(request, DYNAMIC_CACHE));
@@ -81,6 +88,14 @@ function isStaticAsset(url) {
     /\.(js|css|png|jpg|jpeg|svg|ico|woff2?|ttf|eot)(\?.*)?$/.test(
       url.pathname,
     ) || url.pathname.startsWith("/_nuxt/")
+  );
+}
+
+// Endpoints polled to detect changes: must not be served one generation late
+function isLiveApiRequest(url) {
+  return (
+    url.pathname.includes("/sources/labels/counts/") ||
+    url.pathname.includes("/processors/status")
   );
 }
 
