@@ -19,14 +19,18 @@
       {{ item.title }}
     </div>
 
-    <div class="sourceitem-layout-link">
-      <a
+    <div class="sourceitem-layout-meta">
+      {{ item.sourceName }}
+    </div>
+
+    <div class="sourceitem-actions-overlay">
+      <button
         v-if="isPodcastItem"
-        href="#"
-        v-on:click.prevent="playPodcast()"
-        class="podcast-play-icon"
-        title="Play episode"
-        aria-label="Play episode"
+        type="button"
+        class="sourceitem-overlay-btn podcast-play-icon"
+        :title="isCurrentlyPlaying ? 'Pause episode' : 'Play episode'"
+        :aria-label="isCurrentlyPlaying ? 'Pause episode' : 'Play episode'"
+        @click.stop="playPodcast()"
       >
         <i
           :class="
@@ -36,14 +40,7 @@
           "
           class="source-action"
         ></i>
-      </a>
-    </div>
-
-    <div class="sourceitem-layout-meta">
-      {{ item.sourceName }}
-    </div>
-
-    <div class="sourceitem-actions-overlay">
+      </button>
       <button
         type="button"
         class="sourceitem-overlay-btn"
@@ -338,7 +335,7 @@ export default {
 .sourceitem-layout {
   display: grid;
   grid-template-rows: auto auto 1fr;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr;
   width: 100%;
   height: auto;
   grid-gap: var(--space-sm);
@@ -361,22 +358,9 @@ export default {
   height: 100%;
   width: min(7em, 20vw);
 }
-.sourceitem-layout-link {
-  grid-row: 1;
-  grid-column: 3;
-  text-align: right;
-  padding-left: var(--space-sm);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-xs);
-}
-.podcast-play-icon {
-  color: var(--color-primary);
-}
 .sourceitem-layout-content {
   grid-row: 3;
-  grid-column: 1 / 4;
+  grid-column: 1 / 3;
   overflow: hidden;
 }
 .sourceitem-content-frame {
@@ -386,7 +370,7 @@ export default {
 }
 .sourceitem-layout-meta {
   grid-row: 2;
-  grid-column: 2 / 4;
+  grid-column: 2 / 3;
   font-size: var(--font-xs);
   text-align: left;
 }
@@ -433,6 +417,9 @@ export default {
 .sourceitem-overlay-btn .source-action {
   font-size: 1em;
 }
+.sourceitem-overlay-btn.podcast-play-icon {
+  color: var(--color-primary);
+}
 .sourceitem-overlay-btn:active {
   background: var(--color-bg-hover);
   opacity: 1;
@@ -448,7 +435,7 @@ export default {
 
 @media (max-width: 700px) {
   .sourceitem-layout {
-    grid-template-columns: 4em 1fr auto;
+    grid-template-columns: 4em 1fr;
     grid-gap: var(--space-xs) var(--space-sm);
     padding: var(--space-sm) 0;
   }
@@ -460,20 +447,6 @@ export default {
     width: 4em;
     height: 4em;
     border-radius: var(--radius-md);
-  }
-  .sourceitem-layout-link {
-    align-items: center;
-    align-self: start;
-  }
-  .sourceitem-layout-link > a {
-    width: 44px;
-    height: 44px;
-    display: grid;
-    place-items: center;
-    border-radius: var(--radius-md);
-  }
-  .sourceitem-layout-link > a:active {
-    background: var(--color-bg-hover);
   }
 }
 
