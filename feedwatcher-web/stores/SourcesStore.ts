@@ -40,6 +40,18 @@ export const SourcesStore = defineStore("SourcesStore", {
   }),
 
   getters: {
+    totalUnreadCount(): number {
+      return this.sourceCounts.reduce(
+        (total: number, count: any) => total + (count.unreadCount || 0),
+        0,
+      );
+    },
+    totalSavedCount(): number {
+      return this.savedCounts.reduce(
+        (total: number, count: any) => total + (count.savedCount || 0),
+        0,
+      );
+    },
     scopeText(): string {
       if (this.selectedRoot) {
         return "All";

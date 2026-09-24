@@ -64,9 +64,6 @@ export default {
       SourcesStore().selectedIndex = 0;
     }
     SourcesStore().fetch();
-    EventBus.on(EventTypes.ITEMS_UPDATED, (message) => {
-      SourcesStore().fetchCounts();
-    });
     EventBus.on(EventTypes.SOURCES_UPDATED, (message) => {
       SourcesStore().fetch();
     });
