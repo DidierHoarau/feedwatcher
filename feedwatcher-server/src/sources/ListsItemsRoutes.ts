@@ -54,7 +54,7 @@ export class ListsItemsRoutes {
         listItem.itemId = req.body.itemId;
       }
       listItem.info.dateAdded = new Date();
-      ListsItemsDataAdd(OTelRequestSpan(req), listItem);
+      await ListsItemsDataAdd(OTelRequestSpan(req), listItem);
       return res.status(201).send({});
     });
 
@@ -70,7 +70,7 @@ export class ListsItemsRoutes {
         if (!userSession.isAuthenticated) {
           return res.status(403).send({ error: "Access Denied" });
         }
-        ListsItemsDataDeleteForUser(
+        await ListsItemsDataDeleteForUser(
           OTelRequestSpan(req),
           req.params.itemId,
           userSession.userId
