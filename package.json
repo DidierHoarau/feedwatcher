@@ -1,6 +1,6 @@
 {
   "name": "feedwatcher",
-  "version": "1.46.0",
+  "version": "1.46.7",
   "description": "",
   "main": "ecosystem.config.js",
   "scripts": {
