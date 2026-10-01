@@ -42,7 +42,7 @@
     "@types/fs-extra": "^11.0.4",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.25",
-    "@types/node": "^26.4.0",
+    "@types/node": "^26.6.3",
     "jest": "^30.5.0",
     "oxlint": "^1.83.0",
     "sinon": "^22.1.0",
