@@ -19,19 +19,23 @@ export class PromisePool {
     return this.currentConcurrency;
   }
 
+  // Tasks are best-effort: the returned promise resolves with the task
+  // result, or with undefined when the task failed or timed out (the error
+  // is logged). A failing task must never produce an unhandled rejection.
   public add(promiseGenerator) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const controller = new AbortController();
       const signal = controller.signal;
 
-      const wrappedPromise = () => {
-        return new Promise((innerResolve, innerReject) => {
+      const wrappedPromise = () =>
+        new Promise((innerResolve, innerReject) => {
           const timeoutId = setTimeout(() => {
             controller.abort();
             innerReject(new Error("Promise cancelled due to timeout"));
           }, this.timeout);
 
-          promiseGenerator(signal)
+          Promise.resolve()
+            .then(() => promiseGenerator(signal))
             .then((result) => {
               clearTimeout(timeoutId);
               innerResolve(result);
@@ -41,9 +45,8 @@ export class PromisePool {
               innerReject(error);
             });
         });
-      };
 
-      this.queue.push({ wrappedPromise, resolve, reject });
+      this.queue.push({ wrappedPromise, resolve });
       this.runNext();
     });
   }
@@ -53,7 +56,7 @@ export class PromisePool {
       this.currentConcurrency < this.maxConcurrency &&
       this.queue.length > 0
     ) {
-      const { wrappedPromise, resolve, reject } = this.queue.shift();
+      const { wrappedPromise, resolve } = this.queue.shift();
       this.currentConcurrency++;
 
       wrappedPromise()
@@ -63,7 +66,10 @@ export class PromisePool {
           this.runNext();
         })
         .catch((error) => {
-          reject(error);
+          console.error(
+            `PromisePool task failed: ${error?.message ?? String(error)}`,
+          );
+          resolve(undefined);
           this.currentConcurrency--;
           this.runNext();
         });

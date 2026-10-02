@@ -186,7 +186,7 @@
           <i :class="'bi bi-' + processorInfo.icon"></i>
         </div>
         <div class="processor-info-description">
-          <span v-html="processorInfo.description"></span>
+          <span v-html="sanitizedProcessorDescription(processorInfo)"></span>
         </div>
       </div>
     </div>
@@ -195,6 +195,7 @@
 
 <script>
 import axios from "axios";
+import DOMPurify from "dompurify";
 import { marked } from "marked";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService.ts";
@@ -224,10 +225,14 @@ export default {
   computed: {
     formattedSummary() {
       if (!this.summary?.summary) return "";
-      return marked(this.summary.summary);
+      return DOMPurify.sanitize(marked(this.summary.summary));
     },
   },
   methods: {
+    sanitizedProcessorDescription(processorInfo) {
+      if (!processorInfo?.description) return "";
+      return DOMPurify.sanitize(processorInfo.description);
+    },
     rebuildDisplayed(listName) {
       const sourceMap = {
         recent: "recentItems",
@@ -384,17 +389,26 @@ export default {
           sinceDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         }
 
-        const res = await axios.post(
-          `${(await Config.get()).SERVER_URL}/items/search`,
-          {
-            searchCriteria: "all",
-            page: -1,
-            filterStatus: "all",
-            sinceDate,
-          },
-          headers,
-        );
-        const allItems = res.data.sourceItems || [];
+        const allItems = [];
+        let cursor = null;
+        const MAX_PAGES = 20;
+        for (let page = 0; page < MAX_PAGES; page++) {
+          const res = await axios.post(
+            `${(await Config.get()).SERVER_URL}/items/search`,
+            {
+              searchCriteria: "all",
+              filterStatus: "all",
+              sinceDate,
+              ...(cursor ? { cursor } : {}),
+            },
+            headers,
+          );
+          allItems.push(...(res.data.sourceItems || []));
+          if (!res.data.pageHasMore || !res.data.nextCursor) {
+            break;
+          }
+          cursor = res.data.nextCursor;
+        }
 
         if (this.summary && this.summary.generatedAt) {
           const summaryTime = new Date(this.summary.generatedAt).getTime();

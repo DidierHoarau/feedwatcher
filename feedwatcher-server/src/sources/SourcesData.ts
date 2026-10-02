@@ -1,15 +1,21 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
+import * as path from "path";
 import { Source } from "../model/Source";
-import { OTelTracer } from "../OTelContext";
+import { OTelLogger, OTelTracer } from "../OTelContext";
 import {
   DbUtilsExecSQL,
   DbUtilsQuerySQL,
 } from "@devopsplaybook.io/common-utils";
-import { TimeoutWait } from "@devopsplaybook.io/common-utils";
+
+const logger = OTelLogger().createModuleLogger(path.basename(__filename));
 
 const cacheUserCounts: any = {};
 const cacheUserSavedCounts: any = {};
-const cacheInProgress: any = {};
+
+// Time-throttled count refresh: a burst of mutations triggers one immediate
+// aggregate refresh plus at most one trailing refresh.
+const COUNT_REFRESH_THROTTLE_MS = 2000;
+const countRefreshState: any = {};
 
 export async function SourcesDataGet(
   context: Span,
@@ -36,7 +42,8 @@ export async function SourcesDataListForUser(
   const span = OTelTracer().startSpan("SourcesDataListForUser", context);
   const sourcesRaw = await DbUtilsQuerySQL(
     span,
-    `SELECT * FROM sources WHERE userId = '${userId}'`,
+    "SELECT * FROM sources WHERE userId = ?",
+    [userId],
   );
   const sources = [];
   for (const sourceRaw of sourcesRaw) {
@@ -120,7 +127,7 @@ export async function SourcesDataAdd(
   source: Source,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourcesDataAdd", context);
-  DbUtilsExecSQL(
+  await DbUtilsExecSQL(
     span,
     "INSERT INTO sources (id,userId,name,info) VALUES (?,?,?,?)",
     [source.id, source.userId, source.name, JSON.stringify(source.info)],
@@ -166,28 +173,49 @@ export async function SourcesDataInvalidateUserCache(
   context: Span,
   userId: string,
 ): Promise<void> {
-  if (cacheInProgress[userId]) {
-    cacheInProgress[userId] = 0;
-  }
-  if (cacheInProgress[userId] > 0) {
-    cacheInProgress[userId]++;
+  // Evict immediately so no reader can observe stale counts.
+  delete cacheUserCounts[userId];
+  delete cacheUserSavedCounts[userId];
+
+  const state = countRefreshState[userId] || { lastRefresh: 0, timer: null };
+  countRefreshState[userId] = state;
+  const elapsed = Date.now() - state.lastRefresh;
+
+  if (elapsed >= COUNT_REFRESH_THROTTLE_MS && !state.timer) {
+    state.lastRefresh = Date.now();
+    await refreshUserCountsCaches(context, userId);
     return;
   }
-  const span = OTelTracer().startSpan("StandardTracerStartSpan", context);
-  SourcesDataListCountsForUser(span, userId, true);
-  SourcesDataListCountsSavedForUser(span, userId, true);
-  span.end();
-  TimeoutWait(1000).finally(() => {
-    if (cacheInProgress[userId] > 1) {
-      const newSpan = OTelTracer().startSpan("StandardTracerStartSpan");
-      cacheInProgress[userId] = 0;
-      SourcesDataInvalidateUserCache(context, userId).finally(() => {
-        newSpan.end();
-      });
-    } else {
-      cacheInProgress[userId] = 0;
+
+  if (!state.timer) {
+    // Inside the throttle window: schedule a single trailing refresh so the
+    // burst settles without one aggregate pair per mutation.
+    state.timer = setTimeout(() => {
+      state.timer = null;
+      state.lastRefresh = Date.now();
+      refreshUserCountsCaches(null, userId).catch((err) =>
+        logger.error(`Counts refresh failed for user ${userId}`, err),
+      );
+    }, COUNT_REFRESH_THROTTLE_MS - elapsed);
+    if (typeof state.timer.unref === "function") {
+      state.timer.unref();
     }
-  });
+  }
+}
+
+async function refreshUserCountsCaches(
+  context: Span,
+  userId: string,
+): Promise<void> {
+  const span = OTelTracer().startSpan("SourcesDataInvalidateUserCache", context);
+  try {
+    await SourcesDataListCountsForUser(span, userId, true);
+    await SourcesDataListCountsSavedForUser(span, userId, true);
+  } catch (err) {
+    logger.error(`Counts refresh failed for user ${userId}`, err, span);
+  } finally {
+    span.end();
+  }
 }
 
 export async function SourcesDataListCountsSaved(

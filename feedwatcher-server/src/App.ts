@@ -7,7 +7,7 @@ import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
 import { watchFile } from "fs-extra";
 import * as path from "path";
-import { Config } from "./Config";
+import { ConfigGet } from "./Config";
 import {
   OTelLogger,
   OTelSetMeter,
@@ -33,9 +33,18 @@ const logger = OTelLogger().createModuleLogger("app");
 
 logger.info("====== Starting FeedWatcher Server ======");
 
+// Last-resort net: an unhandled rejection must never take the whole service
+// (and every user's feeds) down. Log it and keep serving.
+process.on("unhandledRejection", (reason: any) => {
+  logger.error(
+    `Unhandled promise rejection: ${reason?.message ?? reason}`,
+    reason instanceof Error ? reason : undefined,
+  );
+});
+
 Promise.resolve().then(async () => {
   //
-  const config = new Config();
+  const config = ConfigGet();
   await config.reload((msg) => logger.info(msg));
   watchFile(config.CONFIG_FILE, () => {
     logger.info(`Config updated: ${config.CONFIG_FILE}`);

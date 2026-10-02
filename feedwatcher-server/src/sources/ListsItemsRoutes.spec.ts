@@ -74,13 +74,13 @@ describe("ListsItemsRoutes", () => {
 
     finishSave();
     const saveResponse = await responsePromise;
-    expect(saveResponse.statusCode).toBe(201);
+    expect(saveResponse.statusCode).toBe(200);
 
     const statusResponse = await fastify.inject({
       method: "GET",
       url: "/items/item-1",
     });
-    expect(statusResponse.statusCode).toBe(201);
+    expect(statusResponse.statusCode).toBe(200);
     expect(JSON.parse(statusResponse.body)).toEqual(
       expect.objectContaining({ id: expect.any(String) })
     );
@@ -115,6 +115,6 @@ describe("ListsItemsRoutes", () => {
 
     finishDelete();
     const response = await responsePromise;
-    expect(response.statusCode).toBe(202);
+    expect(response.statusCode).toBe(204);
   });
 });

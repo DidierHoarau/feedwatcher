@@ -2,6 +2,8 @@
 const axios = require("axios");
 const { parseFeed } = require("@rowanmanning/feed-parser");
 
+const AXIOS_TIMEOUT_MS = 10000;
+
 /**
  * Extract the audio enclosure URL from a feed item's raw XML element.
  * Only returns a URL if the enclosure is an audio type (type="audio/...").
@@ -84,7 +86,9 @@ module.exports = {
 
   test: async (source) => {
     try {
-      const feed = parseFeed((await axios.get(source.info.url)).data);
+      const feed = parseFeed(
+        (await axios.get(source.info.url, { timeout: AXIOS_TIMEOUT_MS })).data,
+      );
       if (!isPodcastFeed(feed)) {
         return null;
       }
@@ -99,7 +103,9 @@ module.exports = {
   },
 
   fetchLatest: async (source, lastSourceItemSaved) => {
-    const feed = parseFeed((await axios.get(source.info.url)).data);
+    const feed = parseFeed(
+      (await axios.get(source.info.url, { timeout: AXIOS_TIMEOUT_MS })).data,
+    );
     const feedArtwork =
       getItunesImageUrl(feed.element) || (feed.image && feed.image.url) || null;
     const feedAuthor = getItunesValue(feed.element, "author");

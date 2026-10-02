@@ -11,7 +11,22 @@ import {
 import { AuthGetUserSession } from "../users/Auth";
 import { SourcesDataAdd, SourcesDataListForUser } from "./SourcesData";
 import { SourceGetHealth } from "../model/SourceHealth";
-import { Config } from "../Config";
+import { ConfigGet } from "../Config";
+import { OTelLogger } from "../OTelContext";
+
+const logger = OTelLogger().createModuleLogger("SourcesRoutes");
+
+function normalizeSourceUrl(url: string): string {
+  const trimmed = String(url ?? "").trim();
+  try {
+    const parsed = new URL(trimmed);
+    const pathname =
+      parsed.pathname === "/" ? "" : parsed.pathname.replace(/\/+$/, "");
+    return `${parsed.protocol.toLowerCase()}//${parsed.host.toLowerCase()}${pathname}${parsed.search}`;
+  } catch {
+    return trimmed;
+  }
+}
 
 export class SourcesRoutes {
   //
@@ -26,8 +41,7 @@ export class SourcesRoutes {
         OTelRequestSpan(req),
         userSession.userId,
       );
-      const config = new Config();
-      await config.reload();
+      const config = ConfigGet();
       return res.status(200).send({
         sources: sources.map((source) => {
           const json = source.toJson();
@@ -51,6 +65,22 @@ export class SourcesRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
+      if (!req.body.url || !String(req.body.url).trim()) {
+        return res.status(400).send({ error: "Missing: url" });
+      }
+      const existingSources = await SourcesDataListForUser(
+        OTelRequestSpan(req),
+        userSession.userId,
+      );
+      const normalizedUrl = normalizeSourceUrl(req.body.url);
+      if (
+        existingSources.some(
+          (existing) =>
+            normalizeSourceUrl(existing.info?.url) === normalizedUrl,
+        )
+      ) {
+        return res.status(409).send({ error: "Source Already Exists" });
+      }
       const source = new Source();
       source.name = req.body.url;
       source.info = { url: req.body.url };
@@ -67,7 +97,9 @@ export class SourcesRoutes {
         });
       }
       await SourcesDataAdd(OTelRequestSpan(req), source);
-      ProcessorsFetchSourceItems(OTelRequestSpan(req), source);
+      ProcessorsFetchSourceItems(OTelRequestSpan(req), source).catch((err) =>
+        logger.error("Error fetching items for new source", err),
+      );
       return res.status(201).send(source.toJson());
     });
 
@@ -79,8 +111,8 @@ export class SourcesRoutes {
       ProcessorsFetchSourceItemsForUser(
         OTelRequestSpan(req),
         userSession.userId,
-      );
-      return res.status(201).send({});
+      ).catch((err) => logger.error("Error fetching source items", err));
+      return res.status(200).send({});
     });
 
     interface SearchQuery extends RequestGenericInterface {
@@ -98,8 +130,7 @@ export class SourcesRoutes {
         return res.status(400).send({ error: "Missing search query" });
       }
 
-      const config = new Config();
-      await config.reload();
+      const config = ConfigGet();
       const apiKey = config.PODCAST_INDEX_API_KEY;
       const apiSecret = config.PODCAST_INDEX_API_SECRET;
       if (!apiKey || !apiSecret) {

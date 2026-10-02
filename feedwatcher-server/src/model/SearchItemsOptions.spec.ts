@@ -19,15 +19,18 @@ describe("SearchItemsOptions", () => {
     expect(options.pattern).toBe("");
   });
 
-  test("should default with no beforeDate", () => {
+  test("should default with no cursor", () => {
     const options = new SearchItemsOptions();
-    expect(options.beforeDate).toBeUndefined();
+    expect(options.cursor).toBeUndefined();
   });
 
-  test("should accept a beforeDate", () => {
+  test("should accept a cursor", () => {
     const options = new SearchItemsOptions();
-    const date = new Date("2024-01-15T10:00:00Z");
-    options.beforeDate = date;
-    expect(options.beforeDate).toBe(date);
+    const cursor = {
+      datePublished: "2024-01-15T10:00:00.000Z",
+      id: "item-1",
+    };
+    options.cursor = cursor;
+    expect(options.cursor).toBe(cursor);
   });
 });

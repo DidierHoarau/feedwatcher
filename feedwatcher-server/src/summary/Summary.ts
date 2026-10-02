@@ -12,6 +12,10 @@ import { DbUtilsQuerySQL } from "@devopsplaybook.io/common-utils";
 
 const logger = OTelLogger().createModuleLogger("Summary");
 
+const LLM_TIMEOUT_MS = 60 * 1000;
+export const SUMMARY_MAX_PROMPT_ITEMS = 100;
+export const SUMMARY_MAX_PROMPT_CHARS = 20000;
+
 let summaryFilePath: string;
 
 export async function SummaryInit(
@@ -21,22 +25,25 @@ export async function SummaryInit(
   const span = OTelTracer().startSpan("SummaryInit", context);
   summaryFilePath = path.join(config.DATA_DIR, "summary.json");
   logger.info(`Summary storage initialized at: ${summaryFilePath}`);
+  if (!config.LLM_API_KEY) {
+    logger.warn("LLM_API_KEY not configured: summary generation disabled");
+    span.end();
+    return;
+  }
   if (!(await fs.pathExists(summaryFilePath))) {
     logger.info("No summary file found, triggering initial generation");
     SummaryGenerate(config).catch((err) =>
       logger.error(`Failed to generate summaries on init: ${err.message}`),
     );
   }
-  if (config.LLM_API_KEY) {
-    logger.info(
-      `Scheduling summary generation: ${config.SUMMARY_SCHEDULE_CRON}`,
+  logger.info(
+    `Scheduling summary generation: ${config.SUMMARY_SCHEDULE_CRON}`,
+  );
+  schedule.scheduleJob(config.SUMMARY_SCHEDULE_CRON, () => {
+    SummaryGenerate(config).catch((err) =>
+      logger.error(`Failed to generate scheduled summary: ${err.message}`),
     );
-    schedule.scheduleJob(config.SUMMARY_SCHEDULE_CRON, () => {
-      SummaryGenerate(config).catch((err) =>
-        logger.error(`Failed to generate scheduled summary: ${err.message}`),
-      );
-    });
-  }
+  });
   span.end();
 }
 
@@ -81,7 +88,10 @@ export async function SummaryGenerate(config: Config) {
     };
   }
   try {
-    await fs.writeJson(summaryFilePath, allSummaries);
+    // Write to a temp file then rename so readers never see a partial file
+    const tmpFilePath = `${summaryFilePath}.tmp`;
+    await fs.writeJson(tmpFilePath, allSummaries);
+    await fs.rename(tmpFilePath, summaryFilePath);
   } catch (error) {
     logger.error(`Failed to save summary file: ${error.message}`);
   }
@@ -112,7 +122,17 @@ export async function SummaryGenerateForUser(
     return { itemCount: 0, summary: "", items: [] };
   }
 
-  const newsLines = items.map((item) => {
+  // Cap the prompt to the most recent items (the query is DESC-ordered) so a
+  // busy day cannot grow the LLM request without bound.
+  const newsLines: string[] = [];
+  let promptChars = 0;
+  for (const item of items) {
+    if (
+      newsLines.length >= SUMMARY_MAX_PROMPT_ITEMS ||
+      promptChars >= SUMMARY_MAX_PROMPT_CHARS
+    ) {
+      break;
+    }
     const description = sanitizeHtml(item.content || "", {
       allowedTags: [],
       allowedAttributes: {},
@@ -120,8 +140,10 @@ export async function SummaryGenerateForUser(
       .replace(/\s+/g, " ")
       .trim()
       .substring(0, 300);
-    return `- [${item.sourceName}] ${item.title}: ${description}`;
-  });
+    const line = `- [${item.sourceName}] ${item.title}: ${description}`;
+    promptChars += line.length;
+    newsLines.push(line);
+  }
   const newsText = newsLines.join("\n");
 
   let summary = "";
@@ -154,6 +176,7 @@ export async function SummaryGenerateForUser(
           "Content-Type": "application/json",
           Authorization: `Bearer ${config.LLM_API_KEY}`,
         },
+        timeout: LLM_TIMEOUT_MS,
       },
     );
     summary = response.data?.choices?.[0]?.message?.content || "";
@@ -162,5 +185,5 @@ export async function SummaryGenerateForUser(
   }
 
   span.end();
-  return { itemCount: items.length, summary, items };
+  return { itemCount: newsLines.length, summary, items };
 }

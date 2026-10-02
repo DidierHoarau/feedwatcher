@@ -14,11 +14,51 @@ describe("PromisePool", () => {
     expect(result).toBe(42);
   });
 
-  test("should handle task rejection", async () => {
+  test("should contain task rejection and resolve with undefined", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     const pool = new PromisePool(3);
-    await expect(
-      pool.add(() => Promise.reject(new Error("task failed"))),
-    ).rejects.toThrow("task failed");
+    const result = await pool.add(() =>
+      Promise.reject(new Error("task failed")),
+    );
+    expect(result).toBeUndefined();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("PromisePool task failed: task failed"),
+    );
+    expect(pool.getInFlightCount()).toBe(0);
+    errorSpy.mockRestore();
+  });
+
+  test("should contain synchronous throws and resolve with undefined", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const pool = new PromisePool(3);
+    const result = await pool.add(() => {
+      throw new Error("sync failure");
+    });
+    expect(result).toBeUndefined();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("PromisePool task failed: sync failure"),
+    );
+    errorSpy.mockRestore();
+  });
+
+  test("should abort the signal of a task that times out", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    const pool = new PromisePool(2, 50);
+    let observedAbort = false;
+    const result = await pool.add(
+      (signal) =>
+        new Promise((resolve) => {
+          signal.addEventListener("abort", () => {
+            observedAbort = true;
+            resolve("aborted");
+          });
+          setTimeout(resolve, 500);
+        }),
+    );
+    expect(result).toBeUndefined();
+    expect(observedAbort).toBe(true);
+    expect(pool.getInFlightCount()).toBe(0);
+    jest.restoreAllMocks();
   });
 
   test("should limit concurrency", async () => {
@@ -79,11 +119,17 @@ describe("PromisePool", () => {
     expect(order).toEqual([1, 2]);
   });
 
-  test("should handle timeout and reject if task exceeds timeout", async () => {
+  test("should resolve with undefined when task exceeds timeout", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     const pool = new PromisePool(2, 100);
-    await expect(
-      pool.add(() => new Promise((resolve) => setTimeout(resolve, 500))),
-    ).rejects.toThrow("Promise cancelled due to timeout");
+    const result = await pool.add(
+      () => new Promise((resolve) => setTimeout(resolve, 500)),
+    );
+    expect(result).toBeUndefined();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Promise cancelled due to timeout"),
+    );
+    errorSpy.mockRestore();
   });
 
   test("should track queue length correctly", async () => {
