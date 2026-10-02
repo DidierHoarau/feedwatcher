@@ -1,7 +1,7 @@
 import { Timeout } from "~~/services/Timeout";
 import { AuthService } from "~~/services/AuthService";
 import Config from "~~/services/Config";
-import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
+import { handleError } from "~~/services/EventBus";
 import axios from "axios";
 
 export const SourceItemsStore = defineStore("SourceItemsStore", {
@@ -16,7 +16,7 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
     loadingMore: false,
     searchCriteriaValue: "",
     searchPattern: "",
-    nextCursor: "",
+    nextCursor: null,
     etagFetch: "",
   }),
 
@@ -25,7 +25,7 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
   actions: {
     async fetch(): Promise<void> {
       this.sourceItems = [];
-      this.nextCursor = "";
+      this.nextCursor = null;
       this.pageHasMore = false;
       this.loadingMore = false;
       await this.fetchMore();
@@ -41,7 +41,7 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
         searchCriteria: this.searchCriteria,
       };
       if (this.nextCursor) {
-        searchOptions.beforeDate = this.nextCursor;
+        searchOptions.cursor = this.nextCursor;
       }
       if (this.searchCriteria === "sourceId") {
         searchOptions.sourceId = this.searchCriteriaValue;
@@ -68,7 +68,7 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
             );
             this.sourceItems = [...this.sourceItems, ...newItems];
             this.pageHasMore = res.data.pageHasMore;
-            this.nextCursor = res.data.nextCursor || "";
+            this.nextCursor = res.data.nextCursor || null;
           }
         })
         .catch(handleError);

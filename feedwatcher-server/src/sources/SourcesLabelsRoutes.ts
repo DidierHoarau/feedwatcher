@@ -7,7 +7,7 @@ import { SourceLabelsDataListForUser } from "./SourceLabelsData";
 import { AuthGetUserSession } from "../users/Auth";
 import { OTelRequestSpan } from "../OTelContext";
 import { SourceGetHealth } from "../model/SourceHealth";
-import { Config } from "../Config";
+import { ConfigGet } from "../Config";
 
 export class SourcesLabelsRoutes {
   //
@@ -22,8 +22,7 @@ export class SourcesLabelsRoutes {
         OTelRequestSpan(req),
         userSession.userId
       );
-      const config = new Config();
-      await config.reload();
+      const config = ConfigGet();
       for (const sourceLabel of sourceLabels as any[]) {
         sourceLabel.sourceInfo.health = SourceGetHealth(
           sourceLabel.sourceInfo,
@@ -31,7 +30,7 @@ export class SourcesLabelsRoutes {
           config.SOURCE_ERROR_THRESHOLD,
         );
       }
-      return res.status(201).send({ sourceLabels });
+      return res.status(200).send({ sourceLabels });
     });
 
     fastify.get("/counts/unread", async (req, res) => {
@@ -43,7 +42,7 @@ export class SourcesLabelsRoutes {
         OTelRequestSpan(req),
         userSession.userId
       );
-      return res.status(201).send({ counts });
+      return res.status(200).send({ counts });
     });
 
     fastify.get("/counts/saved", async (req, res) => {
@@ -55,7 +54,7 @@ export class SourcesLabelsRoutes {
         OTelRequestSpan(req),
         userSession.userId
       );
-      return res.status(201).send({ counts });
+      return res.status(200).send({ counts });
     });
   }
 }

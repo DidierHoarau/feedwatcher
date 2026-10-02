@@ -468,6 +468,54 @@ describe("YouTube processor: fetchLatest", () => {
     expect(sourceItems[0].title).toBe("Test video title (#shorts)");
   });
 
+  test("probes each video at most once per fetch cycle (M4)", async () => {
+    const duplicateFeedXml = FEED_XML.replace(
+      "</feed>",
+      `<entry>
+    <id>yt:video:abc123VIDEoid</id>
+    <title>Test video title</title>
+    <link rel="alternate" href="https://www.youtube.com/watch?v=abc123VIDEoid"/>
+    <published>2026-09-01T10:00:00+00:00</published>
+    <media:thumbnail url="https://i.ytimg.com/vi/abc123VIDEoid/hqdefault.jpg" width="480" height="360"/>
+  </entry></feed>`
+    );
+    let shortsProbeCount = 0;
+    jest
+      .spyOn(axios, "get")
+      .mockImplementation(async (url: string): Promise<AxiosResponse> => {
+        if (url.startsWith("https://www.youtube.com/feeds/videos.xml")) {
+          return reply(duplicateFeedXml);
+        }
+        if (url.startsWith("https://www.youtube.com/shorts/")) {
+          shortsProbeCount++;
+          return reply("<html></html>");
+        }
+        return reply("");
+      });
+    const source = newSource("https://www.youtube.com/@riskreversalmedia");
+    source.info.channelId = CHANNEL_ID;
+
+    const sourceItems = await processor.fetchLatest(source, null);
+
+    expect(sourceItems).toHaveLength(2);
+    expect(shortsProbeCount).toBe(1);
+    expect(sourceItems[0].title).toContain("(#shorts)");
+    expect(sourceItems[1].title).toContain("(#shorts)");
+  });
+
+  test("bounds every outbound request with a timeout (M4)", async () => {
+    const spy = mockYouTubeResponses(CONSENT_PAGE_HTML, { isShort: true });
+    const source = newSource("https://www.youtube.com/@riskreversalmedia");
+    source.info.channelId = CHANNEL_ID;
+
+    await processor.fetchLatest(source, null);
+
+    for (const call of spy.mock.calls) {
+      const config = call[1] as any;
+      expect(config?.timeout).toBe(10000);
+    }
+  });
+
   test("Throws a meaningful error when the channel ID cannot be resolved", async () => {
     mockYouTubeResponses(CONSENT_PAGE_HTML, { isShort: false });
     const source = newSource("https://www.youtube.com/@riskreversalmedia");

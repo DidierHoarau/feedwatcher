@@ -14,73 +14,27 @@ export async function RulesExecutionExecuteUserRules(
     "RulesExecutionExecuteUserRules",
     context,
   );
-
-  for (const ruleInfo of rules.info) {
-    if (ruleInfo.autoRead) {
-      for (const rulePattern of ruleInfo.autoRead) {
-        if (ruleInfo.isRoot) {
-          await execRuleForUser(span, RuleAction.archive, rules.userId, {
-            maxDate: new Date(
-              new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000,
-            ),
-            pattern: rulePattern.pattern,
-          });
-        } else if (ruleInfo.labelName) {
-          await execRuleForLabel(
-            span,
-            RuleAction.archive,
-            ruleInfo.labelName,
-            rules.userId,
-            {
-              maxDate: new Date(
-                new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000,
-              ),
-              pattern: rulePattern.pattern,
-            },
-          );
-        } else if (ruleInfo.sourceId) {
-          await execRuleForSource(span, RuleAction.archive, ruleInfo.sourceId, {
-            maxDate: new Date(
-              new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000,
-            ),
-          });
-        }
+  try {
+    // Defensive: a stored row with a non-array info (e.g. written before
+    // request validation) must never break the scheduler cycle.
+    if (!Array.isArray(rules?.info)) {
+      logger.warn(
+        `Rules for user ${rules?.userId} are invalid (info is not an array), skipping`,
+        span,
+      );
+      return;
+    }
+    for (const ruleInfo of rules.info) {
+      try {
+        await executeRuleInfo(span, rules.userId, ruleInfo);
+      } catch (err) {
+        logger.error(`Rule for user ${rules.userId} failed`, err, span);
       }
     }
-    if (ruleInfo.autoDelete) {
-      for (const rulePattern of ruleInfo.autoDelete) {
-        if (ruleInfo.isRoot) {
-          await execRuleForUser(span, RuleAction.delete, rules.userId, {
-            maxDate: new Date(
-              new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000,
-            ),
-            pattern: rulePattern.pattern,
-          });
-        } else if (ruleInfo.labelName) {
-          await execRuleForLabel(
-            span,
-            RuleAction.delete,
-            ruleInfo.labelName,
-            rules.userId,
-            {
-              maxDate: new Date(
-                new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000,
-              ),
-              pattern: rulePattern.pattern,
-            },
-          );
-        } else if (ruleInfo.sourceId) {
-          await execRuleForSource(span, RuleAction.delete, ruleInfo.sourceId, {
-            maxDate: new Date(
-              new Date().getTime() - rulePattern.ageDays * 24 * 3600 * 1000,
-            ),
-          });
-        }
-      }
-    }
+    logger.info(`Rules for user ${rules.userId} executed`, span);
+  } finally {
+    span.end();
   }
-  logger.info(`Rules for user ${rules.userId} executed`, span);
-  span.end();
 }
 
 // Private Fucntions
@@ -90,6 +44,55 @@ enum RuleAction {
   archive = "archive",
 }
 
+async function executeRuleInfo(
+  context: Span,
+  userId: string,
+  ruleInfo: any,
+): Promise<void> {
+  const actions = [
+    { patterns: ruleInfo?.autoRead, action: RuleAction.archive },
+    { patterns: ruleInfo?.autoDelete, action: RuleAction.delete },
+  ];
+  for (const { patterns, action } of actions) {
+    if (!Array.isArray(patterns)) {
+      continue;
+    }
+    for (const rulePattern of patterns) {
+      const maxDate = rulePatternMaxDate(rulePattern);
+      if (!maxDate) {
+        logger.warn(
+          `Skipping rule with invalid ageDays: ${JSON.stringify(rulePattern)}`,
+          context,
+        );
+        continue;
+      }
+      if (ruleInfo.isRoot) {
+        await execRuleForUser(context, action, userId, {
+          maxDate,
+          pattern: rulePattern.pattern,
+        });
+      } else if (ruleInfo.labelName) {
+        await execRuleForLabel(context, action, ruleInfo.labelName, userId, {
+          maxDate,
+          pattern: rulePattern.pattern,
+        });
+      } else if (ruleInfo.sourceId) {
+        await execRuleForSource(context, action, ruleInfo.sourceId, {
+          maxDate,
+        });
+      }
+    }
+  }
+}
+
+function rulePatternMaxDate(rulePattern: any): Date {
+  const ageDays = Number(rulePattern?.ageDays);
+  if (!isFinite(ageDays) || ageDays < 0) {
+    return null;
+  }
+  return new Date(Date.now() - ageDays * 24 * 3600 * 1000);
+}
+
 async function execRuleForUser(
   context: Span,
   action: RuleAction,
@@ -97,13 +100,13 @@ async function execRuleForUser(
   searchOptions: SearchItemsOptions,
 ): Promise<void> {
   const span = OTelTracer().startSpan("execRuleForUser", context);
-  DbUtilsExecSQL(
+  const filters = getFilters(searchOptions);
+  await DbUtilsExecSQL(
     span,
     getRuleActionSql(action) +
       "WHERE sources_items.sourceId IN ( SELECT id FROM sources WHERE userId = ? ) " +
-      getAgeFilterQuery(searchOptions) +
-      getPatternFilterQuery(searchOptions),
-    [userId],
+      filters.query,
+    [userId, ...filters.params],
   );
   span.end();
 }
@@ -115,13 +118,11 @@ async function execRuleForSource(
   searchOptions: SearchItemsOptions,
 ): Promise<void> {
   const span = OTelTracer().startSpan("execRuleForSource", context);
-  DbUtilsExecSQL(
+  const filters = getFilters(searchOptions);
+  await DbUtilsExecSQL(
     span,
-    getRuleActionSql(action) +
-      "WHERE sourceId = ? " +
-      getAgeFilterQuery(searchOptions) +
-      getPatternFilterQuery(searchOptions),
-    [sourceId],
+    getRuleActionSql(action) + "WHERE sourceId = ? " + filters.query,
+    [sourceId, ...filters.params],
   );
   span.end();
 }
@@ -134,7 +135,8 @@ async function execRuleForLabel(
   searchOptions: SearchItemsOptions,
 ): Promise<void> {
   const span = OTelTracer().startSpan("execRuleForLabel", context);
-  DbUtilsExecSQL(
+  const filters = getFilters(searchOptions);
+  await DbUtilsExecSQL(
     span,
     getRuleActionSql(action) +
       "WHERE sources_items.sourceId IN ( " +
@@ -143,9 +145,8 @@ async function execRuleForLabel(
       "    WHERE sources.userId = ? " +
       "          AND sources_labels.sourceId = sources.id AND sources_labels.name LIKE ? " +
       "  ) " +
-      getAgeFilterQuery(searchOptions) +
-      getPatternFilterQuery(searchOptions),
-    [userId, `${label}%`],
+      filters.query,
+    [userId, `${label}%`, ...filters.params],
   );
   span.end();
 }
@@ -157,19 +158,19 @@ function getRuleActionSql(ruleAction: RuleAction): string {
   return " UPDATE sources_items SET status = 'read' ";
 }
 
-function getAgeFilterQuery(searchOptions: SearchItemsOptions): string {
+function getFilters(searchOptions: SearchItemsOptions): {
+  query: string;
+  params: string[];
+} {
+  let query = "";
+  const params: string[] = [];
   if (searchOptions.maxDate) {
-    return ` AND sources_items.datePublished <= '${searchOptions.maxDate.toISOString()}' `;
+    query += " AND sources_items.datePublished <= ? ";
+    params.push(searchOptions.maxDate.toISOString());
   }
-  return "";
-}
-
-function getPatternFilterQuery(searchOptions: SearchItemsOptions): string {
   if (searchOptions.pattern) {
-    return ` AND sources_items.title GLOB '${searchOptions.pattern.replace(
-      /'/g,
-      "''",
-    )}' `;
+    query += " AND sources_items.title GLOB ? ";
+    params.push(searchOptions.pattern);
   }
-  return "";
+  return { query, params };
 }

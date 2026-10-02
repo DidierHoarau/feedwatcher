@@ -1,7 +1,25 @@
+import axios from "axios";
 import { Source } from "../../model/Source";
 import processor from "../../../processors-system/700-PodcastProcessor";
 
 describe("Podcast processor: getInfo", () => {
+  test("bounds every outbound request with a timeout (M4)", async () => {
+    const spy = jest
+      .spyOn(axios, "get")
+      .mockResolvedValue({ data: "<rss></rss>" } as any);
+    const source = new Source();
+    source.info = { url: "https://example.com/feed" };
+
+    await processor.test(source);
+    await processor.fetchLatest(source, null).catch(() => undefined);
+
+    expect(spy.mock.calls.length).toBeGreaterThanOrEqual(2);
+    for (const call of spy.mock.calls) {
+      expect((call[1] as any)?.timeout).toBe(10000);
+    }
+    spy.mockRestore();
+  });
+
   test("returns correct metadata", () => {
     const info = processor.getInfo();
     expect(info.title).toBe("Podcast");

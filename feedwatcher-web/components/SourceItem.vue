@@ -88,10 +88,9 @@
           v-if="isActive"
           class="sourceitem-content-frame"
           :srcdoc="iframeContent"
-          sandbox="allow-same-origin allow-popups allow-scripts"
+          sandbox="allow-popups allow-scripts"
           scrolling="no"
           ref="contentFrame"
-          @load="resizeFrame"
         ></iframe>
       </Transition>
     </div>
@@ -104,6 +103,10 @@ import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { PreferencesService } from "~~/services/PreferencesService";
+
+// Built via concatenation: SFC tooling ends the <script> block at the first
+// literal closing tag, even inside a string.
+const IFRAME_CLOSING_TAGS = "</" + "script></body></html>";
 
 export default {
   props: {
@@ -131,11 +134,28 @@ export default {
       const bg = isDark ? "#11191f" : "#ffffff";
       const fg = isDark ? "#c2cfd6" : "#1a1a1a";
       const linkColor = isDark ? "#6ea8fe" : "#1a56db";
+      // The frame is sandboxed without allow-same-origin, so the parent can
+      // no longer read contentDocument: the frame reports its height instead.
       return `<!DOCTYPE html><html><head><style>
         body { margin: 0; padding: 0.5em; font-family: sans-serif; font-size: 14px; word-break: break-word; overflow-wrap: break-word; background-color: ${bg}; color: ${fg}; }
         img { max-width: 100%; height: auto; }
         a { color: ${linkColor}; }
-      </style></head><body>${this.item.content || ""}</body></html>`;
+      </style></head><body>${this.item.content || ""}<script>
+        (function () {
+          function report() {
+            window.parent.postMessage(
+              { type: "FW_IFRAME_HEIGHT", height: document.body.scrollHeight },
+              "*"
+            );
+          }
+          window.addEventListener("load", report);
+          try {
+            new ResizeObserver(report).observe(document.body);
+          } catch (err) {
+            setInterval(report, 1000);
+          }
+        })();
+      ${IFRAME_CLOSING_TAGS}`;
     },
   },
   mounted() {
@@ -162,11 +182,13 @@ export default {
       }
     });
     this.autoMarkReadObserver.observe(this.$el);
+    window.addEventListener("message", this.onFrameMessage);
   },
   beforeUnmount() {
     if (this.autoMarkReadObserver) {
       this.autoMarkReadObserver.disconnect();
     }
+    window.removeEventListener("message", this.onFrameMessage);
   },
   async created() {
     axios
@@ -281,10 +303,17 @@ export default {
         })
         .catch(handleError);
     },
-    resizeFrame() {
+    onFrameMessage(event) {
+      if (event?.data?.type !== "FW_IFRAME_HEIGHT") {
+        return;
+      }
       const frame = this.$refs.contentFrame;
-      if (frame && frame.contentDocument && frame.contentDocument.body) {
-        frame.style.height = frame.contentDocument.body.scrollHeight + "px";
+      if (!frame || event.source !== frame.contentWindow) {
+        return;
+      }
+      const height = Number(event.data.height);
+      if (isFinite(height) && height > 0) {
+        frame.style.height = height + "px";
       }
     },
     relativeTime(date) {

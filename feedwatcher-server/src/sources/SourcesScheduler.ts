@@ -1,5 +1,5 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
-import { Config } from "../Config";
+import { Config, ConfigGet } from "../Config";
 import { TimeoutWait } from "@devopsplaybook.io/common-utils";
 import { RulesDataListAll } from "../rules/RulesData";
 import { ProcessorsFetchSourceItems } from "../procesors/Processors";
@@ -16,7 +16,9 @@ import { OTelLogger, OTelMeter, OTelTracer } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger("Scheduler");
 
-let config: Config;
+// Falls back to the shared config instance so the cycle functions stay
+// usable (and testable) outside the full App startup.
+let config: Config = ConfigGet();
 let lastRulesExecution = 0;
 let promisePool: PromisePool;
 
@@ -78,54 +80,97 @@ export async function SourcesSchedulerInit(context: Span, configIn: Config) {
 // Private Functions
 
 async function SourcesSchedulerStartSchedule() {
-  promisePool = new PromisePool(
-    config.PROCESSOR_CONCURRENCY,
-    config.SOURCE_FETCH_FREQUENCY / 6,
-  );
   while (true) {
-    const span0 = OTelTracer().startSpan("SourcesSchedulerCycle");
-    const now = new Date().getTime();
-
-    for (const source of await SourcesDataListAll(span0)) {
-      if (
-        SourceIsDueForFetch(
-          source.info,
-          config.SOURCE_FETCH_FREQUENCY,
-          now,
-          config.SOURCE_BACKOFF_MAX,
-        )
-      ) {
-        promisePool.add(async () => {
-          const span = OTelTracer().startSpan("FetchSourceItems");
-          await ProcessorsFetchSourceItems(span, source);
-          span.end();
-        });
-      }
-    }
-
-    if (now - lastRulesExecution > config.SOURCE_FETCH_FREQUENCY) {
-      lastRulesExecution = now;
-      for (const userRules of await RulesDataListAll(span0)) {
-        promisePool.add(async () => {
-          const span = OTelTracer().startSpan("ExecuteUserRules");
-          await RulesExecutionExecuteUserRules(span, userRules);
-          span.end();
-        });
-      }
-    }
-
-    promisePool.add(async () => {
-      const span = OTelTracer().startSpan("CleanupOrphanItems");
-      await SourceItemsDataCleanupOrphans(span);
-      span.end();
-    });
-
-    await SourcesSchedulerUpdateStats(span0);
-
-    span0.end();
-
+    await SourcesSchedulerCycle();
     await TimeoutWait(config.SOURCE_FETCH_FREQUENCY / 4);
   }
+}
+
+function promisePoolGet(): PromisePool {
+  if (!promisePool) {
+    promisePool = new PromisePool(
+      config.PROCESSOR_CONCURRENCY,
+      config.SOURCE_FETCH_FREQUENCY / 6,
+    );
+  }
+  return promisePool;
+}
+
+// Runs one scheduler cycle; any failure is logged and swallowed so the
+// schedule loop keeps iterating (a thrown error must not kill fetching).
+export async function SourcesSchedulerCycle(): Promise<void> {
+  const span0 = OTelTracer().startSpan("SourcesSchedulerCycle");
+  try {
+    await SourcesSchedulerRunCycle(span0);
+  } catch (err) {
+    logger.error("Scheduler cycle failed", err, span0);
+  } finally {
+    span0.end();
+  }
+}
+
+// Visible for tests: the body of one scheduler cycle.
+export async function SourcesSchedulerRunCycle(span0: Span): Promise<void> {
+  const now = new Date().getTime();
+
+  for (const source of await SourcesDataListAll(span0)) {
+    if (
+      SourceIsDueForFetch(
+        source.info,
+        config.SOURCE_FETCH_FREQUENCY,
+        now,
+        config.SOURCE_BACKOFF_MAX,
+      )
+    ) {
+      promisePoolGet().add(async () => {
+        const span = OTelTracer().startSpan("FetchSourceItems");
+        try {
+          await ProcessorsFetchSourceItems(span, source);
+        } catch (err) {
+          logger.error(
+            `FetchSourceItems failed for source ${source.id}`,
+            err,
+            span,
+          );
+        } finally {
+          span.end();
+        }
+      });
+    }
+  }
+
+  if (now - lastRulesExecution > config.SOURCE_FETCH_FREQUENCY) {
+    lastRulesExecution = now;
+    for (const userRules of await RulesDataListAll(span0)) {
+      promisePoolGet().add(async () => {
+        const span = OTelTracer().startSpan("ExecuteUserRules");
+        try {
+          await RulesExecutionExecuteUserRules(span, userRules);
+        } catch (err) {
+          logger.error(
+            `ExecuteUserRules failed for user ${userRules.userId}`,
+            err,
+            span,
+          );
+        } finally {
+          span.end();
+        }
+      });
+    }
+  }
+
+  promisePoolGet().add(async () => {
+    const span = OTelTracer().startSpan("CleanupOrphanItems");
+    try {
+      await SourceItemsDataCleanupOrphans(span);
+    } catch (err) {
+      logger.error("CleanupOrphanItems failed", err, span);
+    } finally {
+      span.end();
+    }
+  });
+
+  await SourcesSchedulerUpdateStats(span0);
 }
 
 // private

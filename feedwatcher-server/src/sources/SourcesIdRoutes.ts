@@ -13,9 +13,11 @@ import {
   SourceLabelsDataSetSourceLabels,
 } from "./SourceLabelsData";
 import { AuthGetUserSession } from "../users/Auth";
-import { OTelRequestSpan } from "../OTelContext";
+import { OTelLogger, OTelRequestSpan } from "../OTelContext";
 import { SourceGetHealth } from "../model/SourceHealth";
-import { Config } from "../Config";
+import { ConfigGet } from "../Config";
+
+const logger = OTelLogger().createModuleLogger("SourcesIdRoutes");
 
 export class SourcesIdRoutes {
   //
@@ -33,13 +35,15 @@ export class SourcesIdRoutes {
       }
       const source = await SourcesDataGet(
         OTelRequestSpan(req),
-        req.params.sourceId
+        req.params.sourceId,
       );
+      if (!source) {
+        return res.status(404).send({ error: "Source Not Found" });
+      }
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      const config = new Config();
-      await config.reload();
+      const config = ConfigGet();
       const sourceJson = source.toJson();
       sourceJson.health = SourceGetHealth(
         source.info,
@@ -61,14 +65,17 @@ export class SourcesIdRoutes {
       }
       const source = await SourcesDataGet(
         OTelRequestSpan(req),
-        req.params.sourceId
+        req.params.sourceId,
       );
+      if (!source) {
+        return res.status(404).send({ error: "Source Not Found" });
+      }
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
       const labels = await SourceLabelsDataGetSourceLabels(
         OTelRequestSpan(req),
-        req.params.sourceId
+        req.params.sourceId,
       );
       return res.status(200).send({ labels: labels });
     });
@@ -89,13 +96,16 @@ export class SourcesIdRoutes {
       }
       const source = await SourcesDataGet(
         OTelRequestSpan(req),
-        req.params.sourceId
+        req.params.sourceId,
       );
+      if (!source) {
+        return res.status(404).send({ error: "Source Not Found" });
+      }
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
       if (!req.body.name) {
-        return res.status(401).send({ error: "Parameter missing: name" });
+        return res.status(400).send({ error: "Parameter missing: name" });
       }
       source.name = req.body.name;
       await SourcesDataUpdate(OTelRequestSpan(req), source);
@@ -103,13 +113,15 @@ export class SourcesIdRoutes {
         await SourceLabelsDataSetSourceLabels(
           OTelRequestSpan(req),
           source.id,
-          req.body.labels
+          req.body.labels,
         );
       }
-      ProcessorsCheckSource(OTelRequestSpan(req), source).then(() => {
-        ProcessorsFetchSourceItems(OTelRequestSpan(req), source);
-      });
-      return res.status(202).send();
+      ProcessorsCheckSource(OTelRequestSpan(req), source)
+        .then(() => ProcessorsFetchSourceItems(OTelRequestSpan(req), source))
+        .catch((err) =>
+          logger.error(`Error refreshing source ${source.id}`, err),
+        );
+      return res.status(200).send();
     });
 
     interface DeleteSourceIdRequest extends RequestGenericInterface {
@@ -124,13 +136,16 @@ export class SourcesIdRoutes {
       }
       const source = await SourcesDataGet(
         OTelRequestSpan(req),
-        req.params.sourceId
+        req.params.sourceId,
       );
+      if (!source) {
+        return res.status(404).send({ error: "Source Not Found" });
+      }
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
       await SourcesDataDelete(OTelRequestSpan(req), req.params.sourceId);
-      return res.status(203).send();
+      return res.status(204).send();
     });
 
     interface PutSourceIdFetchRequest extends RequestGenericInterface {
@@ -145,13 +160,18 @@ export class SourcesIdRoutes {
       }
       const source = await SourcesDataGet(
         OTelRequestSpan(req),
-        req.params.sourceId
+        req.params.sourceId,
       );
+      if (!source) {
+        return res.status(404).send({ error: "Source Not Found" });
+      }
       if (userSession.userId !== source.userId) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      ProcessorsFetchSourceItems(OTelRequestSpan(req), source);
-      return res.status(201).send();
+      ProcessorsFetchSourceItems(OTelRequestSpan(req), source).catch((err) =>
+        logger.error(`Error fetching source ${source.id}`, err),
+      );
+      return res.status(200).send();
     });
   }
 }

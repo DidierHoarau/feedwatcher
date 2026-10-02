@@ -4,6 +4,8 @@ const { parseFeed } = require("@rowanmanning/feed-parser");
 
 const CHANNEL_ID_PATTERN = /^UC[A-Za-z0-9_-]{22}$/;
 
+const AXIOS_TIMEOUT_MS = 10000;
+
 // YouTube's RSS feed endpoint intermittently fails with 5xx or network
 // errors; retrying the same request usually works. 4xx responses (dead
 // channel 404, rate-limit 429) are not retried: they do not recover within
@@ -36,6 +38,7 @@ const REQUEST_HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
     Cookie: "SOCS=CAE",
   },
+  timeout: AXIOS_TIMEOUT_MS,
 };
 
 function isValidChannelId(channelId) {
@@ -222,6 +225,8 @@ module.exports = {
     }
     const feed = parseFeed(feedRaw);
     const sourceItems = [];
+    // Probe each video at most once per fetch cycle
+    const shortsProbeCache = new Map();
     for (let item of feed.items) {
       const sourceItem = {};
       sourceItem.url = item.url;
@@ -232,16 +237,20 @@ module.exports = {
       }/' frameborder='0' allowfullscreen ></iframe >`;
       sourceItem.datePublished = new Date(item.published);
       sourceItem.thumbnail = item.image.url;
-      try {
-        await axios
-          .get(`https://www.youtube.com/shorts/${item.id.split(":")[2]}`, {
+      const videoId = item.id.split(":")[2];
+      let isShort = shortsProbeCache.get(videoId);
+      if (isShort === undefined) {
+        isShort = await axios
+          .get(`https://www.youtube.com/shorts/${videoId}`, {
             maxRedirects: 0,
+            timeout: AXIOS_TIMEOUT_MS,
           })
-          .then(() => {
-            sourceItem.title = `${sourceItem.title} (#shorts)`;
-          });
-      } catch (err) {
-        // Not short
+          .then(() => true)
+          .catch(() => false);
+        shortsProbeCache.set(videoId, isShort);
+      }
+      if (isShort) {
+        sourceItem.title = `${sourceItem.title} (#shorts)`;
       }
       sourceItems.push(sourceItem);
     }

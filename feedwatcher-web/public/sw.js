@@ -1,4 +1,4 @@
-const CACHE_VERSION = "fw-v2";
+const CACHE_VERSION = "fw-v3";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 
@@ -39,6 +39,14 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// Page signals (logout / login change): drop every cached API response so
+// the next user on a shared browser never sees the previous user's data.
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "FW_CLEAR_API_CACHE") {
+    event.waitUntil(caches.delete(DYNAMIC_CACHE));
+  }
+});
+
 // Fetch: strategy depends on request type
 self.addEventListener("fetch", (event) => {
   const { request } = event;
@@ -46,6 +54,9 @@ self.addEventListener("fetch", (event) => {
 
   // Skip non-GET requests
   if (request.method !== "GET") return;
+
+  // Authenticated requests are never cached (network only)
+  if (request.headers.get("authorization")) return;
 
   // Skip API mutations
   if (

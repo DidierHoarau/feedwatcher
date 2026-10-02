@@ -171,9 +171,16 @@ export default {
               sourcesImport.importFailed = false;
               importSummary.success++;
             } catch (err) {
-              console.error(err);
-              importSummary.error++;
-              sourcesImport.importFailed = true;
+              if (err?.response?.status === 409) {
+                // Already subscribed on the server
+                sourcesImport.imported = true;
+                sourcesImport.importFailed = false;
+                importSummary.skipped++;
+              } else {
+                console.error(err);
+                importSummary.error++;
+                sourcesImport.importFailed = true;
+              }
             }
           });
         }

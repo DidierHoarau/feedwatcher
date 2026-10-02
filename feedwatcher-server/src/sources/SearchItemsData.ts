@@ -18,6 +18,8 @@ export async function SearchItemsDataListForUser(
     getPatternFilterQuery(searchOptions);
   const { query: cursorQuery, params: cursorParams } =
     getCursorQuery(searchOptions);
+  const { query: minDateQuery, params: minDateParams } =
+    getMinDateFilterQuery(searchOptions);
   const sourceItemsRaw = await DbUtilsQuerySQL(
     span,
     "SELECT DISTINCT sources_items.*, sources.name as sourceName " +
@@ -26,12 +28,12 @@ export async function SearchItemsDataListForUser(
       getSavedFromQuery(searchOptions) +
       "WHERE sources.userId = ? " +
       getStatusFilterQuery(searchOptions) +
-      getMinDateFilterQuery(searchOptions) +
+      minDateQuery +
       patternQuery +
       cursorQuery +
-      "ORDER BY datePublished DESC " +
-      getLimitQuery(searchOptions),
-    [userId, ...patternParams, ...cursorParams],
+      "ORDER BY sources_items.datePublished DESC, sources_items.id DESC " +
+      getLimitQuery(),
+    [userId, ...minDateParams, ...patternParams, ...cursorParams],
   );
   const searchItemsResult = getSearchResultsfromRaw(sourceItemsRaw);
   span.end();
@@ -48,6 +50,8 @@ export async function SearchItemsDataListForSource(
     getPatternFilterQuery(searchOptions);
   const { query: cursorQuery, params: cursorParams } =
     getCursorQuery(searchOptions);
+  const { query: ageQuery, params: ageParams } =
+    getAgeFilterQuery(searchOptions);
   const sourceItemsRaw = await DbUtilsQuerySQL(
     span,
     "SELECT DISTINCT sources_items.*, sources.name as sourceName " +
@@ -56,13 +60,13 @@ export async function SearchItemsDataListForSource(
       getSavedFromQuery(searchOptions) +
       "WHERE sources_items.sourceId = ? " +
       "  AND sources.id = ? " +
-      getAgeFilterQuery(searchOptions) +
+      ageQuery +
       getStatusFilterQuery(searchOptions) +
       patternQuery +
       cursorQuery +
-      "ORDER BY datePublished DESC " +
-      getLimitQuery(searchOptions),
-    [sourceId, sourceId, ...patternParams, ...cursorParams],
+      "ORDER BY sources_items.datePublished DESC, sources_items.id DESC " +
+      getLimitQuery(),
+    [sourceId, sourceId, ...ageParams, ...patternParams, ...cursorParams],
   );
   const searchItemsResult = getSearchResultsfromRaw(sourceItemsRaw);
   span.end();
@@ -83,6 +87,8 @@ export async function SearchItemsDataListItemsForLabel(
     getPatternFilterQuery(searchOptions);
   const { query: cursorQuery, params: cursorParams } =
     getCursorQuery(searchOptions);
+  const { query: ageQuery, params: ageParams } =
+    getAgeFilterQuery(searchOptions);
   const sourceItemsRaw = await DbUtilsQuerySQL(
     span,
     "SELECT DISTINCT sources_items.*, sources.name AS sourceName " +
@@ -96,13 +102,20 @@ export async function SearchItemsDataListItemsForLabel(
       "          AND sources_labels.sourceId = sources.id AND sources_labels.name LIKE ? " +
       "  ) " +
       getStatusFilterQuery(searchOptions) +
-      getAgeFilterQuery(searchOptions) +
+      ageQuery +
       "  AND sources.userId = ? " +
       patternQuery +
       cursorQuery +
-      "ORDER BY datePublished DESC " +
-      getLimitQuery(searchOptions),
-    [userId, `${label}%`, userId, ...patternParams, ...cursorParams],
+      "ORDER BY sources_items.datePublished DESC, sources_items.id DESC " +
+      getLimitQuery(),
+    [
+      userId,
+      `${label}%`,
+      ...ageParams,
+      userId,
+      ...patternParams,
+      ...cursorParams,
+    ],
   );
   const searchItemsResult = getSearchResultsfromRaw(sourceItemsRaw);
   span.end();
@@ -115,19 +128,21 @@ function getCursorQuery(searchOptions: SearchItemsOptions): {
   query: string;
   params: string[];
 } {
-  if (searchOptions.beforeDate) {
+  if (searchOptions.cursor) {
     return {
-      query: "  AND sources_items.datePublished < ? ",
-      params: [searchOptions.beforeDate.toISOString()],
+      query:
+        "  AND (sources_items.datePublished < ? OR (sources_items.datePublished = ? AND sources_items.id < ?)) ",
+      params: [
+        searchOptions.cursor.datePublished,
+        searchOptions.cursor.datePublished,
+        searchOptions.cursor.id,
+      ],
     };
   }
   return { query: "", params: [] };
 }
 
-function getLimitQuery(searchOptions: SearchItemsOptions): string {
-  if (searchOptions.page === -1) {
-    return "";
-  }
+function getLimitQuery(): string {
   return `LIMIT ${PAGE_SIZE + 1}`;
 }
 
@@ -143,9 +158,10 @@ function getSearchResultsfromRaw(sourceItemsRaw: any): SearchItemsResult {
   if (searchItemsResult.sourceItems.length > 0) {
     const lastItem =
       searchItemsResult.sourceItems[searchItemsResult.sourceItems.length - 1];
-    searchItemsResult.nextCursor = new Date(
-      lastItem.datePublished,
-    ).toISOString();
+    searchItemsResult.nextCursor = {
+      datePublished: new Date(lastItem.datePublished).toISOString(),
+      id: lastItem.id,
+    };
   }
   return searchItemsResult;
 }
@@ -157,18 +173,30 @@ function getStatusFilterQuery(searchOptions: SearchItemsOptions): string {
   return "";
 }
 
-function getAgeFilterQuery(searchOptions: SearchItemsOptions): string {
+function getAgeFilterQuery(searchOptions: SearchItemsOptions): {
+  query: string;
+  params: string[];
+} {
   if (searchOptions.maxDate) {
-    return `  AND sources_items.datePublished <= '${searchOptions.maxDate.toISOString()}' `;
+    return {
+      query: "  AND sources_items.datePublished <= ? ",
+      params: [searchOptions.maxDate.toISOString()],
+    };
   }
-  return "";
+  return { query: "", params: [] };
 }
 
-function getMinDateFilterQuery(searchOptions: SearchItemsOptions): string {
+function getMinDateFilterQuery(searchOptions: SearchItemsOptions): {
+  query: string;
+  params: string[];
+} {
   if (searchOptions.minDate) {
-    return `  AND sources_items.datePublished >= '${searchOptions.minDate.toISOString()}' `;
+    return {
+      query: "  AND sources_items.datePublished >= ? ",
+      params: [searchOptions.minDate.toISOString()],
+    };
   }
-  return "";
+  return { query: "", params: [] };
 }
 
 function getPatternFilterQuery(searchOptions: SearchItemsOptions): {

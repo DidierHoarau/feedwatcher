@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import * as opml from "opml";
+import { XMLBuilder, XMLParser } from "fast-xml-parser";
 import { find } from "lodash";
 import { Source } from "../model/Source";
 import { Span } from "@opentelemetry/sdk-trace-base";
@@ -8,6 +8,20 @@ import { AuthGetUserSession } from "../users/Auth";
 import { OTelLogger, OTelRequestSpan } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger("SourcesImportRoutes");
+
+const opmlParser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: "",
+  trimValues: true,
+  isArray: (name) => name === "outline",
+});
+
+const opmlBuilder = new XMLBuilder({
+  ignoreAttributes: false,
+  attributeNamePrefix: "@_",
+  format: true,
+  suppressEmptyNode: true,
+});
 
 export class SourcesImportRoutes {
   //
@@ -21,11 +35,14 @@ export class SourcesImportRoutes {
       try {
         const data = await (req as any).file();
         const opmlText = (await data.toBuffer()).toString();
-        const opmlData = await opmlLoad(opmlText);
+        const opmlData = opmlParser.parse(opmlText);
+        if (!opmlData?.opml?.body) {
+          return res.status(400).send({ error: "Invalid File" });
+        }
         const sourcesOpml = [];
         await opmlProcessSub(
           OTelRequestSpan(req),
-          opmlData.opml.body.subs,
+          opmlData.opml.body.outline || [],
           "",
           sourcesOpml,
           userSession.userId
@@ -49,73 +66,66 @@ export class SourcesImportRoutes {
       const sourcesOutlines = {
         opml: {
           head: { title: "Feedwatcher Source Export" },
-          body: { subs: [] },
+          body: { outline: [] },
         },
       };
       for (const source of sourceLabels) {
         const sourceLabel = source as any;
         const newOutline: any = {
-          text: sourceLabel.sourceName,
-          type: sourceLabel.sourceInfo.icon,
-          url: sourceLabel.sourceInfo.url,
+          "@_text": sourceLabel.sourceName,
+          "@_type": sourceLabel.sourceInfo.icon,
+          "@_url": sourceLabel.sourceInfo.url,
         };
-        if (newOutline.type === "rss") {
-          newOutline.xmlUrl = sourceLabel.sourceInfo.url;
+        if (newOutline["@_type"] === "rss") {
+          newOutline["@_xmlUrl"] = sourceLabel.sourceInfo.url;
         }
         if (!sourceLabel.labelName) {
-          sourcesOutlines.opml.body.subs.push(newOutline);
+          sourcesOutlines.opml.body.outline.push(newOutline);
         } else {
-          let parentSub = find(sourcesOutlines.opml.body.subs, {
-            title: sourceLabel.labelName,
+          let parentSub = find(sourcesOutlines.opml.body.outline, {
+            "@_title": sourceLabel.labelName,
           });
           if (!parentSub) {
-            parentSub = { title: sourceLabel.labelName, subs: [] };
-            sourcesOutlines.opml.body.subs.push(parentSub);
+            parentSub = { "@_title": sourceLabel.labelName, outline: [] };
+            sourcesOutlines.opml.body.outline.push(parentSub as any);
           }
-          parentSub.subs.push(newOutline);
+          parentSub.outline.push(newOutline);
         }
       }
-      res.header("Content-Disposition", "attachment; filename=data.opml");
-      res.header("Content-Type", "text/plain");
-      res.send(opml.stringify(sourcesOutlines));
+      res.header("Content-Type", "text/x-opml; charset=utf-8");
+      res.header(
+        "Content-Disposition",
+        'attachment; filename="feedwatcher.opml"'
+      );
+      res.send(opmlBuilder.build(sourcesOutlines));
     });
   }
-}
-
-function opmlLoad(text: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    opml.parse(text, (err, opmlObject) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(opmlObject);
-      }
-    });
-  });
 }
 
 async function opmlProcessSub(
   // oxlint-disable-next-line only-used-in-recursion
   context: Span,
-  opmlSub: any[],
+  outlines: any[],
   parentFolder: string,
   sourcesOpml: any[],
   userId: string
 ): Promise<any> {
-  for (const feed of opmlSub) {
-    if (feed.xmlUrl || feed.url) {
+  for (const feed of outlines) {
+    const childOutlines = feed.outline || [];
+    const feedUrl = feed.xmlUrl || feed.url;
+    if (feedUrl) {
       const source = new Source();
-      source.name = feed.text;
-      source.info = { url: feed.xmlUrl ? feed.xmlUrl : feed.url };
+      source.name = feed.text || feed.title;
+      source.info = { url: feedUrl };
       source.userId = userId;
       source.labels = [parentFolder];
       sourcesOpml.push(source);
     }
-    if (feed.subs) {
+    if (childOutlines.length > 0) {
       await opmlProcessSub(
         context,
-        feed.subs,
-        `${parentFolder ? parentFolder + "/" : ""}${feed.title}`,
+        childOutlines,
+        `${parentFolder ? parentFolder + "/" : ""}${feed.title || feed.text}`,
         sourcesOpml,
         userId
       );

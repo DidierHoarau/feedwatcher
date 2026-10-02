@@ -32,7 +32,8 @@ export async function RulesDataListForUser(
   const span = OTelTracer().startSpan("RulesDataListForUser", context);
   const rulesRaw = await DbUtilsQuerySQL(
     span,
-    `SELECT * FROM rules WHERE userId = '${userId}'`
+    `SELECT * FROM rules WHERE userId = ?`,
+    [userId]
   );
   let rules = new Rules();
   rules.userId = userId;

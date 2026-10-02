@@ -36,10 +36,16 @@ export async function SourceItemsDataAdd(
   sourceItem: SourceItem,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourceItemsDataAdd", context);
-  DbUtilsExecSQL(    span,
+  // URL dedupe: re-fetched items (e.g. date-less feeds reprocessed every
+  // cycle) must not be inserted twice. Items without a url skip the guard.
+  await DbUtilsExecSQL(
+    span,
     "INSERT INTO sources_items " +
       "(id, sourceId, title, content, url, status, datePublished, thumbnail, info) " +
-      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ? " +
+      "WHERE ? = '' OR NOT EXISTS ( " +
+      "  SELECT 1 FROM sources_items WHERE sourceId = ? AND url = ? " +
+      ")",
     [
       sourceItem.id,
       sourceItem.sourceId,
@@ -50,10 +56,13 @@ export async function SourceItemsDataAdd(
       sourceItem.datePublished.toISOString(),
       sourceItem.thumbnail,
       JSON.stringify(sourceItem.info),
+      sourceItem.url,
+      sourceItem.sourceId,
+      sourceItem.url,
     ],
   );
   const source = await SourcesDataGet(span, sourceItem.sourceId);
-  SourcesDataInvalidateUserCache(span, await source.userId);
+  await SourcesDataInvalidateUserCache(span, await source.userId);
   span.end();
 }
 
@@ -62,7 +71,8 @@ export async function SourceItemsDataUpdate(
   sourceItem: SourceItem,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourceItemsDataUpdate", context);
-  DbUtilsExecSQL(    span,
+  await DbUtilsExecSQL(
+    span,
     "UPDATE sources_items " +
       " SET title = ?, content = ?, url = ?, status = ?, datePublished = ?, info = ? " +
       " WHERE id = ?",
@@ -77,7 +87,7 @@ export async function SourceItemsDataUpdate(
     ],
   );
   const source = await SourcesDataGet(span, sourceItem.sourceId);
-  SourcesDataInvalidateUserCache(span, source.userId);
+  await SourcesDataInvalidateUserCache(span, source.userId);
   span.end();
 }
 
@@ -87,10 +97,10 @@ export async function SourceItemsDataDelete(
   sourceItemId: string,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourceItemsDataDelete", context);
-  DbUtilsExecSQL(span, "DELETE FROM sources_items WHERE id = ?", [
+  await DbUtilsExecSQL(span, "DELETE FROM sources_items WHERE id = ?", [
     sourceItemId,
   ]);
-  SourcesDataInvalidateUserCache(span, userId);
+  await SourcesDataInvalidateUserCache(span, userId);
   span.end();
 }
 
@@ -104,26 +114,21 @@ export async function SourceItemsDataUpdateMultipleStatusForUser(
     "SourceItemsDataUpdateMultipleStatusForUser",
     context,
   );
-  let inItemsId = "";
-  for (const itemId of itemIds) {
-    if (inItemsId.length > 0) {
-      inItemsId += ",";
-    }
-    inItemsId += `'${itemId}'`;
-  }
-  DbUtilsExecSQL(    span,
+  const placeholders = itemIds.map(() => "?").join(",");
+  await DbUtilsExecSQL(
+    span,
     "UPDATE sources_items " +
       " SET status = ? " +
       " WHERE id IN ( " +
       "   SELECT sources_items.id " +
       "   FROM sources_items, sources " +
-      `   WHERE sources_items.id IN (${inItemsId}) ` +
+      `   WHERE sources_items.id IN (${placeholders}) ` +
       "         AND sources_items.sourceId = sources.id " +
       "         AND sources.userId = ? " +
       " )",
-    [status, userId],
+    [status, ...itemIds, userId],
   );
-  SourcesDataInvalidateUserCache(span, userId);
+  await SourcesDataInvalidateUserCache(span, userId);
   span.end();
 }
 
@@ -152,7 +157,8 @@ export async function SourceItemsDataCleanupOrphans(
   context: Span,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourceItemsDataCleanupOrphans", context);
-  DbUtilsExecSQL(    span,
+  await DbUtilsExecSQL(
+    span,
     "DELETE FROM sources_items WHERE sourceId NOT IN (SELECT id FROM sources)",
   );
   span.end();

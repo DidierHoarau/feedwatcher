@@ -10,8 +10,7 @@
             :class="{ 'source-active': sourcesStore.selectedIndex == index }"
           >
             <span class="source-name-indent">
-              <span v-html="getIndentation(source)"></span
-                console.log(source)>
+              <span v-html="getIndentation(source)"></span>
             </span>
             <div v-on:click="onSourceSelected(source, index)" class="source-name-name">
               <span v-if="!source.isLabel"><i :class="'bi bi-' + source.icon"></i>&nbsp;</span>
@@ -74,7 +73,6 @@ export default {
       SourcesStore().selectedIndex = index;
     },
     selectLabel() {
-      SourcesStore().selectedIndex = SourcesStore().selectedIndex.length - 1;
       this.$emit("onLabelSelected", { label: this.label });
     },
     cancelSelectLabel() {

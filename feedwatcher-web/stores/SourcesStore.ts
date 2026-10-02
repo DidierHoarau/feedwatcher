@@ -1,6 +1,6 @@
 import { AuthService } from "~~/services/AuthService";
 import Config from "~~/services/Config";
-import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
+import { handleError } from "~~/services/EventBus";
 import axios from "axios";
 import { find, findIndex, sortBy } from "lodash";
 import { PreferencesLabels } from "~~/services/PreferencesLabels";
@@ -160,7 +160,6 @@ export const SourcesStore = defineStore("SourcesStore", {
           });
           for (let i = 0; i < sourcesData.length; i++) {
             const sourceData = sourcesData[i];
-            const source: any = {};
             let labelSplit = [];
             if (sourceData.labelName) {
               labelSplit = sourceData.labelName.split("/");
@@ -308,36 +307,35 @@ if (import.meta.hot) {
   import.meta.hot.accept(acceptHMRUpdate(SourcesStore, import.meta.hot));
 }
 
-function assignCounts(sources: any[], counts: any[], field: string, index = 0) {
-  if (index >= sources.length) {
-    return;
+function assignCounts(sources: any[], counts: any[], field: string) {
+  const countsBySourceId = new Map();
+  for (const count of counts) {
+    countsBySourceId.set(count.sourceId, count);
   }
-  const source: any = sources[index];
-  if (!source.isLabel) {
-    const foundCount = find(counts, { sourceId: source.sourceId });
-    if (foundCount) {
-      source[field] = foundCount[field];
-    } else {
-      source[field] = 0;
+  for (let index = 0; index < sources.length; index++) {
+    const source: any = sources[index];
+    if (!source.isLabel) {
+      const foundCount = countsBySourceId.get(source.sourceId);
+      source[field] = foundCount ? foundCount[field] : 0;
+      continue;
     }
-    assignCounts(sources, counts, field, index + 1);
-    return;
-  }
-  let nextIteration = index + 1;
-  let count = 0;
-  while (nextIteration < sources.length) {
-    const sourceNext = sources[nextIteration] as any;
-    if (
-      !sourceNext.isLabel &&
-      sourceNext.labelName.indexOf(source.labelName) === 0
+    let count = 0;
+    for (
+      let nextIteration = index + 1;
+      nextIteration < sources.length;
+      nextIteration++
     ) {
-      const sourceCounNext = find(counts, { sourceId: sourceNext.sourceId });
-      if (sourceCounNext) {
-        count += sourceCounNext[field];
+      const sourceNext = sources[nextIteration] as any;
+      if (
+        !sourceNext.isLabel &&
+        sourceNext.labelName.indexOf(source.labelName) === 0
+      ) {
+        const sourceCountNext = countsBySourceId.get(sourceNext.sourceId);
+        if (sourceCountNext) {
+          count += sourceCountNext[field];
+        }
       }
     }
-    nextIteration++;
+    source[field] = count;
   }
-  source[field] = count;
-  assignCounts(sources, counts, field, index + 1);
 }

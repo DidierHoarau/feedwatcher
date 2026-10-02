@@ -1,5 +1,17 @@
 import { ConfigBase } from "@devopsplaybook.io/common-utils";
 
+let configInstance: Config = null;
+
+// Shared configuration instance: created once at startup, reloaded by the
+// config file watcher in App.ts. Routes must use this instance instead of
+// re-reading config.json per request.
+export function ConfigGet(): Config {
+  if (!configInstance) {
+    configInstance = new Config();
+  }
+  return configInstance;
+}
+
 export class Config extends ConfigBase {
   // Override the base-class random default so we can detect whether a real
   // value was provided via config file or environment variable.

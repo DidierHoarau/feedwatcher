@@ -18,14 +18,14 @@
           v-if="showFullSource"
           class="source-dialog-frame"
           :src="item.url"
-          sandbox="allow-same-origin allow-popups allow-scripts"
+          sandbox="allow-popups allow-scripts"
           ref="contentFrame"
         ></iframe>
         <iframe
           v-else
           class="source-dialog-frame"
           :srcdoc="iframeSrcdoc"
-          sandbox="allow-same-origin allow-popups allow-scripts"
+          sandbox="allow-popups allow-scripts"
         ></iframe>
       </div>
 

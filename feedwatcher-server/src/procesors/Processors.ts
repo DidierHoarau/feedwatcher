@@ -73,11 +73,14 @@ export async function ProcessorsGetInfos(
   const processorInfos = [];
   for (const processorsFile of processorsFiles) {
     try {
-      const processor = await import(processorsFile.path);
+      const processor = await ProcessorsLoadFile(processorsFile);
       processorInfos.push(processor.getInfo());
       // oxlint-disable-next-line no-unused-vars
     } catch (err) {
-      // Nothing
+      logger.warn(
+        `Failed to load processor ${processorsFile.name}: ${err.message}`,
+        span,
+      );
     }
   }
   span.end();
@@ -96,7 +99,7 @@ export async function ProcessorsCheckSource(
     for (const processorsFile of processorsFiles) {
       if (!processed) {
         try {
-          const processor = await import(processorsFile.path);
+          const processor = await ProcessorsLoadFile(processorsFile);
           const sourceInfo = await processor.test(source);
           if (sourceInfo) {
             sourceInfo.processorPath = processorsFile.path;
@@ -164,7 +167,7 @@ export async function ProcessorsFetchSourceItems(
     for (const processorsFile of processorsFiles) {
       if (!processed) {
         try {
-          const processor = await import(processorsFile.path);
+          const processor = await ProcessorsLoadFile(processorsFile);
           if (await processor.test(source)) {
             let nbNewItem = 0;
             let lastItemDate: Date = null;
@@ -173,26 +176,37 @@ export async function ProcessorsFetchSourceItems(
               lastSourceItemSaved,
             );
             for (const newSourceItem of newSourceItems) {
-              const itemDate = new Date(newSourceItem.datePublished);
-              if (!isNaN(itemDate.getTime())) {
-                if (!lastItemDate || itemDate.getTime() > lastItemDate.getTime()) {
-                  lastItemDate = itemDate;
+              try {
+                const itemDate = new Date(newSourceItem.datePublished);
+                if (!isNaN(itemDate.getTime())) {
+                  if (
+                    !lastItemDate ||
+                    itemDate.getTime() > lastItemDate.getTime()
+                  ) {
+                    lastItemDate = itemDate;
+                  }
                 }
-              }
-              if (
-                !lastSourceItemSaved ||
-                newSourceItem.datePublished > lastSourceItemSaved.datePublished
-              ) {
-                nbNewItem++;
-                newSourceItem.sourceId = source.id;
-                newSourceItem.status = SourceItemStatus.unread;
-                if (!newSourceItem.info) {
-                  newSourceItem.info = {};
+                if (
+                  !lastSourceItemSaved ||
+                  newSourceItem.datePublished > lastSourceItemSaved.datePublished
+                ) {
+                  nbNewItem++;
+                  newSourceItem.sourceId = source.id;
+                  newSourceItem.status = SourceItemStatus.unread;
+                  if (!newSourceItem.info) {
+                    newSourceItem.info = {};
+                  }
+                  if (!newSourceItem.id) {
+                    newSourceItem.id = uuidv4();
+                  }
+                  await SourceItemsDataAdd(context, newSourceItem);
                 }
-                if (!newSourceItem.id) {
-                  newSourceItem.id = uuidv4();
-                }
-                await SourceItemsDataAdd(context, newSourceItem);
+              } catch (err) {
+                // One malformed item must not abort the whole fetch
+                logger.warn(
+                  `Skipping invalid item for source ${source.id} (${source.name}): ${err.message}`,
+                  context,
+                );
               }
             }
             logger.info(
@@ -218,7 +232,8 @@ export async function ProcessorsFetchSourceItems(
           }
         } catch (err) {
           lastErrorInfo = SourceFetchErrorClassify(err);
-          context.setAttributes({
+          // context can be undefined when the request span is not available
+          context?.setAttributes({
             "feedwatcher.source.id": source.id,
             "feedwatcher.source.fetch.error.class": lastErrorInfo.errorClass,
             "feedwatcher.source.fetch.error.status":
@@ -295,6 +310,20 @@ export function ProcessorsGetUserProcessorInfo(
 }
 
 // Private Functions
+
+// Loads a processor script. The files are CommonJS, but under ESM runtimes
+// (tsx) the dynamic import exposes them only through `default`; under the
+// compiled CJS build the exports are the module itself.
+async function ProcessorsLoadFile(processorsFile: any): Promise<any> {
+  const mod: any = await import(processorsFile.path);
+  const processor = mod?.default ?? mod;
+  if (!processor || typeof processor.test !== "function") {
+    throw new Error(
+      `Processor ${processorsFile.name} does not export test()/fetchLatest()`,
+    );
+  }
+  return processor;
+}
 
 function userProcessorInfoStatusStart(context: Span, userId: string): void {
   const span = OTelTracer().startSpan("userProcessorInfoStatusStart", context);

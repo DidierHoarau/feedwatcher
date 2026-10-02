@@ -212,7 +212,7 @@ export default {
     },
     async onLabelSelected(label) {
       this.isSelectLabel = false;
-      if (!find(this.labels, { name: label.name })) {
+      if (!find(this.labels, { name: label.label })) {
         this.labels.push({ name: label.label });
       }
     },

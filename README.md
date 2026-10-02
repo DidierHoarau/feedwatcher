@@ -129,6 +129,10 @@ Rate-limited sources are treated with extra care: when a `429` or `503` response
 | `SOURCE_BACKOFF_MAX`        | Maximum backoff between fetches for failing sources, in milliseconds                        | `86400000` (24 hours)    |
 | `SOURCE_DISABLE_THRESHOLD`  | Number of consecutive fetch errors after which a source is disabled (`0` to never disable)  | `10`                     |
 
+## User Accounts
+
+The first account is created from the login page while the user base is empty — this is the only account that can be created through the API (`POST /api/users`), as a bootstrap step. Once a user exists, account creation through the API is disabled (`403`); additional accounts are created by the operator directly in the database (`users` table; passwords are stored as bcrypt hashes).
+
 ## Podcast Search
 
 The application supports searching for podcasts via the [Podcast Index](https://podcastindex.org/) API. This feature is enabled when both `PODCAST_INDEX_API_KEY` and `PODCAST_INDEX_API_SECRET` are set. When not configured, the "Search Podcasts" option is hidden from the UI.

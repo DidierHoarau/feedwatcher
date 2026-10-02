@@ -27,7 +27,7 @@ export class ListsItemsRoutes {
         req.params.itemId,
         userSession.userId
       );
-      return res.status(201).send(sourceItem || {});
+      return res.status(200).send(sourceItem || {});
     });
 
     interface PutListNameItemsRequest extends RequestGenericInterface {
@@ -50,12 +50,9 @@ export class ListsItemsRoutes {
       const listItem = new ListItem();
       listItem.itemId = req.body.itemId;
       listItem.userId = userSession.userId;
-      if (req.body.listName) {
-        listItem.itemId = req.body.itemId;
-      }
       listItem.info.dateAdded = new Date();
       await ListsItemsDataAdd(OTelRequestSpan(req), listItem);
-      return res.status(201).send({});
+      return res.status(200).send({});
     });
 
     interface DeleteListNameItemsRequest extends RequestGenericInterface {
@@ -75,7 +72,7 @@ export class ListsItemsRoutes {
           req.params.itemId,
           userSession.userId
         );
-        return res.status(202).send({});
+        return res.status(204).send();
       }
     );
   }
