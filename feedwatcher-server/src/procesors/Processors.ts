@@ -22,7 +22,7 @@ import {
   SourceItemsDataAdd,
   SourceItemsDataGetLastForSource,
 } from "../sources/SourceItemsData";
-import { OTelLogger, OTelMeter, OTelTracer } from "../OTelContext";
+import { OTelLogger, OTelTracer } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger("Processor");
 let config: Config;
@@ -54,14 +54,6 @@ export async function ProcessorsInit(
   }
   processorsFiles = sortBy(processorsFiles, ["name"]);
   logger.info(`Found ${processorsFiles.length} processors`, span);
-
-  OTelMeter().createObservableGauge(
-    "feedwatcher.processor.inflight",
-    (observableResult) => {
-      observableResult.observe(sourcesInFlight.size, { status: "in-flight" });
-    },
-    "Sources currently being fetched by processors",
-  );
 
   span.end();
 }
