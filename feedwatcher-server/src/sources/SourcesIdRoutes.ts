@@ -6,12 +6,14 @@ import {
 import {
   SourcesDataDelete,
   SourcesDataGet,
+  SourcesDataListForUser,
   SourcesDataUpdate,
 } from "./SourcesData";
 import {
   SourceLabelsDataGetSourceLabels,
   SourceLabelsDataSetSourceLabels,
 } from "./SourceLabelsData";
+import { normalizeSourceUrl } from "./SourceUrl";
 import { AuthGetUserSession } from "../users/Auth";
 import { OTelLogger, OTelRequestSpan } from "../OTelContext";
 import { SourceGetHealth } from "../model/SourceHealth";
@@ -87,6 +89,7 @@ export class SourcesIdRoutes {
       Body: {
         name: string;
         labels: string[];
+        url?: string;
       };
     }
     fastify.put<PutSourceIdRequest>("/", async (req, res) => {
@@ -107,6 +110,56 @@ export class SourcesIdRoutes {
       if (!req.body.name) {
         return res.status(400).send({ error: "Parameter missing: name" });
       }
+      if (req.body.url !== undefined) {
+        const url = String(req.body.url).trim();
+        if (!url) {
+          return res.status(400).send({ error: "Missing: url" });
+        }
+        if (normalizeSourceUrl(url) !== normalizeSourceUrl(source.info?.url)) {
+          const existingSources = await SourcesDataListForUser(
+            OTelRequestSpan(req),
+            userSession.userId,
+          );
+          const normalizedUrl = normalizeSourceUrl(url);
+          if (
+            existingSources.some(
+              (existing) =>
+                existing.id !== source.id &&
+                normalizeSourceUrl(existing.info?.url) === normalizedUrl,
+            )
+          ) {
+            return res.status(409).send({ error: "Source Already Exists" });
+          }
+          source.info.url = url;
+          // The processor must be re-detected against the new URL and the
+          // fetch/health state of the old URL is no longer meaningful.
+          delete source.info.processorPath;
+          delete source.info.dateFetched;
+          delete source.info.lastItemDate;
+          delete source.info.lastFetchError;
+          delete source.info.lastFetchErrorDate;
+          delete source.info.lastFetchErrorStatus;
+          delete source.info.lastFetchErrorClass;
+          delete source.info.fetchErrorCount;
+          delete source.info.autoDisabled;
+          delete source.info.autoDisabledDate;
+          delete source.info.autoDisabledReason;
+          delete source.info.retryAfterUntil;
+          const checkError = await ProcessorsCheckSource(
+            OTelRequestSpan(req),
+            source,
+          );
+          if (!source.info.processorPath) {
+            return res.status(400).send({
+              error: checkError
+                ? `Source Not Supported (No Processor Matching): ${checkError}`
+                : "Source Not Supported (No Processor Matching)",
+            });
+          }
+        }
+      }
+      // ProcessorsCheckSource overwrites the name with the processor-provided
+      // title: the user-provided name wins on a URL update.
       source.name = req.body.name;
       await SourcesDataUpdate(OTelRequestSpan(req), source);
       if (req.body.labels && req.body.labels.length > 0) {

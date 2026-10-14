@@ -52,6 +52,8 @@
     </div>
     <label>Name</label>
     <input v-model="source.name" type="text" />
+    <label>URL</label>
+    <input v-model="source.info.url" type="text" />
     <label>Labels</label>
     <div class="label-list">
       <kbd v-for="(label, index) of labels" :key="index">
@@ -161,37 +163,48 @@ export default {
         labels.push(label.name);
       }
       this.source.labels = labels;
-      if (this.source.name) {
-        await axios
-          .put(
-            `${(await Config.get()).SERVER_URL}/sources/${this.source.id}`,
-            this.source,
-            await AuthService.getAuthHeader(),
-          )
-          .then((res) => {
-            EventBus.emit(EventTypes.ALERT_MESSAGE, {
-              type: "info",
-              text: "Source updated",
-            });
-            return SourcesStore().fetch();
-          })
-          .then(() => {
-            SourcesStore().setSelectedSourceId(this.source.id);
-            setTimeout(() => {
-              UserProcessorInfoStore().check();
-              useRouter().push({
-                path: "/sources",
-                query: { sourceId: this.source.id },
-              });
-            }, 100);
-          })
-          .catch(handleError);
-      } else {
+      if (!this.source.name) {
         EventBus.emit(EventTypes.ALERT_MESSAGE, {
           type: "error",
           text: "Name missing",
         });
+        return;
       }
+      if (!this.source.info.url) {
+        EventBus.emit(EventTypes.ALERT_MESSAGE, {
+          type: "error",
+          text: "URL missing",
+        });
+        return;
+      }
+      await axios
+        .put(
+          `${(await Config.get()).SERVER_URL}/sources/${this.source.id}`,
+          {
+            name: this.source.name,
+            labels: labels,
+            url: this.source.info.url,
+          },
+          await AuthService.getAuthHeader(),
+        )
+        .then((res) => {
+          EventBus.emit(EventTypes.ALERT_MESSAGE, {
+            type: "info",
+            text: "Source updated",
+          });
+          return SourcesStore().fetch();
+        })
+        .then(() => {
+          SourcesStore().setSelectedSourceId(this.source.id);
+          setTimeout(() => {
+            UserProcessorInfoStore().check();
+            useRouter().push({
+              path: "/sources",
+              query: { sourceId: this.source.id },
+            });
+          }, 100);
+        })
+        .catch(handleError);
     },
     async deleteSource() {
       if (confirm("Delete the source?") == true) {
