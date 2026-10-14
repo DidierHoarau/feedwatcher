@@ -5,6 +5,7 @@ import { AuthGetUserSession } from "../users/Auth";
 import {
   SourcesDataDelete,
   SourcesDataGet,
+  SourcesDataListForUser,
   SourcesDataUpdate,
 } from "./SourcesData";
 import {
@@ -35,6 +36,7 @@ jest.mock("./SourcesData", () => ({
   SourcesDataGet: jest.fn(),
   SourcesDataUpdate: jest.fn(),
   SourcesDataDelete: jest.fn(),
+  SourcesDataListForUser: jest.fn(),
 }));
 
 jest.mock("./SourceLabelsData", () => ({
@@ -67,6 +69,7 @@ describe("SourcesIdRoutes (M1/L3)", () => {
     } as any);
     jest.mocked(ProcessorsCheckSource).mockResolvedValue(undefined);
     jest.mocked(ProcessorsFetchSourceItems).mockResolvedValue(undefined);
+    jest.mocked(SourcesDataListForUser).mockResolvedValue([]);
     fastify = Fastify();
     await fastify.register(new SourcesIdRoutes().getRoutes, {
       prefix: "/api/sources/:sourceId",
@@ -120,6 +123,134 @@ describe("SourcesIdRoutes (M1/L3)", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(SourcesDataUpdate).toHaveBeenCalled();
+    expect(SourceLabelsDataSetSourceLabels).toHaveBeenCalledWith(
+      expect.anything(),
+      "source-1",
+      ["News"]
+    );
+  });
+
+  test("PUT with a changed URL updates it and re-detects the processor", async () => {
+    const source = newSource("user-1");
+    source.info = {
+      url: "https://example.com/feed",
+      processorPath: "/processors/800-RssProcessor.js",
+      dateFetched: new Date("2026-01-01"),
+      lastItemDate: new Date("2026-01-02"),
+      lastFetchError: "boom",
+      lastFetchErrorDate: new Date("2026-01-03"),
+      lastFetchErrorStatus: 500,
+      lastFetchErrorClass: "http",
+      fetchErrorCount: 2,
+      autoDisabled: true,
+      autoDisabledDate: new Date("2026-01-04"),
+      autoDisabledReason: "boom",
+      retryAfterUntil: new Date("2026-01-05"),
+    };
+    jest.mocked(SourcesDataGet).mockResolvedValue(source);
+    const namesAtUpdate: string[] = [];
+    jest
+      .mocked(SourcesDataUpdate)
+      .mockImplementation(async (_span, updated: any) => {
+        namesAtUpdate.push(updated.name);
+      });
+    let firstCheckProcessorPath: string | undefined;
+    let checkCallCount = 0;
+    jest
+      .mocked(ProcessorsCheckSource)
+      .mockImplementation(async (_span, checkedSource: any) => {
+        if (checkCallCount === 0) {
+          checkCallCount = 1;
+          firstCheckProcessorPath = checkedSource.info.processorPath;
+        }
+        checkedSource.info.processorPath = "/processors/800-RssProcessor.js";
+        checkedSource.name = "Processor Title";
+        return null;
+      });
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/api/sources/source-1",
+      payload: { name: "Renamed", labels: ["News"], url: " https://example.com/feed.xml " },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(firstCheckProcessorPath).toBeUndefined();
+    expect(source.info.url).toBe("https://example.com/feed.xml");
+    expect(source.info.dateFetched).toBeUndefined();
+    expect(source.info.lastItemDate).toBeUndefined();
+    expect(source.info.lastFetchError).toBeUndefined();
+    expect(source.info.lastFetchErrorDate).toBeUndefined();
+    expect(source.info.lastFetchErrorStatus).toBeUndefined();
+    expect(source.info.lastFetchErrorClass).toBeUndefined();
+    expect(source.info.fetchErrorCount).toBeUndefined();
+    expect(source.info.autoDisabled).toBeUndefined();
+    expect(source.info.autoDisabledDate).toBeUndefined();
+    expect(source.info.autoDisabledReason).toBeUndefined();
+    expect(source.info.retryAfterUntil).toBeUndefined();
+    expect(SourcesDataUpdate).toHaveBeenCalled();
+    expect(namesAtUpdate[0]).toBe("Renamed");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(jest.mocked(ProcessorsFetchSourceItems)).toHaveBeenCalled();
+  });
+
+  test("PUT with a changed URL that no processor supports returns 400 and persists nothing", async () => {
+    const source = newSource("user-1");
+    source.info.processorPath = "/processors/800-RssProcessor.js";
+    jest.mocked(SourcesDataGet).mockResolvedValue(source);
+    jest.mocked(ProcessorsCheckSource).mockResolvedValue(null);
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/api/sources/source-1",
+      payload: { name: "Renamed", url: "https://example.com/other" },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.body).error).toContain(
+      "Source Not Supported (No Processor Matching)"
+    );
+    expect(SourcesDataUpdate).not.toHaveBeenCalled();
+    expect(ProcessorsFetchSourceItems).not.toHaveBeenCalled();
+  });
+
+  test("PUT with a URL matching another source returns 409", async () => {
+    jest.mocked(SourcesDataGet).mockResolvedValue(newSource("user-1"));
+    jest.mocked(SourcesDataListForUser).mockResolvedValue([
+      { id: "source-2", info: { url: "https://other.com/feed" } },
+    ] as any);
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/api/sources/source-1",
+      payload: { name: "Renamed", url: "https://OTHER.com/feed/" },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(JSON.parse(response.body).error).toBe("Source Already Exists");
+    expect(SourcesDataUpdate).not.toHaveBeenCalled();
+  });
+
+  test("PUT with an empty url returns 400", async () => {
+    jest.mocked(SourcesDataGet).mockResolvedValue(newSource("user-1"));
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/api/sources/source-1",
+      payload: { name: "Renamed", url: "   " },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(SourcesDataUpdate).not.toHaveBeenCalled();
+  });
+
+  test("PUT with an unchanged URL keeps the existing name/labels behavior", async () => {
+    jest.mocked(SourcesDataGet).mockResolvedValue(newSource("user-1"));
+    jest.mocked(SourceLabelsDataSetSourceLabels).mockResolvedValue(undefined);
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/api/sources/source-1",
+      payload: {
+        name: "Renamed",
+        labels: ["News"],
+        url: "https://example.com/feed",
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(SourcesDataUpdate).toHaveBeenCalled();
+    expect(jest.mocked(SourcesDataUpdate).mock.calls[0][1].name).toBe("Renamed");
     expect(SourceLabelsDataSetSourceLabels).toHaveBeenCalledWith(
       expect.anything(),
       "source-1",

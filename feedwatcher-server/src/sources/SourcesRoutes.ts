@@ -13,20 +13,9 @@ import { SourcesDataAdd, SourcesDataListForUser } from "./SourcesData";
 import { SourceGetHealth } from "../model/SourceHealth";
 import { ConfigGet } from "../Config";
 import { OTelLogger } from "../OTelContext";
+import { normalizeSourceUrl } from "./SourceUrl";
 
 const logger = OTelLogger().createModuleLogger("SourcesRoutes");
-
-function normalizeSourceUrl(url: string): string {
-  const trimmed = String(url ?? "").trim();
-  try {
-    const parsed = new URL(trimmed);
-    const pathname =
-      parsed.pathname === "/" ? "" : parsed.pathname.replace(/\/+$/, "");
-    return `${parsed.protocol.toLowerCase()}//${parsed.host.toLowerCase()}${pathname}${parsed.search}`;
-  } catch {
-    return trimmed;
-  }
-}
 
 export class SourcesRoutes {
   //
