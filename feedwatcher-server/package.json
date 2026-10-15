@@ -49,13 +49,5 @@
     "sinon": "^22.1.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
-  },
-  "allowScripts": {
-    "better-sqlite3@13.0.3": true,
-    "bcrypt@6.0.0": true,
-    "@swc/core@1.16.18": true,
-    "esbuild@0.28.2": true,
-    "unrs-resolver@1.12.2": true,
-    "@parcel/watcher@2.6.0": true
   }
 }
