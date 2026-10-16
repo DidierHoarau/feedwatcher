@@ -188,4 +188,24 @@ describe("SourceDialog reader view", () => {
       expect.stringContaining("Load Full"),
     ]);
   });
+
+  test("keeps the podcast action buttons inside the dialog footer container", async () => {
+    const wrapper = await mountDialog({
+      item: newItem({
+        info: { isPodcast: true, audioUrl: "https://example.com/audio.mp3" },
+      }),
+    });
+
+    const footer = wrapper.find("footer.source-dialog-footer");
+    expect(footer.exists()).toBe(true);
+
+    const labels = footer.findAll("button").map((b) => b.text());
+    expect(labels).toEqual([
+      expect.stringContaining("Close"),
+      expect.stringContaining("Play Episode"),
+      expect.stringContaining("Open"),
+      expect.stringContaining("Reader view"),
+      expect.stringContaining("Load Full"),
+    ]);
+  });
 });
