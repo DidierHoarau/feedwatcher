@@ -35,6 +35,7 @@
             class="item-list-card"
             v-for="sourceItem in displayedRecentItems"
             v-bind:key="sourceItem.id"
+            v-bind:data-kb-card="sourceItem.id"
           >
             <LazySourceItem
               class="fade-in-fast item-list-card"
@@ -86,6 +87,7 @@
             class="item-list-card"
             v-for="sourceItem in displayedNewItems"
             v-bind:key="sourceItem.id"
+            v-bind:data-kb-card="sourceItem.id"
           >
             <LazySourceItem
               class="fade-in-fast item-list-card"
@@ -141,6 +143,7 @@
             class="item-list-card"
             v-for="sourceItem in displayedSummaryItems"
             v-bind:key="sourceItem.id"
+            v-bind:data-kb-card="sourceItem.id"
           >
             <LazySourceItem
               class="fade-in-fast item-list-card"
@@ -202,6 +205,23 @@ import { AuthService } from "~~/services/AuthService.ts";
 import { EventBus, EventTypes } from "~~/services/EventBus";
 
 export default {
+  setup() {
+    // Options-API page: resolve the displayed lists lazily from the instance
+    // so the keyboard composable can register its listeners in setup context.
+    const instance = getCurrentInstance();
+    useItemKeyboardNav({
+      getItems: () => {
+        const vm = instance?.proxy;
+        if (!vm) {
+          return [];
+        }
+        return vm.displayedNewItems?.length
+          ? vm.displayedNewItems
+          : vm.displayedRecentItems || [];
+      },
+    });
+    return {};
+  },
   data() {
     return {
       processorInfos: [],

@@ -10,8 +10,9 @@ module.exports = {
         },
       },
     ],
-    // cookie@2 ships ESM only and is required by light-my-request
-    "node_modules/cookie/.+\\.js$": [
+    // jsdom and friends ship ESM-only files, which jest cannot require
+    // natively: transform every node_modules .js file to CJS like cookie.
+    "node_modules/.+\\.(js|mjs)$": [
       "@swc/jest",
       {
         jsc: {
@@ -24,6 +25,6 @@ module.exports = {
     "^uuid$": "<rootDir>/__mocks__/uuid.ts",
   },
   testMatch: ["/**/src/**/*.spec.(ts|js)"],
-  transformIgnorePatterns: ["/node_modules/(?!cookie/)"],
+  transformIgnorePatterns: [],
   testEnvironment: "node",
 };

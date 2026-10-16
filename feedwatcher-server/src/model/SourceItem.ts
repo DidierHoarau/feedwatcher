@@ -13,6 +13,7 @@ export class SourceItem {
   public thumbnail: string;
   public status: SourceItemStatus;
   public info: any;
+  public isSaved: boolean;
 
   constructor() {
     this.id = uuidv4();
@@ -30,6 +31,7 @@ export class SourceItem {
     sourceItem.datePublished = new Date(itemRaw.datePublished);
     sourceItem.info = JSON.parse(itemRaw.info);
     sourceItem.thumbnail = itemRaw.thumbnail;
+    sourceItem.isSaved = !!itemRaw.isSaved;
     return sourceItem;
   }
 }

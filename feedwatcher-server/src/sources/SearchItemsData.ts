@@ -23,6 +23,7 @@ export async function SearchItemsDataListForUser(
   const sourceItemsRaw = await DbUtilsQuerySQL(
     span,
     "SELECT DISTINCT sources_items.*, sources.name as sourceName " +
+      getSavedStateQuery() +
       "FROM sources_items " +
       "JOIN sources ON sources_items.sourceId = sources.id " +
       getSavedFromQuery(searchOptions) +
@@ -55,6 +56,7 @@ export async function SearchItemsDataListForSource(
   const sourceItemsRaw = await DbUtilsQuerySQL(
     span,
     "SELECT DISTINCT sources_items.*, sources.name as sourceName " +
+      getSavedStateQuery() +
       "FROM sources_items " +
       "JOIN sources ON sources_items.sourceId = sources.id " +
       getSavedFromQuery(searchOptions) +
@@ -92,6 +94,7 @@ export async function SearchItemsDataListItemsForLabel(
   const sourceItemsRaw = await DbUtilsQuerySQL(
     span,
     "SELECT DISTINCT sources_items.*, sources.name AS sourceName " +
+      getSavedStateQuery() +
       "FROM sources_items " +
       "JOIN sources ON sources_items.sourceId = sources.id " +
       getSavedFromQuery(searchOptions) +
@@ -219,4 +222,16 @@ function getSavedFromQuery(searchOptions: SearchItemsOptions): string {
     return " JOIN lists_items ON sources_items.id = lists_items.itemId ";
   }
   return "";
+}
+
+// EXISTS (no row duplication — lists_items has no unique (itemId, userId)
+// constraint) correlated on sources.userId, which every query above already
+// constrains to the requesting user. Batched bookmark state replaces the
+// per-card bookmark lookups.
+function getSavedStateQuery(): string {
+  return (
+    ", EXISTS (SELECT 1 FROM lists_items " +
+    "WHERE lists_items.itemId = sources_items.id " +
+    "AND lists_items.userId = sources.userId) AS isSaved "
+  );
 }

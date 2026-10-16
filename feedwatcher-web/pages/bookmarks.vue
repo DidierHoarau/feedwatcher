@@ -17,6 +17,7 @@
           class="item-list-card"
           v-for="sourceItem in sourceItemsStore.sourceItems"
           v-bind:key="sourceItem.id"
+          v-bind:data-kb-card="sourceItem.id"
         >
           <LazySourceItem
             class="fade-in-fast item-list-card"
@@ -48,6 +49,9 @@ const { onSourceSelected, onLabelSelected, onRootSelected } =
     syncSourcesStore: true,
   });
 useSourceItemsInfiniteScroll();
+useItemKeyboardNav({
+  getItems: () => sourceItemsStore.sourceItems,
+});
 </script>
 
 <style scoped>

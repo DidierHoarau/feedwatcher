@@ -18,7 +18,7 @@ export function useSourceItemsPage({
       syncRoute,
     });
   (async () => {
-    EventBus.on(EventTypes.ITEMS_UPDATED, (message) => {
+    EventBus.on(EventTypes.ITEMS_UPDATED, () => {
       if (
         SourceItemsStore().sourceItems.length === 0 &&
         UserProcessorInfoStore().status === "idle"

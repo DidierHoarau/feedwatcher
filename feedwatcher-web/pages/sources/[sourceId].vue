@@ -83,7 +83,17 @@
       <i class="bi bi-plus-square" v-on:click="addLabel()"></i>
     </div>
     <button v-on:click="updateSource()">Update</button>
-    <button v-on:click="deleteSource()">Delete</button>
+    <button ref="deleteButton" v-on:click="deleteSource()">Delete</button>
+    <ConfirmPopover
+      v-model="deleteConfirmOpen"
+      :anchor="deleteConfirmAnchor"
+      title="Delete source?"
+      description="This removes the source and all its items."
+      confirm-label="Delete"
+      cancel-label="Cancel"
+      @confirm="confirmDeleteSource"
+      @cancel="deleteConfirmAnchor = null"
+    />
     <LabelSelectDialog
       @onLabelSelectCancel="onLabelSelectCancel"
       @onLabelSelected="onLabelSelected"
@@ -108,6 +118,8 @@ export default {
       isSelectLabel: false,
       resuming: false,
       podcastSearchEnabled: false,
+      deleteConfirmOpen: false,
+      deleteConfirmAnchor: null,
     };
   },
   computed: {
@@ -247,22 +259,25 @@ export default {
         })
         .catch(handleError);
     },
-    async deleteSource() {
-      if (confirm("Delete the source?") == true) {
-        await axios
-          .delete(
-            `${(await Config.get()).SERVER_URL}/sources/${this.source.id}`,
-            await AuthService.getAuthHeader(),
-          )
-          .then((res) => {
-            EventBus.emit(EventTypes.ALERT_MESSAGE, {
-              text: "Source deleted",
-            });
-            SourcesStore().selectedIndex = 0;
-            useRouter().push({ path: "/sources" });
-          })
-          .catch(handleError);
-      }
+    deleteSource() {
+      this.deleteConfirmAnchor = this.$refs.deleteButton;
+      this.deleteConfirmOpen = true;
+    },
+    async confirmDeleteSource() {
+      this.deleteConfirmAnchor = null;
+      await axios
+        .delete(
+          `${(await Config.get()).SERVER_URL}/sources/${this.source.id}`,
+          await AuthService.getAuthHeader(),
+        )
+        .then((res) => {
+          EventBus.emit(EventTypes.ALERT_MESSAGE, {
+            text: "Source deleted",
+          });
+          SourcesStore().selectedIndex = 0;
+          useRouter().push({ path: "/sources" });
+        })
+        .catch(handleError);
     },
     async onLabelSelected(label) {
       this.isSelectLabel = false;

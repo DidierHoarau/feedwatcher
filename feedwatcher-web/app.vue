@@ -4,6 +4,7 @@ import { EventBus, EventTypes } from "~~/services/EventBus";
 const showSourceDialog = ref(false);
 const dialogItem = ref(null);
 const dialogFullSource = ref(false);
+const dialogReader = ref(false);
 const playerStore = PodcastPlayerStore();
 
 function updateAppHeight() {
@@ -24,9 +25,10 @@ onMounted(() => {
   }
 
   // Listen for open item events
-  EventBus.on(EventTypes.OPEN_ITEM, ({ item, showFullSource }) => {
+  EventBus.on(EventTypes.OPEN_ITEM, ({ item, showFullSource, openReader }) => {
     dialogItem.value = item;
     dialogFullSource.value = showFullSource ?? false;
+    dialogReader.value = openReader ?? false;
     showSourceDialog.value = true;
   });
 });
@@ -67,7 +69,9 @@ function stopMiniPlayer() {
       v-model="showSourceDialog"
       :item="dialogItem"
       :initial-full="dialogFullSource"
+      :initial-reader="dialogReader"
     />
+    <KeyboardShortcutsHelp />
 
     <!-- Mini Player Bar -->
     <div
