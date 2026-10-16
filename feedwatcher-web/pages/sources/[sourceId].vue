@@ -28,7 +28,16 @@
       >
         Paused on: {{ formatDate(source.info.autoDisabledDate) }}
       </div>
-      <div v-if="source.info.lastFetchError" class="source-health-line">
+      <div
+        v-if="source.info.lastFetchError"
+        class="source-health-line source-health-diagnosis"
+      >
+        {{ diagnosisText }}
+      </div>
+      <div
+        v-if="source.info.lastFetchError"
+        class="source-health-line source-health-raw-error"
+      >
         Last error: {{ source.info.lastFetchError }}
         <span v-if="source.info.lastFetchErrorDate"
           >({{ formatDate(source.info.lastFetchErrorDate) }})</span
@@ -54,6 +63,18 @@
     <input v-model="source.name" type="text" />
     <label>URL</label>
     <input v-model="source.info.url" type="text" />
+    <div class="source-url-finder-block">
+      <label>Find a working URL</label>
+      <p class="source-finder-hint">
+        Paste the site address (or search podcasts below) to discover feeds,
+        then use it as the new URL for this source.
+      </p>
+      <SourceUrlFinder
+        confirm-label="Use this URL"
+        :podcast-search-enabled="podcastSearchEnabled"
+        @select="onFinderSelect"
+      />
+    </div>
     <label>Labels</label>
     <div class="label-list">
       <kbd v-for="(label, index) of labels" :key="index">
@@ -77,6 +98,7 @@ import axios from "axios";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
+import { sourceDiagnosisText } from "~~/services/SourceHealthUI.ts";
 
 export default {
   data() {
@@ -85,6 +107,7 @@ export default {
       labels: [],
       isSelectLabel: false,
       resuming: false,
+      podcastSearchEnabled: false,
     };
   },
   computed: {
@@ -96,6 +119,9 @@ export default {
           info.dateFetched ||
           info.lastItemDate,
       );
+    },
+    diagnosisText() {
+      return sourceDiagnosisText(this.source.health, this.source.info);
     },
     healthIcon() {
       if (this.source.health === "disabled") {
@@ -118,10 +144,25 @@ export default {
         this.labels = res.data.labels;
       })
       .catch(handleError);
+    axios
+      .get(`${(await Config.get()).SERVER_URL}/status`)
+      .then((res) => {
+        this.podcastSearchEnabled = !!res.data.podcastSearchEnabled;
+      })
+      .catch(() => {
+        this.podcastSearchEnabled = false;
+      });
   },
   methods: {
     formatDate(value) {
       return new Date(value).toLocaleString();
+    },
+    onFinderSelect(url) {
+      this.source.info.url = url;
+      EventBus.emit(EventTypes.ALERT_MESSAGE, {
+        type: "info",
+        text: "URL updated — click Update to apply it",
+      });
     },
     async loadSource() {
       await axios
@@ -265,6 +306,21 @@ h1 {
 }
 .source-health-line {
   margin-bottom: var(--space-2xs, 0.25rem);
+}
+.source-health-diagnosis {
+  font-weight: 600;
+  color: var(--color-text, inherit);
+}
+.source-health-raw-error {
+  color: var(--color-text-secondary, inherit);
+}
+.source-url-finder-block {
+  margin-bottom: var(--space-2xl);
+}
+.source-finder-hint {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted, inherit);
+  margin-bottom: var(--space-sm);
 }
 .source-health-resume {
   width: auto;

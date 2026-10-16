@@ -4,7 +4,7 @@ import * as net from "net";
 
 const MAX_REDIRECTS = 3;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
-const ALLOWED_CONTENT_TYPES = [
+export const URL_SAFETY_DEFAULT_CONTENT_TYPES = [
   "text/html",
   "text/plain",
   "application/xhtml+xml",
@@ -73,7 +73,10 @@ export async function UrlSafetyValidate(urlRaw: string): Promise<void> {
 
 // Fetches a URL with SSRF protections: every hop is validated, the redirect
 // count is bounded, the content type is restricted and the body is capped.
-export async function UrlSafetyFetchText(urlRaw: string): Promise<string> {
+export async function UrlSafetyFetchText(
+  urlRaw: string,
+  allowedContentTypes: string[] = URL_SAFETY_DEFAULT_CONTENT_TYPES,
+): Promise<string> {
   let url = String(urlRaw);
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     await UrlSafetyValidate(url);
@@ -111,7 +114,7 @@ export async function UrlSafetyFetchText(urlRaw: string): Promise<string> {
       .split(";")[0]
       .trim()
       .toLowerCase();
-    if (!ALLOWED_CONTENT_TYPES.includes(contentType)) {
+    if (!allowedContentTypes.includes(contentType)) {
       throw new UrlSafetyError("Unsupported content type", 415);
     }
     return response.data;

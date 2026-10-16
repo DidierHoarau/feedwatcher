@@ -7,28 +7,50 @@
         v-bind:key="source.sourceId"
         class="sources-attention-item"
       >
-        <NuxtLink
-          class="sources-attention-link"
-          :to="'/sources?sourceId=' + source.sourceId"
-        >
-          <span
-            class="source-health"
-            :class="'source-health-' + sourceHealth(source)"
-            :title="sourceHealthTitle(source)"
+        <div class="sources-attention-text">
+          <NuxtLink
+            class="sources-attention-link"
+            :to="'/sources?sourceId=' + source.sourceId"
           >
-            <i :class="sourceHealthIcon(source)"></i>
-          </span>
-          <span class="sources-attention-name">{{ source.displayName }}</span>
-        </NuxtLink>
-        <button
-          v-if="source.sourceInfo?.health === 'disabled'"
-          class="secondary sources-attention-resume"
-          :disabled="resumingSourceId === source.sourceId"
-          title="Fetch this source now and resume automatic fetching"
-          v-on:click="resumeFetching(source)"
-        >
-          <i class="bi bi-play-circle"></i> Resume fetching
-        </button>
+            <span
+              class="source-health"
+              :class="'source-health-' + sourceHealth(source)"
+              :title="sourceHealthTitle(source)"
+            >
+              <i :class="sourceHealthIcon(source)"></i>
+            </span>
+            <span class="sources-attention-name">{{ source.displayName }}</span>
+          </NuxtLink>
+          <div v-if="sourceDiagnosis(source)" class="sources-attention-diagnosis">
+            {{ sourceDiagnosis(source) }}
+          </div>
+        </div>
+        <div class="sources-attention-actions">
+          <NuxtLink
+            v-if="source.sourceInfo?.health !== 'stale'"
+            class="sources-attention-fix"
+            :to="'/sources/' + source.sourceId"
+            >Fix</NuxtLink
+          >
+          <button
+            v-if="source.sourceInfo?.health === 'disabled'"
+            class="secondary sources-attention-resume"
+            :disabled="resumingSourceId === source.sourceId"
+            title="Fetch this source now and resume automatic fetching"
+            v-on:click="resumeFetching(source)"
+          >
+            <i class="bi bi-play-circle"></i> Resume fetching
+          </button>
+          <button
+            v-else-if="source.sourceInfo?.health === 'failing'"
+            class="secondary sources-attention-resume"
+            :disabled="resumingSourceId === source.sourceId"
+            title="Fetch this source now"
+            v-on:click="resumeFetching(source)"
+          >
+            <i class="bi bi-arrow-clockwise"></i> Fetch now
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -43,10 +65,15 @@ import {
   sourceHealth,
   sourceHealthIcon,
   sourceHealthTitle,
+  sourceDiagnosisText,
 } from "~~/services/SourceHealthUI.ts";
 
 const sourcesStore = SourcesStore();
 const resumingSourceId = ref(null);
+
+function sourceDiagnosis(source) {
+  return sourceDiagnosisText(source.sourceInfo?.health, source.sourceInfo);
+}
 
 const attentionSources = computed(() => {
   const impacted = sourcesStore.sources.filter(
@@ -121,6 +148,30 @@ async function resumeFetching(source) {
 
 .sources-attention-link:hover {
   text-decoration: underline;
+}
+
+.sources-attention-text {
+  min-width: 0;
+}
+
+.sources-attention-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm, 0.5rem);
+  flex-shrink: 0;
+}
+
+.sources-attention-diagnosis {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.sources-attention-fix {
+  font-size: var(--font-sm);
+  color: var(--color-primary);
+  text-decoration: underline;
+  white-space: nowrap;
 }
 
 .sources-attention-resume {

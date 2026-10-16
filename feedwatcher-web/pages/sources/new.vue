@@ -38,6 +38,20 @@
         Add
       </button>
       <Loading v-if="adding" />
+      <button
+        class="outline secondary finder-toggle"
+        type="button"
+        v-on:click="showFinder = !showFinder"
+      >
+        <i class="bi bi-rss"></i>
+        {{ showFinder ? "Hide feed discovery" : "Find feeds" }}
+      </button>
+      <SourceUrlFinder
+        v-if="showFinder"
+        confirm-label="Add"
+        :podcast-search-enabled="false"
+        @select="addFromFinder"
+      />
     </div>
 
     <!-- Mode B: Search Podcasts -->
@@ -112,6 +126,8 @@
 <script setup>
 import axios from "axios";
 import { debounce } from "lodash";
+import { ref } from "vue";
+import SourceUrlFinder from "~~/components/SourceUrlFinder.vue";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
@@ -125,6 +141,7 @@ const podcastSearchEnabled = ref(false);
 // --- Mode A: Add by URL ---
 const sourceUrl = ref("");
 const adding = ref(false);
+const showFinder = ref(false);
 
 const alreadyExists = computed(() => {
   const url = sourceUrl.value.trim();
@@ -134,8 +151,8 @@ const alreadyExists = computed(() => {
   );
 });
 
-async function addByUrl() {
-  const url = sourceUrl.value.trim();
+async function addByUrl(urlIn, name) {
+  const url = (urlIn || sourceUrl.value).trim();
   if (!url) {
     EventBus.emit(EventTypes.ALERT_MESSAGE, {
       type: "error",
@@ -152,7 +169,7 @@ async function addByUrl() {
     );
     EventBus.emit(EventTypes.ALERT_MESSAGE, {
       type: "info",
-      text: "Source added",
+      text: name ? `Added: ${name}` : "Source added",
     });
     await sourcesStore.fetch();
     router.push(`/sources/${res.data.id}`);
@@ -160,6 +177,11 @@ async function addByUrl() {
     handleError(err);
   }
   adding.value = false;
+}
+
+function addFromFinder(url, name) {
+  sourceUrl.value = url;
+  addByUrl(url, name);
 }
 
 // --- Mode B: Search Podcasts ---

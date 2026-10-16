@@ -51,3 +51,32 @@ export function sourceHealthTitle(source: any): string {
   }
   return "Source not updated for a long time";
 }
+
+// Plain-language diagnosis derived from the health status and the classified
+// last fetch error, so the user knows what to do without reading raw errors.
+export function sourceDiagnosisText(
+  health: string | null | undefined,
+  info: any,
+): string {
+  info = info || {};
+  if (health === "failing" || health === "disabled") {
+    if (info.lastFetchErrorClass === "permanent") {
+      return "The source URL no longer works. Update the URL to recover.";
+    }
+    if (info.lastFetchErrorClass === "rateLimited") {
+      return "The source is rate limiting FeedWatcher — fetching will retry automatically.";
+    }
+    if (info.lastFetchErrorClass === "transient") {
+      return "A temporary network problem is preventing the fetch — it will retry automatically.";
+    }
+    return `Fetching keeps failing: ${info.lastFetchError || "unknown error"}`;
+  }
+  if (health === "stale") {
+    const lastUpdate = info.lastItemDate || info.dateFetched;
+    if (lastUpdate) {
+      return `No new items since ${new Date(lastUpdate).toLocaleDateString()}`;
+    }
+    return "Source not updated for a long time";
+  }
+  return "";
+}

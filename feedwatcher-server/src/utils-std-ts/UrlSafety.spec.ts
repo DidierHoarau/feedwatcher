@@ -203,4 +203,44 @@ describe("UrlSafetyFetchText", () => {
     expect(options.maxContentLength).toBe(2 * 1024 * 1024);
     expect(options.maxRedirects).toBe(0);
   });
+
+  test("accepts a custom content-type allow-list", async () => {
+    jest.mocked(axios.get).mockResolvedValue({
+      status: 200,
+      headers: { "content-type": "application/rss+xml; charset=utf-8" },
+      data: "<rss>ok</rss>",
+    } as any);
+
+    await expect(
+      UrlSafetyFetchText("https://example.com/feed", [
+        "application/rss+xml",
+        "text/html",
+      ])
+    ).resolves.toBe("<rss>ok</rss>");
+
+    jest.mocked(axios.get).mockResolvedValue({
+      status: 200,
+      headers: { "content-type": "application/octet-stream" },
+      data: "binary",
+    } as any);
+
+    await expect(
+      UrlSafetyFetchText("https://example.com/file.bin", [
+        "application/rss+xml",
+        "text/html",
+      ])
+    ).rejects.toMatchObject({ statusCode: 415 });
+  });
+
+  test("keeps the default allow-list when no custom list is given", async () => {
+    jest.mocked(axios.get).mockResolvedValue({
+      status: 200,
+      headers: { "content-type": "application/rss+xml" },
+      data: "<rss>ok</rss>",
+    } as any);
+
+    await expect(
+      UrlSafetyFetchText("https://example.com/feed")
+    ).rejects.toMatchObject({ statusCode: 415 });
+  });
 });

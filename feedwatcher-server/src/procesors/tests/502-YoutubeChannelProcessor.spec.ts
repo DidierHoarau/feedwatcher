@@ -538,6 +538,106 @@ describe("YouTube processor: fetchLatest", () => {
   });
 });
 
+const ALT_FEED_TEMPLATE = "https://invidious.example/feed/channel/{channelId}";
+const ALT_FEED_URL = `https://invidious.example/feed/channel/${CHANNEL_ID}`;
+const DEFAULT_FEED_TEMPLATE =
+  "https://www.youtube.com/feeds/videos.xml?channel_id={channelId}";
+
+describe("YouTube processor: fetchLatest feed URL fallback", () => {
+  afterEach(() => {
+    delete process.env.FEEDWATCHER_YOUTUBE_FEED_URLS;
+  });
+
+  function newYouTubeSource(): Source {
+    const source = newSource("https://www.youtube.com/@riskreversalmedia");
+    source.info.channelId = CHANNEL_ID;
+    return source;
+  }
+
+  test("uses the default endpoint when the env var is unset", async () => {
+    const spy = jest
+      .spyOn(axios, "get")
+      .mockImplementation(async (url: string): Promise<AxiosResponse> => {
+        if (url === FEED_URL) {
+          return reply(FEED_XML);
+        }
+        if (url.startsWith("https://www.youtube.com/shorts/")) {
+          throw new Error("Request failed with status code 302");
+        }
+        return reply("");
+      });
+
+    const sourceItems = await processor.fetchLatest(newYouTubeSource(), null);
+
+    expect(sourceItems).toHaveLength(1);
+    expect(spy.mock.calls[0][0]).toBe(FEED_URL);
+  });
+
+  test("falls back to the next template when the first endpoint 404s", async () => {
+    process.env.FEEDWATCHER_YOUTUBE_FEED_URLS = `${DEFAULT_FEED_TEMPLATE},${ALT_FEED_TEMPLATE}`;
+    const calledUrls: string[] = [];
+    jest
+      .spyOn(axios, "get")
+      .mockImplementation(async (url: string): Promise<AxiosResponse> => {
+        calledUrls.push(url);
+        if (url === FEED_URL) {
+          throw httpError(404);
+        }
+        if (url === ALT_FEED_URL) {
+          return reply(FEED_XML);
+        }
+        if (url.startsWith("https://www.youtube.com/shorts/")) {
+          throw new Error("Request failed with status code 302");
+        }
+        return reply("");
+      });
+
+    const sourceItems = await processor.fetchLatest(newYouTubeSource(), null);
+
+    expect(sourceItems).toHaveLength(1);
+    expect(calledUrls).toContain(ALT_FEED_URL);
+    // 4xx responses are not retried: the failed template is requested once.
+    expect(calledUrls.filter((url) => url === FEED_URL)).toHaveLength(1);
+  });
+
+  test("ignores templates without the {channelId} placeholder", async () => {
+    process.env.FEEDWATCHER_YOUTUBE_FEED_URLS =
+      "https://invidious.example/feed/channel";
+    const spy = jest
+      .spyOn(axios, "get")
+      .mockImplementation(async (url: string): Promise<AxiosResponse> => {
+        if (url === FEED_URL) {
+          return reply(FEED_XML);
+        }
+        if (url.startsWith("https://www.youtube.com/shorts/")) {
+          throw new Error("Request failed with status code 302");
+        }
+        return reply("");
+      });
+
+    const sourceItems = await processor.fetchLatest(newYouTubeSource(), null);
+
+    expect(sourceItems).toHaveLength(1);
+    expect(spy.mock.calls[0][0]).toBe(FEED_URL);
+  });
+
+  test("throws the existing error message when every template fails", async () => {
+    process.env.FEEDWATCHER_YOUTUBE_FEED_URLS = `${DEFAULT_FEED_TEMPLATE},${ALT_FEED_TEMPLATE}`;
+    jest
+      .spyOn(axios, "get")
+      .mockImplementation(async (url: string): Promise<AxiosResponse> => {
+        if (url === FEED_URL || url === ALT_FEED_URL) {
+          throw httpError(404);
+        }
+        throw new Error(`Unexpected url ${url}`);
+      });
+
+    await expect(processor.fetchLatest(newYouTubeSource(), null)).rejects.toThrow(
+      `YouTube feed not reachable for channel ${CHANNEL_ID}`
+    );
+  });
+});
+
 describe("YouTube processor: live e2e (skipped gracefully when offline)", () => {
   const LIVE_URL = "https://youtube.com/@riskreversalmedia";
 
