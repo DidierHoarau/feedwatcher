@@ -4,7 +4,7 @@ export class SearchItemsResult {
   //
   public sourceItems: SourceItem[];
   public pageHasMore: boolean;
-  public nextCursor: { datePublished: string; id: string } | null;
+  public nextCursor: { datePublished: string; id: string; rank?: number } | null;
 
   constructor() {
     this.sourceItems = [];

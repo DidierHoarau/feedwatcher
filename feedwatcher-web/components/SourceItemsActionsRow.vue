@@ -8,6 +8,42 @@
       :placeholder="filterPlaceholder"
       @search="onSearchInput"
     />
+    <select
+      v-model="sourceItemsStore.sort"
+      class="actions-row-select"
+      aria-label="Sort items"
+      v-on:change="sourceItemsStore.fetch()"
+    >
+      <option value="date_desc">Newest</option>
+      <option value="date_asc">Oldest</option>
+      <option value="relevance">Best match</option>
+    </select>
+    <input
+      class="actions-row-date"
+      type="date"
+      v-model="sourceItemsStore.minDate"
+      aria-label="Show items from date"
+      v-on:change="sourceItemsStore.fetch()"
+    />
+    <input
+      class="actions-row-date"
+      type="date"
+      v-model="sourceItemsStore.maxDate"
+      aria-label="Show items until date"
+      v-on:change="sourceItemsStore.fetch()"
+    />
+    <select
+      v-if="sourceItemsStore.availableTags.length > 0"
+      v-model="sourceItemsStore.searchTagName"
+      class="actions-row-select"
+      aria-label="Filter by tag"
+      v-on:change="sourceItemsStore.fetch()"
+    >
+      <option value="">All tags</option>
+      <option v-for="tag in sourceItemsStore.availableTags" :key="tag" :value="tag">
+        {{ tag }}
+      </option>
+    </select>
     <NuxtLink
       v-if="sourceItemsStore.selectedSource"
       :to="'/sources/' + sourceItemsStore.selectedSource"
@@ -23,18 +59,10 @@
       aria-label="Mark all displayed items as read"
     ></i>
     <i
-      v-if="filterStatus == 'unread'"
-      v-on:click="toggleUnreadFIlter()"
-      class="bi bi-envelope"
-      title="Currently showing unread only — show all items"
-      aria-label="Show all items"
-    ></i>
-    <i
-      v-else
-      v-on:click="toggleUnreadFIlter()"
-      class="bi bi-envelope-open"
-      title="Currently showing all items — show unread only"
-      aria-label="Show unread items only"
+      v-on:click="cycleFilterStatus()"
+      :class="readStatusIcons[filterStatus]"
+      :title="readStatusTitles[filterStatus]"
+      :aria-label="readStatusTitles[filterStatus]"
     ></i>
     <ConfirmPopover
       v-model="confirmOpen"
@@ -65,21 +93,41 @@ const props = defineProps({
 const emit = defineEmits(["update:filterStatus"]);
 
 const sourceItemsStore = SourceItemsStore();
-const searchText = ref("");
+const searchText = ref(sourceItemsStore.searchPattern || "");
 const confirmOpen = ref(false);
 const confirmAnchor = ref(null);
 
+const readStatusIcons = {
+  unread: "bi bi-envelope",
+  all: "bi bi-inbox",
+  read: "bi bi-envelope-open",
+};
+
+const readStatusTitles = {
+  unread: "Currently showing unread only — show all items",
+  all: "Currently showing all items — show read only",
+  read: "Currently showing read only — show unread items only",
+};
+
 const onSearchInput = debounce(function () {
-  sourceItemsStore.searchPattern = searchText.value;
-  sourceItemsStore.fetch();
+  sourceItemsStore.setSearchPattern(searchText.value);
 }, 300);
 
 watch(searchText, () => {
   onSearchInput();
 });
 
-function toggleUnreadFIlter() {
-  const filterStatus = props.filterStatus === "all" ? "unread" : "all";
+onMounted(() => {
+  sourceItemsStore.fetchAvailableTags();
+});
+
+function cycleFilterStatus() {
+  const nextStatus = {
+    unread: "all",
+    all: "read",
+    read: "unread",
+  };
+  const filterStatus = nextStatus[props.filterStatus] || "unread";
   emit("update:filterStatus", filterStatus);
   sourceItemsStore.filterStatus = filterStatus;
   sourceItemsStore.fetch();

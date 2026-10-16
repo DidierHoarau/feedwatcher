@@ -97,6 +97,11 @@ export async function SourceItemsDataDelete(
   sourceItemId: string,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourceItemsDataDelete", context);
+  await DbUtilsExecSQL(
+    span,
+    "DELETE FROM sources_items_tags WHERE itemId = ?",
+    [sourceItemId],
+  );
   await DbUtilsExecSQL(span, "DELETE FROM sources_items WHERE id = ?", [
     sourceItemId,
   ]);
@@ -157,6 +162,10 @@ export async function SourceItemsDataCleanupOrphans(
   context: Span,
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourceItemsDataCleanupOrphans", context);
+  await DbUtilsExecSQL(
+    span,
+    "DELETE FROM sources_items_tags WHERE itemId NOT IN (SELECT id FROM sources_items)",
+  );
   await DbUtilsExecSQL(
     span,
     "DELETE FROM sources_items WHERE sourceId NOT IN (SELECT id FROM sources)",

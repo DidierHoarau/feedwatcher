@@ -30,6 +30,14 @@ export function useSourceItemsPage({
       if (useRoute().query.filterStatus) {
         filterStatus.value = useRoute().query.filterStatus;
       }
+      if (useRoute().query.pattern) {
+        const sourceItemsStore = SourceItemsStore();
+        sourceItemsStore.searchPattern = String(useRoute().query.pattern);
+        sourceItemsStore.sort = "relevance";
+      }
+      if (useRoute().query.tagName) {
+        SourceItemsStore().searchTagName = String(useRoute().query.tagName);
+      }
       if (useRoute().query.sourceId) {
         onSourceSelected({ sourceId: useRoute().query.sourceId });
       } else if (useRoute().query.labelName) {
@@ -94,6 +102,12 @@ function useSourceItemsSelection({
     }
     if (sourceItemsStore.filterSaved) {
       query.filterSaved = sourceItemsStore.filterSaved;
+    }
+    if (sourceItemsStore.searchPattern) {
+      query.pattern = sourceItemsStore.searchPattern;
+    }
+    if (sourceItemsStore.searchTagName) {
+      query.tagName = sourceItemsStore.searchTagName;
     }
     useRouter().push({ query });
   }

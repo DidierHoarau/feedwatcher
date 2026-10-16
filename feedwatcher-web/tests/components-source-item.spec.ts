@@ -2,6 +2,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import axios from "axios";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import SourceItem from "~~/components/SourceItem.vue";
+import { EventBus, EventTypes } from "~~/services/EventBus";
 
 vi.mock("axios");
 
@@ -88,5 +89,40 @@ describe("SourceItem bookmark state", () => {
     );
     expect(item.isSaved).toBe(false);
     expect(wrapper.html()).toContain("bi-bookmark-plus");
+  });
+});
+
+describe("SourceItem tags", () => {
+  test("renders the item tags as chips on the card", () => {
+    const wrapper = mount(SourceItem, {
+      props: { item: newItem({ tags: ["news", "deepwork"] }) },
+    });
+    const chips = wrapper.findAll(".sourceitem-tag");
+    expect(chips.map((chip) => chip.text())).toEqual(["news", "deepwork"]);
+    wrapper.unmount();
+  });
+
+  test("renders no tag chips when the item has none", () => {
+    const wrapper = mount(SourceItem, {
+      props: { item: newItem({ tags: [] }) },
+    });
+    expect(wrapper.find(".sourceitem-tags").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  test("the tags button opens the tags dialog for the item", async () => {
+    const item = newItem({ tags: ["news"] });
+    const wrapper = mount(SourceItem, { props: { item } });
+    const opened = vi.fn();
+    EventBus.on(EventTypes.OPEN_ITEM_TAGS, opened);
+
+    const tagsButton = wrapper
+      .findAll("button")
+      .find((b) => b.attributes("aria-label") === "Edit tags");
+    await tagsButton.trigger("click");
+
+    expect(opened).toHaveBeenCalledWith({ item });
+    EventBus.off(EventTypes.OPEN_ITEM_TAGS, opened);
+    wrapper.unmount();
   });
 });

@@ -1,5 +1,14 @@
 <template>
   <div class="page">
+    <form class="dashboard-search" v-on:submit.prevent="searchDashboard()">
+      <input
+        id="dashboard-search-input"
+        v-model="dashboardSearch"
+        type="search"
+        placeholder="Search all items…"
+        aria-label="Search all items"
+      />
+    </form>
     <Loading v-if="loading" />
     <div v-if="!summary && recentItems.length > 0" class="summary-section">
       <h2>Posts from the last 24h</h2>
@@ -224,6 +233,7 @@ export default {
   },
   data() {
     return {
+      dashboardSearch: "",
       processorInfos: [],
       summary: null,
       recentItems: [],
@@ -249,6 +259,14 @@ export default {
     },
   },
   methods: {
+    searchDashboard() {
+      const pattern = this.dashboardSearch.trim();
+      if (!pattern) return;
+      useRouter().push({
+        path: "/sources",
+        query: { pattern, filterStatus: "all" },
+      });
+    },
     sanitizedProcessorDescription(processorInfo) {
       if (!processorInfo?.description) return "";
       return DOMPurify.sanitize(processorInfo.description);
@@ -461,6 +479,15 @@ export default {
 .page {
   height: 100%;
   overflow-y: auto;
+}
+
+.dashboard-search {
+  margin-bottom: var(--space-md);
+}
+.dashboard-search input {
+  margin-bottom: 0;
+  max-width: 32em;
+  width: 100%;
 }
 
 .summary-section {

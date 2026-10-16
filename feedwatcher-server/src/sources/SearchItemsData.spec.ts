@@ -11,6 +11,7 @@ import * as os from "os";
 import * as path from "path";
 import { Config } from "../Config";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
+import { SourceItemStatus } from "../model/SourceItemStatus";
 import { OTelLogger, OTelSetTracer, OTelTracer } from "../OTelContext";
 import { SearchItemsDataListForSource, SearchItemsDataListForUser, SearchItemsDataListItemsForLabel } from "./SearchItemsData";
 
@@ -80,6 +81,292 @@ async function seedSource(
     );
   }
 }
+
+async function seedItem(
+  sourceId: string,
+  id: string,
+  title: string,
+  content: string,
+  datePublished: Date,
+  status: string = "unread"
+): Promise<void> {
+  await DbUtilsExecSQL(
+    span,
+    "INSERT INTO sources_items " +
+      "(id, sourceId, title, content, url, status, datePublished, thumbnail, info) " +
+      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    [id, sourceId, title, content, `https://x.com/${id}`, status, datePublished.toISOString(), "", "{}"]
+  );
+}
+
+describe("SearchItemsData FTS search", () => {
+  test("ranks a title match above a content-only match", async () => {
+    const date = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-1", "user-1", 1, date, "filler");
+    await seedItem("src-1", "in-content", "Some title", "kubernetes cluster notes", date);
+    await seedItem("src-1", "in-title", "Kubernetes guide", "nothing relevant", date);
+
+    const options = new SearchItemsOptions();
+    options.pattern = "kubernetes";
+    options.sort = "relevance";
+    const result = await SearchItemsDataListForUser(span, "user-1", options);
+
+    expect(result.sourceItems.map((item) => item.id)).toEqual([
+      "in-title",
+      "in-content",
+    ]);
+    expect(result.nextCursor.rank).toBeDefined();
+  });
+
+  test("prefix matching: a partial word matches longer words", async () => {
+    const date = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-1", "user-1", 1, date, "filler");
+    await seedItem("src-1", "weekly-1", "Weekly report", "content", date);
+
+    const options = new SearchItemsOptions();
+    options.pattern = "week";
+    const result = await SearchItemsDataListForUser(span, "user-1", options);
+    expect(result.sourceItems.map((item) => item.id)).toEqual(["weekly-1"]);
+  });
+
+  test("multi-token search ANDs the tokens", async () => {
+    const date = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-1", "user-1", 1, date, "filler");
+    await seedItem("src-1", "both", "Kubernetes guide", "deployment notes", date);
+    await seedItem("src-1", "one", "Kubernetes guide", "something else", date);
+
+    const options = new SearchItemsOptions();
+    options.pattern = "kubernetes deployment";
+    const result = await SearchItemsDataListForUser(span, "user-1", options);
+    expect(result.sourceItems.map((item) => item.id)).toEqual(["both"]);
+  });
+
+  test("the FTS index stays in sync after item updates and deletes", async () => {
+    const date = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-1", "user-1", 1, date, "filler");
+    await seedItem("src-1", "item-1", "Initial title", "content", date);
+
+    await DbUtilsExecSQL(span, "UPDATE sources_items SET title = 'Kubernetes ops' WHERE id = ?", ["item-1"]);
+    const afterUpdate = await SearchItemsDataListForUser(span, "user-1", {
+      pattern: "kubernetes",
+    } as SearchItemsOptions);
+    expect(afterUpdate.sourceItems.map((item) => item.id)).toEqual(["item-1"]);
+
+    await DbUtilsExecSQL(span, "DELETE FROM sources_items WHERE id = ?", ["item-1"]);
+    const afterDelete = await SearchItemsDataListForUser(span, "user-1", {
+      pattern: "kubernetes",
+    } as SearchItemsOptions);
+    expect(afterDelete.sourceItems).toHaveLength(0);
+  });
+
+  test("rebuild reindexes the full corpus from the content table", async () => {
+    const date = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-1", "user-1", 1, date, "filler");
+    await seedItem("src-1", "item-1", "Kubernetes guide", "content", date);
+
+    const before = await SearchItemsDataListForUser(span, "user-1", {
+      pattern: "kubernetes",
+    } as SearchItemsOptions);
+    expect(before.sourceItems).toHaveLength(1);
+
+    await DbUtilsExecSQL(span, "DELETE FROM items_fts");
+    const emptied = await SearchItemsDataListForUser(span, "user-1", {
+      pattern: "kubernetes",
+    } as SearchItemsOptions);
+    expect(emptied.sourceItems).toHaveLength(0);
+
+    await DbUtilsExecSQL(span, "INSERT INTO items_fts(items_fts) VALUES ('rebuild')");
+    const rebuilt = await SearchItemsDataListForUser(span, "user-1", {
+      pattern: "kubernetes",
+    } as SearchItemsOptions);
+    expect(rebuilt.sourceItems.map((item) => item.id)).toEqual(["item-1"]);
+  });
+
+  test("paginates relevance-ordered results with the rank cursor without losing items", async () => {
+    const date = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-1", "user-1", 0, date, "filler");
+    for (let i = 1; i <= 60; i++) {
+      await seedItem(
+        "src-1",
+        `item-${String(i).padStart(3, "0")}`,
+        `kubernetes note ${i}`,
+        "kubernetes related content of varying length ".repeat(1 + (i % 5)),
+        date
+      );
+    }
+
+    const options = new SearchItemsOptions();
+    options.pattern = "kubernetes";
+    options.sort = "relevance";
+    const page1 = await SearchItemsDataListForUser(span, "user-1", options);
+    expect(page1.sourceItems).toHaveLength(50);
+    expect(page1.pageHasMore).toBe(true);
+    expect(page1.nextCursor.rank).toBeDefined();
+
+    const page2 = await SearchItemsDataListForUser(span, "user-1", {
+      ...options,
+      cursor: page1.nextCursor,
+    } as SearchItemsOptions);
+    expect(page2.sourceItems).toHaveLength(10);
+    expect(page2.pageHasMore).toBe(false);
+
+    const allIds = [
+      ...page1.sourceItems.map((item) => item.id),
+      ...page2.sourceItems.map((item) => item.id),
+    ];
+    expect(new Set(allIds).size).toBe(60);
+  });
+});
+
+describe("SearchItemsData filters", () => {
+  test("filterStatus=read returns only read items", async () => {
+    const date = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-1", "user-1", 1, date, "filler");
+    await seedItem("src-1", "read-1", "Read item", "content", date, "read");
+    await seedItem("src-1", "unread-1", "Unread item", "content", date, "unread");
+
+    const options = new SearchItemsOptions();
+    options.filterStatus = SourceItemStatus.read;
+    const result = await SearchItemsDataListForUser(span, "user-1", options);
+    expect(result.sourceItems.map((item) => item.id)).toEqual(["read-1"]);
+  });
+
+  test("filterStatus=all returns both read and unread items", async () => {
+    const date = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-1", "user-1", 1, date, "filler");
+    await seedItem("src-1", "read-1", "Read item", "content", date, "read");
+
+    const options = new SearchItemsOptions();
+    options.filterStatus = SourceItemStatus.all;
+    const result = await SearchItemsDataListForUser(span, "user-1", options);
+    expect(result.sourceItems.map((item) => item.id)).toEqual([
+      "read-1",
+      "filler-001",
+    ]);
+  });
+
+  test("applies the min and max date range for user listings", async () => {
+    const date = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-1", "user-1", 0, date, "filler");
+    await seedItem("src-1", "old", "Old item", "content", new Date("2026-10-01T12:00:00.000Z"));
+    await seedItem("src-1", "in-range", "In range", "content", new Date("2026-10-05T12:00:00.000Z"));
+    await seedItem("src-1", "new", "New item", "content", new Date("2026-10-10T12:00:00.000Z"));
+
+    const options = new SearchItemsOptions();
+    options.minDate = new Date("2026-10-04T00:00:00.000Z");
+    options.maxDate = new Date("2026-10-06T00:00:00.000Z");
+    const result = await SearchItemsDataListForUser(span, "user-1", options);
+    expect(result.sourceItems.map((item) => item.id)).toEqual(["in-range"]);
+  });
+
+  test("applies the min and max date range for source listings", async () => {
+    await seedSource("src-1", "user-1", 0, new Date("2026-10-01T12:00:00.000Z"), "filler");
+    await seedItem("src-1", "old", "Old item", "content", new Date("2026-10-01T12:00:00.000Z"));
+    await seedItem("src-1", "in-range", "In range", "content", new Date("2026-10-05T12:00:00.000Z"));
+    await seedItem("src-1", "new", "New item", "content", new Date("2026-10-10T12:00:00.000Z"));
+
+    const options = new SearchItemsOptions();
+    options.minDate = new Date("2026-10-04T00:00:00.000Z");
+    options.maxDate = new Date("2026-10-06T00:00:00.000Z");
+    const result = await SearchItemsDataListForSource(span, "src-1", "user-1", options);
+    expect(result.sourceItems.map((item) => item.id)).toEqual(["in-range"]);
+  });
+
+  test("applies the min and max date range for label listings", async () => {
+    await seedSource("src-1", "user-1", 0, new Date("2026-10-01T12:00:00.000Z"), "filler");
+    await seedItem("src-1", "old", "Old item", "content", new Date("2026-10-01T12:00:00.000Z"));
+    await seedItem("src-1", "in-range", "In range", "content", new Date("2026-10-05T12:00:00.000Z"));
+    await seedItem("src-1", "new", "New item", "content", new Date("2026-10-10T12:00:00.000Z"));
+    await DbUtilsExecSQL(span, "INSERT INTO sources_labels (id, sourceId, name, info) VALUES (?, ?, ?, ?)", [
+      "sl-1",
+      "src-1",
+      "news",
+      "{}",
+    ]);
+
+    const options = new SearchItemsOptions();
+    options.minDate = new Date("2026-10-04T00:00:00.000Z");
+    options.maxDate = new Date("2026-10-06T00:00:00.000Z");
+    const result = await SearchItemsDataListItemsForLabel(span, "news", "user-1", options);
+    expect(result.sourceItems.map((item) => item.id)).toEqual(["in-range"]);
+  });
+
+  test("sort=date_asc paginates oldest-first without losing items", async () => {
+    const sameDate = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-1", "user-1", 60, sameDate, "item");
+
+    const options = new SearchItemsOptions();
+    options.sort = "date_asc";
+    const page1 = await SearchItemsDataListForUser(span, "user-1", options);
+    expect(page1.sourceItems).toHaveLength(50);
+    expect(page1.sourceItems[0].id).toBe("item-001");
+
+    const page2 = await SearchItemsDataListForUser(span, "user-1", {
+      ...options,
+      cursor: page1.nextCursor,
+    } as SearchItemsOptions);
+    expect(page2.sourceItems).toHaveLength(10);
+    expect(page2.sourceItems[9].id).toBe("item-060");
+
+    const allIds = [
+      ...page1.sourceItems.map((item) => item.id),
+      ...page2.sourceItems.map((item) => item.id),
+    ];
+    expect(new Set(allIds).size).toBe(60);
+  });
+
+  test("filters items by tag name", async () => {
+    const date = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-1", "user-1", 2, date, "item");
+    await DbUtilsExecSQL(span, "INSERT INTO sources_items_tags (id, itemId, userId, name) VALUES (?, ?, ?, ?)", [
+      "tag-1",
+      "item-001",
+      "user-1",
+      "deepwork",
+    ]);
+    // A different user's tag on the same item must not leak into the filter
+    await DbUtilsExecSQL(span, "INSERT INTO sources_items_tags (id, itemId, userId, name) VALUES (?, ?, ?, ?)", [
+      "tag-2",
+      "item-002",
+      "user-2",
+      "deepwork",
+    ]);
+
+    const options = new SearchItemsOptions();
+    options.tagName = "deepwork";
+    const result = await SearchItemsDataListForUser(span, "user-1", options);
+    expect(result.sourceItems.map((item) => item.id)).toEqual(["item-001"]);
+  });
+
+  test("hydrates tags on results scoped to the requesting user", async () => {
+    const date = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-1", "user-1", 2, date, "item");
+    await DbUtilsExecSQL(span, "INSERT INTO sources_items_tags (id, itemId, userId, name) VALUES (?, ?, ?, ?)", [
+      "tag-1",
+      "item-001",
+      "user-1",
+      "deepwork",
+    ]);
+    await DbUtilsExecSQL(span, "INSERT INTO sources_items_tags (id, itemId, userId, name) VALUES (?, ?, ?, ?)", [
+      "tag-2",
+      "item-001",
+      "user-2",
+      "other-user-tag",
+    ]);
+    await DbUtilsExecSQL(span, "INSERT INTO sources_items_tags (id, itemId, userId, name) VALUES (?, ?, ?, ?)", [
+      "tag-3",
+      "item-002",
+      "user-1",
+      "news",
+    ]);
+
+    const result = await SearchItemsDataListForUser(span, "user-1", new SearchItemsOptions());
+    const tagsById = new Map(result.sourceItems.map((item) => [item.id, item.tags]));
+    expect(tagsById.get("item-001")).toEqual(["deepwork"]);
+    expect(tagsById.get("item-002")).toEqual(["news"]);
+  });
+});
+
 
 test("paginates items sharing identical timestamps without losing any", async () => {
   const sameDate = new Date("2026-10-01T12:00:00.000Z");
@@ -222,6 +509,7 @@ test("returns the bookmark state for source and label listings too", async () =>
   const forSource = await SearchItemsDataListForSource(
     span,
     "src-1",
+    "user-1",
     new SearchItemsOptions()
   );
   expect(forSource.sourceItems.map((item) => item.isSaved)).toEqual([

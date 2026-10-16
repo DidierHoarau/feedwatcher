@@ -21,6 +21,11 @@
 
     <div class="sourceitem-layout-meta">
       {{ item.sourceName }}
+      <div v-if="item.tags && item.tags.length > 0" class="sourceitem-tags">
+        <span v-for="tag in item.tags" :key="tag" class="sourceitem-tag">{{
+          tag
+        }}</span>
+      </div>
     </div>
 
     <div class="sourceitem-actions-overlay">
@@ -64,6 +69,15 @@
           :class="isSaved ? 'bi bi-bookmark-check-fill' : 'bi bi-bookmark-plus'"
           class="source-action"
         ></i>
+      </button>
+      <button
+        type="button"
+        class="sourceitem-overlay-btn"
+        title="Edit tags"
+        aria-label="Edit tags"
+        @click.stop="editTags()"
+      >
+        <i class="bi bi-tags source-action"></i>
       </button>
       <button
         type="button"
@@ -272,6 +286,9 @@ export default {
     openItemDialog(showFullSource) {
       EventBus.emit(EventTypes.OPEN_ITEM, { item: this.item, showFullSource });
     },
+    editTags() {
+      EventBus.emit(EventTypes.OPEN_ITEM_TAGS, { item: this.item });
+    },
     openItemExternal() {
       if (this.item.url) {
         window.open(this.item.url, "_blank");
@@ -391,6 +408,20 @@ export default {
   grid-column: 2 / 3;
   font-size: var(--font-xs);
   text-align: left;
+}
+.sourceitem-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: 2px;
+}
+.sourceitem-tag {
+  display: inline-block;
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 0 0.5em;
+  font-size: 0.9em;
 }
 .sourceitem-date {
   font-size: var(--font-xs);

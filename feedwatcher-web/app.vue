@@ -71,6 +71,7 @@ function stopMiniPlayer() {
       :initial-full="dialogFullSource"
       :initial-reader="dialogReader"
     />
+    <ItemTagsDialog />
     <KeyboardShortcutsHelp />
 
     <!-- Mini Player Bar -->
