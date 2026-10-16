@@ -145,21 +145,24 @@ main {
   overflow: hidden;
 }
 
-/* Mobile: nav becomes a bottom tab bar (grid placement, DOM order unchanged) */
+/* Mobile: nav becomes a bottom tab bar (grid placement, DOM order unchanged).
+   Placement is scoped to the shell's direct children: bare `header`/`main`
+   selectors also match the item dialog's header inside its own article grid
+   and break the dialog layout on mobile. */
 @media (max-width: 700px) {
   #page-layout,
   #page-layout.has-mini-player {
     grid-template-rows: 1fr auto auto;
   }
-  main {
+  #page-layout > main {
     grid-row: 1;
     grid-column: 1;
   }
-  .mini-player {
+  #page-layout > .mini-player {
     grid-row: 2;
     grid-column: 1;
   }
-  header {
+  #page-layout > header {
     grid-row: 3;
     grid-column: 1;
     padding: 0;

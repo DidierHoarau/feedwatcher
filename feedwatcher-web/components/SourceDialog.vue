@@ -358,7 +358,8 @@ dialog {
 }
 
 /* Replace Pico's right-aligned inline flow (buttons wrap ragged on small
-   screens) with an even flex row; buttons stack full-width on mobile. */
+   screens) with an even flex row; a two-column grid keeps the mobile footer
+   compact — full-width stacks consume too much vertical space. */
 .source-dialog-footer {
   display: flex;
   flex-wrap: wrap;
@@ -374,8 +375,18 @@ dialog {
 
 @media (max-width: 700px) {
   .source-dialog-footer {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     align-items: stretch;
+    gap: calc(var(--pico-spacing) * 0.5);
+  }
+
+  .source-dialog-footer button {
+    padding-inline: 0.5rem;
+  }
+
+  .source-dialog-footer button:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }
 </style>
