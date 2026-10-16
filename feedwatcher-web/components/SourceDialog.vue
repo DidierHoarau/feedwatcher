@@ -47,7 +47,7 @@
         ></iframe>
       </div>
 
-      <footer>
+      <footer class="source-dialog-footer">
         <button class="secondary" v-on:click="close()">
           <i class="bi bi-x-lg"></i> Close
         </button>
@@ -355,5 +355,27 @@ dialog {
 
 .reader-state button {
   width: auto;
+}
+
+/* Replace Pico's right-aligned inline flow (buttons wrap ragged on small
+   screens) with an even flex row; buttons stack full-width on mobile. */
+.source-dialog-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: calc(var(--pico-spacing) * 0.5);
+}
+
+.source-dialog-footer button {
+  width: auto;
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .source-dialog-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>
