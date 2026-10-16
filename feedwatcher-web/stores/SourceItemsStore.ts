@@ -16,6 +16,11 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
     loadingMore: false,
     searchCriteriaValue: "",
     searchPattern: "",
+    sort: "date_desc",
+    minDate: "",
+    maxDate: "",
+    searchTagName: "",
+    availableTags: [],
     nextCursor: null,
     etagFetch: "",
   }),
@@ -39,6 +44,7 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
       const searchOptions: any = {
         filterStatus: this.filterStatus,
         searchCriteria: this.searchCriteria,
+        sort: this.sort,
       };
       if (this.nextCursor) {
         searchOptions.cursor = this.nextCursor;
@@ -50,6 +56,15 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
       }
       searchOptions.isSaved = this.filterSaved;
       searchOptions.pattern = this.searchPattern;
+      if (this.minDate) {
+        searchOptions.sinceDate = new Date(`${this.minDate}T00:00:00.000Z`).toISOString();
+      }
+      if (this.maxDate) {
+        searchOptions.untilDate = new Date(`${this.maxDate}T23:59:59.999Z`).toISOString();
+      }
+      if (this.searchTagName) {
+        searchOptions.tagName = this.searchTagName;
+      }
       this.pageHasMore = false;
       this.loadingMore = true;
       this.loading = true;
@@ -76,6 +91,21 @@ export const SourceItemsStore = defineStore("SourceItemsStore", {
         this.loading = false;
         this.loadingMore = false;
       }
+    },
+    // Searching switches to ranked ("best match") ordering; clearing the
+    // pattern falls back to newest-first.
+    async setSearchPattern(pattern: string): Promise<void> {
+      this.searchPattern = pattern;
+      this.sort = pattern ? "relevance" : "date_desc";
+      await this.fetch();
+    },
+    async fetchAvailableTags(): Promise<void> {
+      await axios
+        .get(`${(await Config.get()).SERVER_URL}/items/tags`, await AuthService.getAuthHeader())
+        .then((res) => {
+          this.availableTags = res.data.tags || [];
+        })
+        .catch(handleError);
     },
   },
 });

@@ -233,6 +233,20 @@
   font-size: var(--font-body);
   padding-top: var(--space-xs);
   padding-bottom: var(--space-xs);
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+/* Compact sort/date/tag controls in the items actions row */
+#sources-items-actions .actions-row-select,
+#sources-items-actions .actions-row-date {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  font-size: var(--font-sm);
+}
+#sources-items-actions .actions-row-date {
+  max-width: 9.5em;
 }
 #sources-items-list-page-next {
   padding-bottom: var(--space-md);

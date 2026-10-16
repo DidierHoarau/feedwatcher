@@ -98,3 +98,55 @@ describe("SourceItemsStore pagination (M2)", () => {
     }
   });
 });
+
+describe("SourceItemsStore search filters", () => {
+  beforeEach(() => {
+    vi.mocked(axios.post).mockReset();
+    vi.mocked(axios.post).mockResolvedValue(page([]));
+  });
+
+  test("the fetch payload carries sort, date range and tag filters", async () => {
+    const store = newStore();
+    store.sort = "relevance";
+    store.minDate = "2026-10-01";
+    store.maxDate = "2026-10-05";
+    store.searchTagName = "deepwork";
+    await store.fetch();
+
+    const payload = axios.post.mock.calls[0][1];
+    expect(payload.sort).toBe("relevance");
+    expect(payload.sinceDate).toBe(new Date("2026-10-01T00:00:00.000Z").toISOString());
+    expect(payload.untilDate).toBe(new Date("2026-10-05T23:59:59.999Z").toISOString());
+    expect(payload.tagName).toBe("deepwork");
+  });
+
+  test("empty date and tag filters are omitted from the payload", async () => {
+    const store = newStore();
+    await store.fetch();
+
+    const payload = axios.post.mock.calls[0][1];
+    expect(payload).not.toHaveProperty("sinceDate");
+    expect(payload).not.toHaveProperty("untilDate");
+    expect(payload).not.toHaveProperty("tagName");
+    expect(payload.sort).toBe("date_desc");
+  });
+
+  test("setting a search pattern selects relevance and clearing it restores newest-first", async () => {
+    const store = newStore();
+    await store.setSearchPattern("kubernetes");
+    expect(store.sort).toBe("relevance");
+    expect(axios.post.mock.calls[0][1].pattern).toBe("kubernetes");
+    expect(axios.post.mock.calls[0][1].sort).toBe("relevance");
+
+    await store.setSearchPattern("");
+    expect(store.sort).toBe("date_desc");
+    expect(axios.post.mock.calls[1][1].sort).toBe("date_desc");
+  });
+
+  test("fetchAvailableTags loads the user's tags", async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: { tags: ["news", "tech"] } });
+    const store = newStore();
+    await store.fetchAvailableTags();
+    expect(store.availableTags).toEqual(["news", "tech"]);
+  });
+});

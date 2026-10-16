@@ -60,6 +60,24 @@ describe("SourceItem", () => {
     expect(item.info).toEqual({ language: "en" });
     expect(item.thumbnail).toBe("https://bbc.com/thumb.png");
     expect(item.isSaved).toBe(true);
+    expect(item.tags).toEqual([]);
+  });
+
+  test("fromRaw should hydrate tags when the data layer provides them", () => {
+    const raw = {
+      id: "item-3",
+      sourceId: "src-1",
+      title: "Tagged",
+      content: "text",
+      url: "https://example.com",
+      status: "unread",
+      datePublished: "2025-04-01T00:00:00.000Z",
+      info: "{}",
+      tags: ["news", "tech"],
+    };
+
+    const item = SourceItem.fromRaw(raw);
+    expect(item.tags).toEqual(["news", "tech"]);
   });
 
   test("fromRaw should handle missing sourceName and thumbnail", () => {

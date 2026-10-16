@@ -4,7 +4,12 @@ import * as dns from "dns";
 import { ItemsRoutes } from "./ItemsRoutes";
 import { AuthGetUserSession } from "../users/Auth";
 import { SearchItemsDataListForUser } from "./SearchItemsData";
-import { SourceItemsDataUpdateMultipleStatusForUser } from "./SourceItemsData";
+import { SourceItemsDataGetForUser, SourceItemsDataUpdateMultipleStatusForUser } from "./SourceItemsData";
+import {
+  ItemTagsDataGetForItem,
+  ItemTagsDataListForUser,
+  ItemTagsDataSetForItem,
+} from "./ItemTagsData";
 
 jest.mock("../OTelContext", () => ({
   OTelRequestSpan: jest.fn(() => ({})),
@@ -34,6 +39,12 @@ jest.mock("./SourcesData", () => ({
 jest.mock("./SourceItemsData", () => ({
   SourceItemsDataGetForUser: jest.fn(),
   SourceItemsDataUpdateMultipleStatusForUser: jest.fn(),
+}));
+
+jest.mock("./ItemTagsData", () => ({
+  ItemTagsDataGetForItem: jest.fn(),
+  ItemTagsDataListForUser: jest.fn(),
+  ItemTagsDataSetForItem: jest.fn(),
 }));
 
 jest.mock("axios", () => ({
@@ -306,5 +317,198 @@ describe("ItemsRoutes request validation (M1)", () => {
       datePublished: "2026-10-01T12:00:00.000Z",
       id: "item-011",
     });
+  });
+
+  test("maps untilDate, sort and tagName into the search options", async () => {
+    jest.mocked(SearchItemsDataListForUser).mockResolvedValue({
+      sourceItems: [],
+      pageHasMore: false,
+      nextCursor: null,
+    } as any);
+
+    const response = await fastify.inject({
+      method: "POST",
+      url: "/search",
+      payload: {
+        searchCriteria: "all",
+        filterStatus: "all",
+        sinceDate: "2026-10-01T00:00:00.000Z",
+        untilDate: "2026-10-02T00:00:00.000Z",
+        sort: "relevance",
+        tagName: "deepwork",
+        pattern: "kubernetes",
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    const call = jest.mocked(SearchItemsDataListForUser).mock.calls[0];
+    expect(call[2].minDate).toEqual(new Date("2026-10-01T00:00:00.000Z"));
+    expect(call[2].maxDate).toEqual(new Date("2026-10-02T00:00:00.000Z"));
+    expect(call[2].sort).toBe("relevance");
+    expect(call[2].tagName).toBe("deepwork");
+  });
+
+  test("forwards a relevance rank cursor to the data layer", async () => {
+    jest.mocked(SearchItemsDataListForUser).mockResolvedValue({
+      sourceItems: [],
+      pageHasMore: false,
+      nextCursor: null,
+    } as any);
+
+    const response = await fastify.inject({
+      method: "POST",
+      url: "/search",
+      payload: {
+        searchCriteria: "all",
+        filterStatus: "all",
+        sort: "relevance",
+        cursor: {
+          datePublished: "2026-10-01T12:00:00.000Z",
+          id: "item-011",
+          rank: -1.5,
+        },
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    const call = jest.mocked(SearchItemsDataListForUser).mock.calls[0];
+    expect(call[2].cursor).toEqual({
+      datePublished: "2026-10-01T12:00:00.000Z",
+      id: "item-011",
+      rank: -1.5,
+    });
+  });
+});
+
+describe("ItemsRoutes item tags", () => {
+  let fastify: FastifyInstance;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: true,
+      userId: "user-1",
+    });
+    fastify = Fastify();
+    await new ItemsRoutes().getRoutes(fastify);
+  });
+
+  afterEach(async () => {
+    await fastify.close();
+  });
+
+  test("GET /tags returns the user's tags", async () => {
+    jest.mocked(ItemTagsDataListForUser).mockResolvedValue([
+      "deepwork",
+      "news",
+    ]);
+    const response = await fastify.inject({ method: "GET", url: "/tags" });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({
+      tags: ["deepwork", "news"],
+    });
+    expect(ItemTagsDataListForUser).toHaveBeenCalledWith(
+      expect.anything(),
+      "user-1"
+    );
+  });
+
+  test("GET /tags requires authentication", async () => {
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: false,
+    });
+    const response = await fastify.inject({ method: "GET", url: "/tags" });
+    expect(response.statusCode).toBe(403);
+    expect(ItemTagsDataListForUser).not.toHaveBeenCalled();
+  });
+
+  test("PUT /:itemId/tags saves and returns the item tags", async () => {
+    jest.mocked(SourceItemsDataGetForUser).mockResolvedValue({ id: "item-1" } as any);
+    jest.mocked(ItemTagsDataGetForItem).mockResolvedValue(["news"]);
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/item-1/tags",
+      payload: { tags: ["news", "  tech  ", "news", ""] },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({ tags: ["news"] });
+    expect(ItemTagsDataSetForItem).toHaveBeenCalledWith(
+      expect.anything(),
+      "item-1",
+      "user-1",
+      ["news", "  tech  ", "news", ""]
+    );
+  });
+
+  test("PUT /:itemId/tags returns 404 for an item the user does not own", async () => {
+    jest.mocked(SourceItemsDataGetForUser).mockResolvedValue(null as any);
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/other-users-item/tags",
+      payload: { tags: ["news"] },
+    });
+    expect(response.statusCode).toBe(404);
+    expect(ItemTagsDataSetForItem).not.toHaveBeenCalled();
+  });
+
+  test("PUT /:itemId/tags rejects a body without tags", async () => {
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/item-1/tags",
+      payload: {},
+    });
+    expect(response.statusCode).toBe(400);
+    expect(ItemTagsDataSetForItem).not.toHaveBeenCalled();
+  });
+
+  test("PUT /:itemId/tags rejects more than 50 tags", async () => {
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/item-1/tags",
+      payload: { tags: Array.from({ length: 51 }, (_, i) => `tag-${i}`) },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(ItemTagsDataSetForItem).not.toHaveBeenCalled();
+  });
+
+  test("GET /:itemId/tags returns the item tags", async () => {
+    jest.mocked(SourceItemsDataGetForUser).mockResolvedValue({ id: "item-1" } as any);
+    jest.mocked(ItemTagsDataGetForItem).mockResolvedValue(["news"]);
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/item-1/tags",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({ tags: ["news"] });
+  });
+
+  test("GET /:itemId/tags returns 404 for an unowned item", async () => {
+    jest.mocked(SourceItemsDataGetForUser).mockResolvedValue(null as any);
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/item-1/tags",
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
+  test("GET /:itemId includes the tags in the response", async () => {
+    jest
+      .mocked(SourceItemsDataGetForUser)
+      .mockResolvedValue({ id: "item-1", tags: [] } as any);
+    jest.mocked(ItemTagsDataGetForItem).mockResolvedValue(["news", "tech"]);
+    const response = await fastify.inject({ method: "GET", url: "/item-1" });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).tags).toEqual(["news", "tech"]);
+  });
+
+  test("PUT /:itemId/tags requires authentication", async () => {
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: false,
+    });
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/item-1/tags",
+      payload: { tags: ["news"] },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(ItemTagsDataSetForItem).not.toHaveBeenCalled();
   });
 });

@@ -14,9 +14,11 @@ export class SourceItem {
   public status: SourceItemStatus;
   public info: any;
   public isSaved: boolean;
+  public tags: string[];
 
   constructor() {
     this.id = uuidv4();
+    this.tags = [];
   }
 
   public static fromRaw(itemRaw: any): SourceItem {
@@ -32,6 +34,7 @@ export class SourceItem {
     sourceItem.info = JSON.parse(itemRaw.info);
     sourceItem.thumbnail = itemRaw.thumbnail;
     sourceItem.isSaved = !!itemRaw.isSaved;
+    sourceItem.tags = Array.isArray(itemRaw.tags) ? itemRaw.tags : [];
     return sourceItem;
   }
 }
