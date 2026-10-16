@@ -115,13 +115,15 @@ export default {
   data() {
     return {
       isActive: false,
-      isSaved: false,
       frameHeight: 200,
       autoMarkReadObserver: null,
       wasIntersected: false,
     };
   },
   computed: {
+    isSaved() {
+      return this.item?.isSaved === true;
+    },
     isPodcastItem() {
       return !!(this.item?.info?.isPodcast && this.item?.info?.audioUrl);
     },
@@ -190,21 +192,6 @@ export default {
     }
     window.removeEventListener("message", this.onFrameMessage);
   },
-  async created() {
-    axios
-      .get(
-        `${(await Config.get()).SERVER_URL}/lists/items/${this.item.id}`,
-        await AuthService.getAuthHeader(),
-      )
-      .then((res) => {
-        if (res.data.id) {
-          this.isSaved = true;
-        } else {
-          this.isSaved = false;
-        }
-      })
-      .catch(handleError);
-  },
   methods: {
     async playPodcast() {
       const store = PodcastPlayerStore();
@@ -243,7 +230,7 @@ export default {
           await AuthService.getAuthHeader(),
         )
         .then((res) => {
-          this.isSaved = true;
+          this.item.isSaved = true;
           EventBus.emit(EventTypes.ITEMS_UPDATED, {});
         })
         .catch(handleError);
@@ -255,7 +242,7 @@ export default {
           await AuthService.getAuthHeader(),
         )
         .then((res) => {
-          this.isSaved = false;
+          this.item.isSaved = false;
           EventBus.emit(EventTypes.ITEMS_UPDATED, {});
         })
         .catch(handleError);

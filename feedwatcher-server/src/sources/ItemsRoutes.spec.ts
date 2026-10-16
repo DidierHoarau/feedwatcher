@@ -100,11 +100,13 @@ describe("ItemsRoutes fetch-url", () => {
     expect(response.statusCode).toBe(400);
   });
 
-  test("returns the body of an allowed page", async () => {
+  test("returns the extracted article of an allowed page", async () => {
     jest.mocked(axios.get).mockResolvedValue({
       status: 200,
       headers: { "content-type": "text/html" },
-      data: "<html>hello</html>",
+      data:
+        "<html><head><title>Fetched</title></head><body><article>" +
+        "<p>hello</p></article></body></html>",
     } as any);
 
     const response = await fastify.inject({
@@ -113,7 +115,25 @@ describe("ItemsRoutes fetch-url", () => {
       payload: { url: "https://example.com/page" },
     });
     expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body)).toEqual({ content: "<html>hello</html>" });
+    expect(JSON.parse(response.body)).toEqual({
+      title: "Fetched",
+      content: "<p>hello</p>",
+    });
+  });
+
+  test("returns 422 when no article content can be extracted", async () => {
+    jest.mocked(axios.get).mockResolvedValue({
+      status: 200,
+      headers: { "content-type": "text/html" },
+      data: "<html><head><title>Empty</title></head><body></body></html>",
+    } as any);
+
+    const response = await fastify.inject({
+      method: "POST",
+      url: "/fetch-url",
+      payload: { url: "https://example.com/empty" },
+    });
+    expect(response.statusCode).toBe(422);
   });
 
   test("rejects a disallowed content type with 415 (H2)", async () => {

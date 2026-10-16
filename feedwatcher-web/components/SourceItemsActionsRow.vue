@@ -16,6 +16,12 @@
       ><i class="bi bi-pencil-square"></i
     ></NuxtLink>
     <i
+      v-on:click="openShortcutsHelp()"
+      class="bi bi-keyboard"
+      title="Keyboard shortcuts"
+      aria-label="Keyboard shortcuts"
+    ></i>
+    <i
       v-if="sourceItemsStore.sourceItems.length > 0"
       v-on:click="markAllRead($event)"
       class="bi bi-check2-square"
@@ -83,6 +89,10 @@ function toggleUnreadFIlter() {
   emit("update:filterStatus", filterStatus);
   sourceItemsStore.filterStatus = filterStatus;
   sourceItemsStore.fetch();
+}
+
+function openShortcutsHelp() {
+  EventBus.emit(EventTypes.SHORTCUTS_HELP, {});
 }
 
 async function markAllRead(event) {

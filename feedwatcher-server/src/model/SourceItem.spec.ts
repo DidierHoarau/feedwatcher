@@ -45,6 +45,7 @@ describe("SourceItem", () => {
       datePublished: "2025-02-01T12:00:00.000Z",
       info: '{"language":"en"}',
       thumbnail: "https://bbc.com/thumb.png",
+      isSaved: 1,
     };
 
     const item = SourceItem.fromRaw(raw);
@@ -58,6 +59,7 @@ describe("SourceItem", () => {
     expect(item.datePublished).toEqual(new Date("2025-02-01T12:00:00.000Z"));
     expect(item.info).toEqual({ language: "en" });
     expect(item.thumbnail).toBe("https://bbc.com/thumb.png");
+    expect(item.isSaved).toBe(true);
   });
 
   test("fromRaw should handle missing sourceName and thumbnail", () => {
@@ -76,5 +78,6 @@ describe("SourceItem", () => {
     expect(item.id).toBe("item-2");
     expect(item.sourceName).toBeUndefined();
     expect(item.thumbnail).toBeUndefined();
+    expect(item.isSaved).toBe(false);
   });
 });

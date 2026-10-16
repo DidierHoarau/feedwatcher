@@ -6,7 +6,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "lint": "oxlint middleware pages components stores services tests app.vue nuxt.config.ts vitest.config.ts",
+    "lint": "oxlint composables middleware pages components stores services tests app.vue nuxt.config.ts vitest.config.ts",
     "test": "vitest run"
   },
   "devDependencies": {

@@ -13,7 +13,8 @@ import {
 } from "./SourceItemsData";
 import { AuthGetUserSession } from "../users/Auth";
 import { OTelRequestSpan } from "../OTelContext";
-import { UrlSafetyError, UrlSafetyFetchText } from "../utils-std-ts/UrlSafety";
+import { UrlSafetyError } from "../utils-std-ts/UrlSafety";
+import { ItemReaderExtract } from "./ItemReader";
 
 export class ItemsRoutes {
   //
@@ -208,8 +209,8 @@ export class ItemsRoutes {
         return res.status(400).send({ error: "Invalid URL" });
       }
       try {
-        const content = await UrlSafetyFetchText(String(req.body.url));
-        return res.status(200).send({ content });
+        const extracted = await ItemReaderExtract(String(req.body.url));
+        return res.status(200).send(extracted);
       } catch (err) {
         if (err instanceof UrlSafetyError) {
           return res.status(err.statusCode).send({ error: err.message });

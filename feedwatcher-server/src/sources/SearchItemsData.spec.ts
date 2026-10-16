@@ -12,7 +12,7 @@ import * as path from "path";
 import { Config } from "../Config";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { OTelLogger, OTelSetTracer, OTelTracer } from "../OTelContext";
-import { SearchItemsDataListForUser } from "./SearchItemsData";
+import { SearchItemsDataListForSource, SearchItemsDataListForUser, SearchItemsDataListItemsForLabel } from "./SearchItemsData";
 
 const SQL_DIR = path.join(__dirname, "..", "..", "sql");
 
@@ -173,5 +173,70 @@ test("expired cursor id is excluded and older items remain reachable", async () 
     "item-003",
     "item-002",
     "item-001",
+  ]);
+});
+
+test("returns the bookmark state of each item batched in the list result", async () => {
+  const date = new Date("2026-10-01T12:00:00.000Z");
+  await seedSource("src-1", "user-1", 3, date, "item");
+
+  await DbUtilsExecSQL(
+    span,
+    "INSERT INTO lists_items (id, itemId, userId, name, info) VALUES (?, ?, ?, ?, ?)",
+    ["li-1", "item-001", "user-1", "saved", "{}"],
+  );
+  // A different user's bookmark on the same item must not leak in
+  await DbUtilsExecSQL(
+    span,
+    "INSERT INTO lists_items (id, itemId, userId, name, info) VALUES (?, ?, ?, ?, ?)",
+    ["li-2", "item-002", "user-2", "saved", "{}"],
+  );
+
+  const result = await SearchItemsDataListForUser(
+    span,
+    "user-1",
+    new SearchItemsOptions()
+  );
+  const savedById = new Map(
+    result.sourceItems.map((item) => [item.id, item.isSaved])
+  );
+  expect(savedById.get("item-001")).toBe(true);
+  expect(savedById.get("item-002")).toBe(false);
+  expect(savedById.get("item-003")).toBe(false);
+});
+
+test("returns the bookmark state for source and label listings too", async () => {
+  const date = new Date("2026-10-01T12:00:00.000Z");
+  await seedSource("src-1", "user-1", 2, date, "item");
+  await DbUtilsExecSQL(
+    span,
+    "INSERT INTO lists_items (id, itemId, userId, name, info) VALUES (?, ?, ?, ?, ?)",
+    ["li-1", "item-002", "user-1", "saved", "{}"],
+  );
+  await DbUtilsExecSQL(
+    span,
+    "INSERT INTO sources_labels (id, sourceId, name, info) VALUES (?, ?, ?, ?)",
+    ["sl-1", "src-1", "news", "{}"]
+  );
+
+  const forSource = await SearchItemsDataListForSource(
+    span,
+    "src-1",
+    new SearchItemsOptions()
+  );
+  expect(forSource.sourceItems.map((item) => item.isSaved)).toEqual([
+    true,
+    false,
+  ]);
+
+  const forLabel = await SearchItemsDataListItemsForLabel(
+    span,
+    "news",
+    "user-1",
+    new SearchItemsOptions()
+  );
+  expect(forLabel.sourceItems.map((item) => item.isSaved)).toEqual([
+    true,
+    false,
   ]);
 });

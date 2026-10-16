@@ -21,6 +21,24 @@
           sandbox="allow-popups allow-scripts"
           ref="contentFrame"
         ></iframe>
+        <div
+          v-else-if="readerState === 'ready'"
+          class="reader-content"
+          v-html="sanitizedReaderContent"
+        ></div>
+        <div v-else-if="readerState === 'loading'" class="reader-state">
+          <Loading />
+        </div>
+        <div v-else-if="readerState === 'error'" class="reader-state">
+          <p>Reader view unavailable for this article</p>
+          <button
+            v-if="item.url"
+            class="secondary"
+            v-on:click="openExternal()"
+          >
+            <i class="bi bi-box-arrow-up-right"></i> Open
+          </button>
+        </div>
         <iframe
           v-else
           class="source-dialog-frame"
@@ -40,6 +58,13 @@
           <i class="bi bi-box-arrow-up-right"></i> Open
         </button>
         <button
+          v-if="supportsReader && !showFullSource && !readerActive"
+          class="secondary"
+          v-on:click="loadReader()"
+        >
+          <i class="bi bi-file-earmark-text"></i> Reader view
+        </button>
+        <button
           v-if="!showFullSource && supportsFullSource"
           class="secondary"
           v-on:click="loadFull()"
@@ -47,7 +72,7 @@
           <i class="bi bi-arrow-down-circle"></i> Load Full
         </button>
         <button
-          v-if="showFullSource"
+          v-if="showFullSource || readerActive"
           class="secondary"
           v-on:click="showSummary()"
         >
@@ -60,6 +85,7 @@
 
 <script>
 import axios from "axios";
+import DOMPurify from "dompurify";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
@@ -69,17 +95,31 @@ export default {
     modelValue: Boolean,
     item: { type: Object, default: null },
     initialFull: { type: Boolean, default: false },
+    initialReader: { type: Boolean, default: false },
   },
   emits: ["update:modelValue"],
   data() {
     return {
       showFullSource: false,
       supportsFullSource: false,
+      readerState: "idle",
+      readerContent: "",
+      readerTitle: "",
+      readerRequestId: 0,
     };
   },
   computed: {
+    supportsReader() {
+      return !!this.item?.url?.startsWith("http");
+    },
+    readerActive() {
+      return this.readerState === "loading" || this.readerState === "ready";
+    },
     isPodcastItem() {
       return !!(this.item?.info?.isPodcast && this.item?.info?.audioUrl);
+    },
+    sanitizedReaderContent() {
+      return DOMPurify.sanitize(this.readerContent);
     },
     iframeSrcdoc() {
       const isDark = (localStorage.getItem("UI_THEME") || "dark") === "dark";
@@ -102,7 +142,11 @@ export default {
       if (val) {
         this.showFullSource = this.initialFull;
         this.supportsFullSource = this.item?.url?.startsWith("http");
+        this.resetReader();
         this.markItemAsRead();
+        if (this.initialReader && this.supportsReader) {
+          this.loadReader();
+        }
         this.$nextTick(() => {
           if (this.$refs.dialogRef) {
             this.$refs.dialogRef.showModal();
@@ -114,7 +158,70 @@ export default {
       this.supportsFullSource = this.item?.url?.startsWith("http");
     },
   },
+  mounted() {
+    document.addEventListener("keydown", this.onKeydown);
+  },
+  beforeUnmount() {
+    document.removeEventListener("keydown", this.onKeydown);
+  },
   methods: {
+    onKeydown(event) {
+      if (!this.modelValue || event.key !== "r") {
+        return;
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      if (this.readerActive) {
+        this.showSummary();
+      } else if (this.supportsReader) {
+        this.loadReader();
+      }
+    },
+    resetReader() {
+      this.readerRequestId += 1;
+      this.readerState = "idle";
+      this.readerContent = "";
+      this.readerTitle = "";
+    },
+    async loadReader() {
+      if (!this.item?.url) return;
+      this.showFullSource = false;
+      this.readerState = "loading";
+      const requestId = ++this.readerRequestId;
+      try {
+        const res = await axios.post(
+          `${(await Config.get()).SERVER_URL}/items/fetch-url`,
+          { url: this.item.url },
+          await AuthService.getAuthHeader(),
+        );
+        if (requestId !== this.readerRequestId) {
+          return;
+        }
+        this.readerTitle = res.data.title || this.item.title || "";
+        this.readerContent = res.data.content || "";
+        this.readerState = this.readerContent ? "ready" : "error";
+      } catch (error) {
+        if (requestId !== this.readerRequestId) {
+          return;
+        }
+        this.readerState = "error";
+        if (error?.response?.status !== 422) {
+          handleError(error);
+        }
+      }
+    },
     close() {
       this.$refs.dialogRef?.close();
       this.$emit("update:modelValue", false);
@@ -157,6 +264,7 @@ export default {
     },
     showSummary() {
       this.showFullSource = false;
+      this.resetReader();
     },
   },
 };
@@ -200,5 +308,52 @@ dialog {
   min-height: 100%;
   border: none;
   display: block;
+}
+
+.reader-content {
+  max-width: 46em;
+  margin: 0 auto;
+  padding: var(--space-lg, 1.5em) var(--space-md, 1em);
+  line-height: 1.7;
+  overflow-wrap: break-word;
+}
+
+.reader-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.reader-content :deep(a) {
+  color: var(--color-primary);
+}
+
+.reader-content :deep(pre) {
+  overflow-x: auto;
+}
+
+.reader-content :deep(table) {
+  max-width: 100%;
+  overflow-x: auto;
+  display: block;
+}
+
+.reader-content :deep(blockquote) {
+  border-left: 3px solid var(--color-border);
+  margin-left: 0;
+  padding-left: var(--space-md, 1em);
+  color: var(--color-text-secondary, inherit);
+}
+
+.reader-state {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-md, 1em);
+  height: 100%;
+  text-align: center;
+}
+
+.reader-state button {
+  width: auto;
 }
 </style>
