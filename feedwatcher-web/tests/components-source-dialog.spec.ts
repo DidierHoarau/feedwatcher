@@ -173,4 +173,19 @@ describe("SourceDialog reader view", () => {
     ).toBeUndefined();
     wrapper.unmount();
   });
+
+  test("keeps the action buttons inside the dialog footer container", async () => {
+    const wrapper = await mountDialog({ item: newItem() });
+
+    const footer = wrapper.find("footer.source-dialog-footer");
+    expect(footer.exists()).toBe(true);
+
+    const labels = footer.findAll("button").map((b) => b.text());
+    expect(labels).toEqual([
+      expect.stringContaining("Close"),
+      expect.stringContaining("Open"),
+      expect.stringContaining("Reader view"),
+      expect.stringContaining("Load Full"),
+    ]);
+  });
 });
