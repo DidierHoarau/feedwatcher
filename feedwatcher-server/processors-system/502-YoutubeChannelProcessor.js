@@ -6,6 +6,27 @@ const CHANNEL_ID_PATTERN = /^UC[A-Za-z0-9_-]{22}$/;
 
 const AXIOS_TIMEOUT_MS = 10000;
 
+// Feed endpoints tried in order by fetchLatest. Alternate endpoints can be
+// configured for networks where YouTube's RSS endpoint is unreliable
+// (e.g. FEEDWATCHER_YOUTUBE_FEED_URLS pointing at an Invidious-style
+// mirror), as comma-separated URL templates containing a {channelId}
+// placeholder.
+const DEFAULT_FEED_URL_TEMPLATES = [
+  "https://www.youtube.com/feeds/videos.xml?channel_id={channelId}",
+];
+
+function getFeedUrlTemplates() {
+  const raw = process.env.FEEDWATCHER_YOUTUBE_FEED_URLS;
+  if (!raw || !raw.trim()) {
+    return DEFAULT_FEED_URL_TEMPLATES;
+  }
+  const templates = raw
+    .split(",")
+    .map((template) => template.trim())
+    .filter((template) => template.includes("{channelId}"));
+  return templates.length > 0 ? templates : DEFAULT_FEED_URL_TEMPLATES;
+}
+
 // YouTube's RSS feed endpoint intermittently fails with 5xx or network
 // errors; retrying the same request usually works. 4xx responses (dead
 // channel 404, rate-limit 429) are not retried: they do not recover within
@@ -210,17 +231,27 @@ module.exports = {
       );
     }
     let feedRaw = null;
-    try {
-      feedRaw = await fetchWithRetry(
-        `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
-        REQUEST_HEADERS
-      );
-    } catch (err) {
+    let lastFeedError = null;
+    for (const template of getFeedUrlTemplates()) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        feedRaw = await fetchWithRetry(
+          template.replace("{channelId}", channelId),
+          REQUEST_HEADERS
+        );
+        break;
+      } catch (err) {
+        lastFeedError = err;
+      }
+    }
+    if (feedRaw === null) {
       throw new Error(
         `YouTube feed not reachable for channel ${channelId} (${
-          err && err.message ? err.message : err
+          lastFeedError && lastFeedError.message
+            ? lastFeedError.message
+            : lastFeedError
         })`,
-        { cause: err }
+        { cause: lastFeedError }
       );
     }
     const feed = parseFeed(feedRaw);

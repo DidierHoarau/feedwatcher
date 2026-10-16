@@ -2,20 +2,106 @@ import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { createHash } from "crypto";
 import axios from "axios";
 import { Source } from "../model/Source";
-import { OTelRequestSpan } from "../OTelContext";
+import {
+  OTelLogger,
+  OTelRequestSpan,
+} from "../OTelContext";
 import {
   ProcessorsCheckSource,
   ProcessorsFetchSourceItems,
   ProcessorsFetchSourceItemsForUser,
+  ProcessorsPreviewSource,
 } from "../procesors/Processors";
 import { AuthGetUserSession } from "../users/Auth";
 import { SourcesDataAdd, SourcesDataListForUser } from "./SourcesData";
 import { SourceGetHealth } from "../model/SourceHealth";
 import { ConfigGet } from "../Config";
-import { OTelLogger } from "../OTelContext";
+import { UrlSafetyError, UrlSafetyFetchText } from "../utils-std-ts/UrlSafety";
 import { normalizeSourceUrl } from "./SourceUrl";
 
 const logger = OTelLogger().createModuleLogger("SourcesRoutes");
+
+// Feeds are frequently served with generic or misconfigured content types:
+// the body is parsed server-side, never rendered raw.
+const FEED_FETCH_CONTENT_TYPES = [
+  "application/rss+xml",
+  "application/atom+xml",
+  "application/feed+json",
+  "application/xml",
+  "text/xml",
+  "text/html",
+];
+
+const FEED_LINK_TYPES = [
+  "application/rss+xml",
+  "application/atom+xml",
+  "application/feed+json",
+  "application/json",
+];
+
+const MAX_DISCOVERED_FEEDS = 10;
+
+interface DiscoveredFeed {
+  url: string;
+  title: string;
+  type: string;
+}
+
+function htmlAttribute(tag: string, name: string): string {
+  const match = new RegExp(
+    `${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s"'>]+))`,
+    "i",
+  ).exec(tag);
+  if (!match) {
+    return "";
+  }
+  return (match[2] ?? match[3] ?? match[4] ?? "").trim();
+}
+
+function looksLikeFeed(body: string): boolean {
+  const start = body.replace(/^\uFEFF/, "").trimStart().slice(0, 512).toLowerCase();
+  return (
+    start.startsWith("<?xml") ||
+    start.startsWith("<rss") ||
+    start.startsWith("<feed")
+  );
+}
+
+function extractFeedLinks(body: string, baseUrl: string): DiscoveredFeed[] {
+  const feeds = new Map<string, DiscoveredFeed>();
+  for (const linkTag of body.match(/<link\b[^>]*>/gi) || []) {
+    if (!/^alternate$/i.test(htmlAttribute(linkTag, "rel"))) {
+      continue;
+    }
+    const type = htmlAttribute(linkTag, "type").toLowerCase();
+    if (!FEED_LINK_TYPES.includes(type)) {
+      continue;
+    }
+    const href = htmlAttribute(linkTag, "href");
+    if (!href) {
+      continue;
+    }
+    let resolved: URL;
+    try {
+      resolved = new URL(href, baseUrl);
+    } catch {
+      continue;
+    }
+    if (resolved.protocol !== "http:" && resolved.protocol !== "https:") {
+      continue;
+    }
+    const url = resolved.toString();
+    if (feeds.has(url)) {
+      continue;
+    }
+    feeds.set(url, {
+      url,
+      title: htmlAttribute(linkTag, "title"),
+      type,
+    });
+  }
+  return Array.from(feeds.values()).slice(0, MAX_DISCOVERED_FEEDS);
+}
 
 export class SourcesRoutes {
   //
@@ -102,6 +188,77 @@ export class SourcesRoutes {
         userSession.userId,
       ).catch((err) => logger.error("Error fetching source items", err));
       return res.status(200).send({});
+    });
+
+    interface DiscoverQuery extends RequestGenericInterface {
+      Querystring: {
+        url: string;
+      };
+    }
+    fastify.get<DiscoverQuery>("/discover", async (req, res) => {
+      const userSession = await AuthGetUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      const requestedUrl = String(req.query.url || "").trim();
+      if (!requestedUrl) {
+        return res.status(400).send({ error: "Missing: url" });
+      }
+      let body: string;
+      try {
+        body = await UrlSafetyFetchText(requestedUrl, FEED_FETCH_CONTENT_TYPES);
+      } catch (err: any) {
+        const status =
+          err instanceof UrlSafetyError ? err.statusCode : 502;
+        return res
+          .status(status)
+          .send({ error: err?.message || "Failed to fetch URL" });
+      }
+      if (looksLikeFeed(body)) {
+        return res
+          .status(200)
+          .send({ feeds: [{ url: requestedUrl, title: "", type: "" }] });
+      }
+      return res.status(200).send({ feeds: extractFeedLinks(body, requestedUrl) });
+    });
+
+    interface PostPreview extends RequestGenericInterface {
+      Body: {
+        url: string;
+      };
+    }
+    fastify.post<PostPreview>("/preview", async (req, res) => {
+      const userSession = await AuthGetUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      if (!req.body.url || !String(req.body.url).trim()) {
+        return res.status(400).send({ error: "Missing: url" });
+      }
+      // Transient source: only used to run processor detection + one fetch.
+      const source = new Source();
+      source.name = req.body.url;
+      source.info = { url: req.body.url };
+      source.userId = userSession.userId;
+      const { preview, error } = await ProcessorsPreviewSource(
+        OTelRequestSpan(req),
+        source,
+      );
+      if (!preview) {
+        return res.status(400).send({
+          error: error
+            ? `Source Not Supported (No Processor Matching): ${error}`
+            : "Source Not Supported (No Processor Matching)",
+        });
+      }
+      return res.status(200).send({
+        processor: {
+          title: preview.processorTitle,
+          icon: preview.processorIcon,
+        },
+        name: preview.name,
+        items: preview.items,
+      });
     });
 
     interface SearchQuery extends RequestGenericInterface {

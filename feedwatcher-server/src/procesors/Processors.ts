@@ -122,6 +122,81 @@ export async function ProcessorsCheckSource(
     : null;
 }
 
+export interface ProcessorPreviewItem {
+  title: string;
+  url: string;
+  datePublished: Date | string | null;
+  thumbnail: string;
+}
+
+export interface ProcessorPreview {
+  processorTitle: string;
+  processorIcon: string;
+  name: string;
+  items: ProcessorPreviewItem[];
+}
+
+// Detects the processor for a transient (unsaved) source and fetches a small
+// sample of its latest items. Nothing is persisted: unlike
+// ProcessorsCheckSource this never calls SourcesDataUpdate.
+export async function ProcessorsPreviewSource(
+  context: Span,
+  source: Source,
+): Promise<{ preview: ProcessorPreview | null; error: string | null }> {
+  const span = OTelTracer().startSpan("ProcessorsPreviewSource", context);
+  let lastError: Error = null;
+  let preview: ProcessorPreview | null = null;
+  userProcessorInfoStatusStart(span, source.userId);
+  try {
+    for (const processorsFile of processorsFiles) {
+      if (preview) {
+        break;
+      }
+      try {
+        const processor = await ProcessorsLoadFile(processorsFile);
+        const sourceInfo = await processor.test(source);
+        if (sourceInfo) {
+          sourceInfo.processorPath = processorsFile.path;
+          source.name = sourceInfo.name;
+          if (!source.info) {
+            source.info = {};
+          }
+          source.info = merge(source.info, sourceInfo);
+          const sourceItems = await processor.fetchLatest(source, null);
+          preview = {
+            processorTitle: processor.getInfo().title,
+            processorIcon: sourceInfo.icon || "",
+            name: sourceInfo.name,
+            items: sourceItems.slice(0, 5).map((sourceItem: any) => ({
+              title: sourceItem.title || "",
+              url: sourceItem.url || "",
+              datePublished: sourceItem.datePublished || null,
+              thumbnail: sourceItem.thumbnail || "",
+            })),
+          };
+        }
+      } catch (err) {
+        logger.warn(
+          `Processor ${processorsFile.name} failed to preview source ${source.info.url}: ${err.message}`,
+          span,
+        );
+        lastError = err;
+      }
+    }
+  } finally {
+    userProcessorInfoStatusStop(span, source.userId);
+  }
+  span.end();
+  return {
+    preview,
+    error: lastError
+      ? lastError.message
+        ? lastError.message
+        : String(lastError)
+      : null,
+  };
+}
+
 export async function ProcessorsFetchSourceItemsForUser(
   context: Span,
   userId: string,

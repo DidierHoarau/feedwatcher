@@ -106,6 +106,8 @@ Check the [docs/deployments](docs/deployments) for more examples of deployments.
 
 Configuration values can be set via environment variables or through the `config.json` file. Environment variables take precedence over config file values, which take precedence over defaults.
 
+Adding a source supports pasting any site URL: FeedWatcher discovers the site's feeds (`<link rel="alternate">` tags, or the URL itself when it is already a feed), shows a preview of the latest items and lets the user confirm the subscription.
+
 ## General
 
 | Variable                 | Description                                     | Default             |
@@ -128,6 +130,20 @@ Rate-limited sources are treated with extra care: when a `429` or `503` response
 | `SOURCE_ERROR_THRESHOLD`    | Number of consecutive fetch errors after which a source is marked failing                   | `5`                      |
 | `SOURCE_BACKOFF_MAX`        | Maximum backoff between fetches for failing sources, in milliseconds                        | `86400000` (24 hours)    |
 | `SOURCE_DISABLE_THRESHOLD`  | Number of consecutive fetch errors after which a source is disabled (`0` to never disable)  | `10`                     |
+
+### YouTube
+
+Some server networks cannot reach YouTube's RSS feed endpoint (`youtube.com/feeds/videos.xml`), which makes channel sources fail to fetch. Alternate feed endpoints can be configured with `FEEDWATCHER_YOUTUBE_FEED_URLS`: a comma-separated list of URL templates tried in order, each containing a `{channelId}` placeholder that is replaced with the channel ID. The first endpoint that answers wins; when the variable is unset, the default YouTube endpoint is used.
+
+| Variable                         | Description                                             | Default                                                        |
+| -------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------- |
+| `FEEDWATCHER_YOUTUBE_FEED_URLS`  | Comma-separated YouTube feed URL templates              | `https://www.youtube.com/feeds/videos.xml?channel_id={channelId}` |
+
+Example for an Invidious-style mirror:
+
+```
+FEEDWATCHER_YOUTUBE_FEED_URLS=https://www.youtube.com/feeds/videos.xml?channel_id={channelId},https://<invidious-host>/feed/channel/{channelId}
+```
 
 ## User Accounts
 

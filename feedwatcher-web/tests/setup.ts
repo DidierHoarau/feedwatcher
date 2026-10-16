@@ -1,9 +1,17 @@
 import { acceptHMRUpdate, defineStore } from "pinia";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 // The stores and components rely on Nuxt auto-imports; expose the pinia
 // helpers they use so the modules can be loaded outside Nuxt.
 (globalThis as any).defineStore = defineStore;
 (globalThis as any).acceptHMRUpdate = acceptHMRUpdate;
+
+// Vue reactivity APIs are also Nuxt auto-imports in the app code.
+(globalThis as any).ref = ref;
+(globalThis as any).computed = computed;
+(globalThis as any).watch = watch;
+(globalThis as any).onMounted = onMounted;
+(globalThis as any).onBeforeUnmount = onBeforeUnmount;
 
 // Node >= 25 exposes an experimental `localStorage` global; the jsdom
 // environment refuses to override keys already present on the global, so the

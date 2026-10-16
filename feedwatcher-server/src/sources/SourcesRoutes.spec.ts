@@ -5,8 +5,10 @@ import {
   ProcessorsCheckSource,
   ProcessorsFetchSourceItems,
   ProcessorsFetchSourceItemsForUser,
+  ProcessorsPreviewSource,
 } from "../procesors/Processors";
 import { AuthGetUserSession } from "../users/Auth";
+import { UrlSafetyError, UrlSafetyFetchText } from "../utils-std-ts/UrlSafety";
 
 jest.mock("../OTelContext", () => ({
   OTelRequestSpan: jest.fn(() => ({})),
@@ -27,11 +29,23 @@ jest.mock("../procesors/Processors", () => ({
   ProcessorsCheckSource: jest.fn(),
   ProcessorsFetchSourceItems: jest.fn(),
   ProcessorsFetchSourceItemsForUser: jest.fn(),
+  ProcessorsPreviewSource: jest.fn(),
 }));
 
 jest.mock("./SourcesData", () => ({
   SourcesDataAdd: jest.fn(),
   SourcesDataListForUser: jest.fn(),
+}));
+
+jest.mock("../utils-std-ts/UrlSafety", () => ({
+  UrlSafetyError: class UrlSafetyError extends Error {
+    public statusCode: number;
+    constructor(message: string, statusCode = 400) {
+      super(message);
+      this.statusCode = statusCode;
+    }
+  },
+  UrlSafetyFetchText: jest.fn(),
 }));
 
 describe("SourcesRoutes", () => {
@@ -143,5 +157,192 @@ describe("SourcesRoutes", () => {
       payload: { url: "https://example.com/feed.xml" },
     });
     expect(response.statusCode).toBe(403);
+  });
+
+  describe("GET /discover", () => {
+    test("responds 403 when unauthenticated", async () => {
+      jest.mocked(AuthGetUserSession).mockResolvedValue({
+        isAuthenticated: false,
+      });
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/discover?url=https://example.com",
+      });
+      expect(response.statusCode).toBe(403);
+      expect(UrlSafetyFetchText).not.toHaveBeenCalled();
+    });
+
+    test("responds 400 when the url is missing", async () => {
+      const response = await fastify.inject({ method: "GET", url: "/discover" });
+      expect(response.statusCode).toBe(400);
+      expect(UrlSafetyFetchText).not.toHaveBeenCalled();
+    });
+
+    test("extracts feed link tags and resolves relative hrefs", async () => {
+      jest.mocked(UrlSafetyFetchText).mockResolvedValue(
+        `<html><head>
+          <link rel="alternate" type="application/rss+xml" title="Blog Feed" href="/feed.xml">
+          <link rel="alternate" type='application/atom+xml' href="atom.xml"/>
+          <link rel="stylesheet" href="/style.css">
+          <a href="https://elsewhere.example/rss.xml">rss</a>
+        </head></html>`,
+      );
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/discover?url=https://example.com/blog/",
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(UrlSafetyFetchText).toHaveBeenCalledWith(
+        "https://example.com/blog/",
+        expect.arrayContaining(["application/rss+xml", "text/html"]),
+      );
+      expect(response.json()).toEqual({
+        feeds: [
+          {
+            url: "https://example.com/feed.xml",
+            title: "Blog Feed",
+            type: "application/rss+xml",
+          },
+          {
+            url: "https://example.com/blog/atom.xml",
+            title: "",
+            type: "application/atom+xml",
+          },
+        ],
+      });
+    });
+
+    test("returns the url itself when the body is already a feed", async () => {
+      jest
+        .mocked(UrlSafetyFetchText)
+        .mockResolvedValue('<?xml version="1.0"?><rss version="2.0"></rss>');
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/discover?url=https://example.com/feed.xml",
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        feeds: [{ url: "https://example.com/feed.xml", title: "", type: "" }],
+      });
+    });
+
+    test("responds 200 with an empty list when no feed is found", async () => {
+      jest
+        .mocked(UrlSafetyFetchText)
+        .mockResolvedValue("<html><body>No feeds here</body></html>");
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/discover?url=https://example.com",
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ feeds: [] });
+    });
+
+    test("maps the UrlSafety error status code onto the response", async () => {
+      jest
+        .mocked(UrlSafetyFetchText)
+        .mockRejectedValue(new UrlSafetyError("Unsupported content type", 415));
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/discover?url=https://example.com",
+      });
+
+      expect(response.statusCode).toBe(415);
+      expect(response.json()).toEqual({ error: "Unsupported content type" });
+    });
+  });
+
+  describe("POST /preview", () => {
+    test("responds 403 when unauthenticated", async () => {
+      jest.mocked(AuthGetUserSession).mockResolvedValue({
+        isAuthenticated: false,
+      });
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/preview",
+        payload: { url: "https://example.com/feed.xml" },
+      });
+      expect(response.statusCode).toBe(403);
+      expect(ProcessorsPreviewSource).not.toHaveBeenCalled();
+    });
+
+    test("responds 400 when the url is missing", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/preview",
+        payload: {},
+      });
+      expect(response.statusCode).toBe(400);
+      expect(ProcessorsPreviewSource).not.toHaveBeenCalled();
+    });
+
+    test("returns the processor info and item preview", async () => {
+      jest.mocked(ProcessorsPreviewSource).mockResolvedValue({
+        preview: {
+          processorTitle: "RSS Feed",
+          processorIcon: "rss",
+          name: "Example Feed",
+          items: [
+            {
+              title: "Item 1",
+              url: "https://example.com/1",
+              datePublished: new Date("2026-01-01T00:00:00Z"),
+              thumbnail: "https://example.com/1.jpg",
+            },
+          ],
+        },
+        error: null,
+      } as any);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/preview",
+        payload: { url: "https://example.com/feed.xml" },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        processor: { title: "RSS Feed", icon: "rss" },
+        name: "Example Feed",
+        items: [
+          {
+            title: "Item 1",
+            url: "https://example.com/1",
+            datePublished: new Date("2026-01-01T00:00:00Z").toISOString(),
+            thumbnail: "https://example.com/1.jpg",
+          },
+        ],
+      });
+      const sourceArg = jest.mocked(ProcessorsPreviewSource).mock.calls[0][1] as any;
+      expect(sourceArg.info.url).toBe("https://example.com/feed.xml");
+      expect(sourceArg.userId).toBe("user-1");
+    });
+
+    test("responds 400 when no processor matches, without persisting anything", async () => {
+      jest.mocked(ProcessorsPreviewSource).mockResolvedValue({
+        preview: null,
+        error: "Failed to fetch URL (HTTP 404)",
+      } as any);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/preview",
+        payload: { url: "https://example.com/not-a-feed" },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toEqual({
+        error:
+          "Source Not Supported (No Processor Matching): Failed to fetch URL (HTTP 404)",
+      });
+      expect(SourcesDataAdd).not.toHaveBeenCalled();
+    });
   });
 });
