@@ -25,6 +25,14 @@
         ><i class="bi bi-robot"></i>
         <span>Rules</span></NuxtLink
       >
+      <NuxtLink
+        to="/settings/info"
+        class="settings-tab"
+        active-class="active"
+        aria-label="Info"
+        ><i class="bi bi-info-circle"></i>
+        <span>Info</span></NuxtLink
+      >
     </div>
     <div class="settings-tab-panel">
       <NuxtPage />
