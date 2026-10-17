@@ -10,6 +10,7 @@ import {
   UsersDataGet,
   UsersDataGetByName,
   UsersDataList,
+  UsersDataUpdateSettings,
 } from "./UsersData";
 
 jest.mock("../OTelContext", () => ({
@@ -32,6 +33,7 @@ jest.mock("./UsersData", () => ({
   UsersDataGetByName: jest.fn(),
   UsersDataList: jest.fn(async () => []),
   UsersDataUpdate: jest.fn(async () => undefined),
+  UsersDataUpdateSettings: jest.fn(async () => undefined),
 }));
 
 jest.mock("@devopsplaybook.io/common-utils", () => ({
@@ -184,5 +186,148 @@ describe("UsersRoutes", () => {
       payload: { name: "alice" },
     });
     expect(response.statusCode).toBe(400);
+  });
+
+  test("returns 403 for GET /settings when unauthenticated (N1)", async () => {
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/settings",
+    });
+    expect(response.statusCode).toBe(403);
+  });
+
+  test("returns 403 for PUT /settings when unauthenticated (N1)", async () => {
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/settings",
+      payload: { settings: {} },
+    });
+    expect(response.statusCode).toBe(403);
+  });
+
+  test("returns the user settings (N1)", async () => {
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: true,
+      userId: "user-1",
+    });
+    jest.mocked(UsersDataGet).mockResolvedValue({
+      id: "user-1",
+      name: "alice",
+      settings: {
+        notifications: { digest: true, newItems: "all", newItemsLabels: [] },
+        summaryPrompt: "",
+      },
+    } as any);
+
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/settings",
+    });
+    expect(response.statusCode).toBe(201);
+    expect(JSON.parse(response.body).settings.notifications.digest).toBe(true);
+  });
+
+  test("persists valid settings via UsersDataUpdateSettings (N1)", async () => {
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: true,
+      userId: "user-1",
+    });
+    jest.mocked(UsersDataGet).mockResolvedValue({
+      id: "user-1",
+      name: "alice",
+    } as any);
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/settings",
+      payload: {
+        settings: {
+          notifications: {
+            digest: true,
+            newItems: "labels",
+            newItemsLabels: ["tech"],
+          },
+          summaryPrompt: "Custom prompt",
+        },
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(UsersDataUpdateSettings).toHaveBeenCalledTimes(1);
+    const [_calledSpan, calledUserId, settings] = jest.mocked(
+      UsersDataUpdateSettings
+    ).mock.calls[0];
+    expect(calledUserId).toBe("user-1");
+    expect(settings.notifications.digest).toBe(true);
+    expect(settings.notifications.newItems).toBe("labels");
+    expect(settings.notifications.newItemsLabels).toEqual(["tech"]);
+    expect(settings.summaryPrompt).toBe("Custom prompt");
+  });
+
+  test("rejects an invalid newItems mode with 400 (N1)", async () => {
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: true,
+      userId: "user-1",
+    });
+    jest.mocked(UsersDataGet).mockResolvedValue({
+      id: "user-1",
+      name: "alice",
+    } as any);
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/settings",
+      payload: {
+        settings: {
+          notifications: {
+            digest: true,
+            newItems: "sometimes",
+            newItemsLabels: [],
+          },
+          summaryPrompt: "",
+        },
+      },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(UsersDataUpdateSettings).not.toHaveBeenCalled();
+  });
+
+  test("rejects a non-string summaryPrompt with 400 (N1)", async () => {
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: true,
+      userId: "user-1",
+    });
+    jest.mocked(UsersDataGet).mockResolvedValue({
+      id: "user-1",
+      name: "alice",
+    } as any);
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/settings",
+      payload: {
+        settings: { notifications: {}, summaryPrompt: 42 },
+      },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(UsersDataUpdateSettings).not.toHaveBeenCalled();
+  });
+
+  test("rejects a missing settings body with 400 (N1)", async () => {
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: true,
+      userId: "user-1",
+    });
+    jest.mocked(UsersDataGet).mockResolvedValue({
+      id: "user-1",
+      name: "alice",
+    } as any);
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/settings",
+      payload: {},
+    });
+    expect(response.statusCode).toBe(400);
+    expect(UsersDataUpdateSettings).not.toHaveBeenCalled();
   });
 });

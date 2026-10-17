@@ -1,4 +1,8 @@
 import { User } from "./User";
+import {
+  DEFAULT_USER_SETTINGS,
+  UserSettingsToJson,
+} from "../users/UserSettings";
 
 describe("User", () => {
   //
@@ -8,6 +12,7 @@ describe("User", () => {
     expect(user.id.length).toBeGreaterThan(0);
     expect(user.name).toBeUndefined();
     expect(user.passwordEncrypted).toBeUndefined();
+    expect(user.settings).toEqual(DEFAULT_USER_SETTINGS);
   });
 
   test("should set properties correctly", () => {
@@ -27,6 +32,7 @@ describe("User", () => {
       id: user.id,
       name: "jdoe",
       passwordEncrypted: "hash123",
+      settings: UserSettingsToJson(DEFAULT_USER_SETTINGS),
     });
   });
 
@@ -47,6 +53,22 @@ describe("User", () => {
     expect(user.id).toBe("abc-123");
     expect(user.name).toBe("alice");
     expect(user.passwordEncrypted).toBe("hash_abc");
+    expect(user.settings).toEqual(DEFAULT_USER_SETTINGS);
+  });
+
+  test("fromJson should parse settings JSON correctly", () => {
+    const user = User.fromJson({
+      id: "abc-123",
+      name: "alice",
+      passwordEncrypted: "hash_abc",
+      settings: {
+        notifications: { digest: true, newItems: "all", newItemsLabels: [] },
+        summaryPrompt: "custom",
+      },
+    });
+    expect(user.settings.notifications.digest).toBe(true);
+    expect(user.settings.notifications.newItems).toBe("all");
+    expect(user.settings.summaryPrompt).toBe("custom");
   });
 
   test("fromJson should generate id if not provided", () => {
@@ -56,5 +78,14 @@ describe("User", () => {
     });
     expect(user.id).toBeDefined();
     expect(user.name).toBe("bob");
+  });
+
+  test("fromJson should tolerate garbage settings (N1)", () => {
+    const user = User.fromJson({
+      id: "abc-123",
+      name: "alice",
+      settings: "not-an-object",
+    });
+    expect(user.settings).toEqual(DEFAULT_USER_SETTINGS);
   });
 });

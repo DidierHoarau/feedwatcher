@@ -85,11 +85,19 @@
 <script setup>
 import { AuthService } from "~~/services/AuthService";
 import { PreferencesService } from "~/services/PreferencesService";
+import { BadgeService } from "~~/services/BadgeService";
 const authenticationStore = AuthenticationStore();
 const playerStore = PodcastPlayerStore();
 const sourcesStore = SourcesStore();
 const unreadCount = computed(() => sourcesStore.totalUnreadCount);
 const bookmarkedCount = computed(() => sourcesStore.totalSavedCount);
+// All count-refresh paths funnel into SourcesStore, so one watch here keeps
+// the PWA app badge (Badging API) in sync with the unread count everywhere.
+watch(
+  () => sourcesStore.totalUnreadCount,
+  (count) => BadgeService.setUnreadCount(count),
+  { immediate: true }
+);
 </script>
 
 <script>

@@ -1,5 +1,10 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { User } from "../model/User";
+import {
+  UserSettings,
+  UserSettingsFromJson,
+  UserSettingsToJson,
+} from "./UserSettings";
 import { OTelTracer } from "../OTelContext";
 import {
   DbUtilsExecSQL,
@@ -54,8 +59,8 @@ export async function UsersDataAdd(context: Span, user: User): Promise<void> {
   const span = OTelTracer().startSpan("UsersDataAdd", context);
   await DbUtilsExecSQL(
     span,
-    "INSERT INTO users (id,name,passwordEncrypted) VALUES (?, ?, ?)",
-    [user.id, user.name, user.passwordEncrypted]
+    "INSERT INTO users (id,name,passwordEncrypted,settings) VALUES (?, ?, ?, ?)",
+    [user.id, user.name, user.passwordEncrypted, UserSettingsToJson(user.settings)]
   );
   span.end();
 }
@@ -73,6 +78,20 @@ export async function UsersDataUpdate(
   span.end();
 }
 
+export async function UsersDataUpdateSettings(
+  context: Span,
+  userId: string,
+  settings: UserSettings
+): Promise<void> {
+  const span = OTelTracer().startSpan("UsersDataUpdateSettings", context);
+  await DbUtilsExecSQL(
+    span,
+    "UPDATE users SET settings = ? WHERE id = ? ",
+    [UserSettingsToJson(settings), userId]
+  );
+  span.end();
+}
+
 // Private Functions
 
 function fromRaw(userRaw: any): User {
@@ -80,5 +99,12 @@ function fromRaw(userRaw: any): User {
   user.id = userRaw.id;
   user.name = userRaw.name;
   user.passwordEncrypted = userRaw.passwordEncrypted;
+  let settingsJson: any = null;
+  try {
+    settingsJson = userRaw.settings ? JSON.parse(userRaw.settings) : null;
+  } catch {
+    settingsJson = null;
+  }
+  user.settings = UserSettingsFromJson(settingsJson);
   return user;
 }

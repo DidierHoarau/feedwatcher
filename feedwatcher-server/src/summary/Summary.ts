@@ -6,15 +6,26 @@ import * as schedule from "node-schedule";
 import sanitizeHtml from "sanitize-html";
 import { Config } from "../Config";
 import { OTelLogger, OTelTracer } from "../OTelContext";
+import { User } from "../model/User";
 import { UsersDataList } from "../users/UsersData";
 import { SourceItem } from "../model/SourceItem";
 import { DbUtilsQuerySQL } from "@devopsplaybook.io/common-utils";
+import { NotificationsSendDigestForUser } from "../notifications/Notifications";
 
 const logger = OTelLogger().createModuleLogger("Summary");
 
 const LLM_TIMEOUT_MS = 60 * 1000;
 export const SUMMARY_MAX_PROMPT_ITEMS = 100;
 export const SUMMARY_MAX_PROMPT_CHARS = 20000;
+export const SUMMARY_DEFAULT_SYSTEM_PROMPT =
+  "You summarize news feeds. Follow these rules strictly:\n" +
+  "- Group items into categories (e.g., Technology, Politics, Science, Business, etc.).\n" +
+  "- Use a markdown heading (##) for each category.\n" +
+  "- Under each category, list highlights as bullet points. Keep each bullet to one or two sentences.\n" +
+  "- Attribute each bullet to its source name (in parentheses at the end) when the source is identifiable.\n" +
+  "- Do NOT include an introduction, conclusion, or any preamble. Start directly with the first category.\n" +
+  "- Prioritize the most significant or impactful stories. Omit redundant or trivial items.\n" +
+  "- If multiple sources report the same story, merge them into a single bullet and cite all sources.";
 
 let summaryFilePath: string;
 
@@ -80,7 +91,7 @@ export async function SummaryGenerate(config: Config) {
     { itemCount: number; summary: string; generatedAt: string }
   > = {};
   for (const user of users) {
-    const result = await SummaryGenerateForUser(span, config, user.id);
+    const result = await SummaryGenerateForUser(span, config, user);
     allSummaries[user.id] = {
       itemCount: result.itemCount,
       summary: result.summary,
@@ -95,15 +106,29 @@ export async function SummaryGenerate(config: Config) {
   } catch (error) {
     logger.error(`Failed to save summary file: ${error.message}`);
   }
+  for (const user of users) {
+    const summary = allSummaries[user.id]?.summary;
+    if (summary && summary.trim() !== "") {
+      try {
+        await NotificationsSendDigestForUser(span, user.id, summary);
+      } catch (error) {
+        logger.error(
+          `Failed to send digest notification for user ${user.id}: ${error.message}`
+        );
+      }
+    }
+  }
   span.end();
 }
 
 export async function SummaryGenerateForUser(
   context: Span,
   config: Config,
-  userId: string,
+  user: User
 ): Promise<{ itemCount: number; summary: string; items: SourceItem[] }> {
   const span = OTelTracer().startSpan("SummaryGenerateForUser", context);
+  const userId = user.id;
+  const customPrompt = user.settings?.summaryPrompt?.trim() || "";
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const itemsRaw = await DbUtilsQuerySQL(
     span,
@@ -155,15 +180,7 @@ export async function SummaryGenerateForUser(
         messages: [
           {
             role: "system",
-            content:
-              "You summarize news feeds. Follow these rules strictly:\n" +
-              "- Group items into categories (e.g., Technology, Politics, Science, Business, etc.).\n" +
-              "- Use a markdown heading (##) for each category.\n" +
-              "- Under each category, list highlights as bullet points. Keep each bullet to one or two sentences.\n" +
-              "- Attribute each bullet to its source name (in parentheses at the end) when the source is identifiable.\n" +
-              "- Do NOT include an introduction, conclusion, or any preamble. Start directly with the first category.\n" +
-              "- Prioritize the most significant or impactful stories. Omit redundant or trivial items.\n" +
-              "- If multiple sources report the same story, merge them into a single bullet and cite all sources.",
+            content: customPrompt || SUMMARY_DEFAULT_SYSTEM_PROMPT,
           },
           {
             role: "user",
