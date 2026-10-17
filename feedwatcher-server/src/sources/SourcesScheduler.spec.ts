@@ -48,6 +48,12 @@ jest.mock("../procesors/Processors", () => ({
   ProcessorsFetchSourceItems: jest.fn(),
 }));
 
+jest.mock("../notifications/Notifications", () => ({
+  NotificationsCheckNewItems: jest.fn(),
+}));
+
+import { NotificationsCheckNewItems } from "../notifications/Notifications";
+
 jest.mock("../utils-std-ts/PromisePool", () => ({
   PromisePool: jest.fn().mockImplementation(() => ({
     add: jest.fn((task: () => Promise<any>) => {
@@ -77,6 +83,7 @@ describe("SourcesSchedulerCycle", () => {
     jest.mocked(SourceItemsDataGetCount).mockResolvedValue(0);
     jest.mocked(SourceItemsDataCleanupOrphans).mockResolvedValue(undefined);
     jest.mocked(RulesExecutionExecuteUserRules).mockResolvedValue(undefined);
+    jest.mocked(NotificationsCheckNewItems).mockResolvedValue(undefined);
   });
 
   test("swallows a failing cycle so the loop can keep iterating (H3)", async () => {
@@ -123,5 +130,19 @@ describe("SourcesSchedulerCycle", () => {
 
     await SourcesSchedulerCycle();
     await expect(runQueuedTasks()).resolves.toBeUndefined();
+  });
+
+  test("checks new-item notifications each cycle (N1)", async () => {
+    await SourcesSchedulerCycle();
+
+    expect(NotificationsCheckNewItems).toHaveBeenCalledTimes(1);
+  });
+
+  test("swallows a failing new-item notification check (N1)", async () => {
+    jest
+      .mocked(NotificationsCheckNewItems)
+      .mockRejectedValue(new Error("notification subsystem down"));
+
+    await expect(SourcesSchedulerCycle()).resolves.toBeUndefined();
   });
 });

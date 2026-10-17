@@ -12,6 +12,7 @@ import {
 import { PromisePool } from "../utils-std-ts/PromisePool";
 import { SourceIsDueForFetch } from "../model/SourceHealth";
 import { SourceItemStatus } from "../model/SourceItemStatus";
+import { NotificationsCheckNewItems } from "../notifications/Notifications";
 import { OTelLogger, OTelMeter, OTelTracer } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger("Scheduler");
@@ -171,6 +172,12 @@ export async function SourcesSchedulerRunCycle(span0: Span): Promise<void> {
   });
 
   await SourcesSchedulerUpdateStats(span0);
+
+  try {
+    await NotificationsCheckNewItems(span0);
+  } catch (err) {
+    logger.error("NotificationsCheckNewItems failed", err, span0);
+  }
 }
 
 // private

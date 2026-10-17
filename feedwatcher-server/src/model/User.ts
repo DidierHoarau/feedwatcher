@@ -1,4 +1,10 @@
 import { v4 as uuidv4 } from "uuid";
+import {
+  DEFAULT_USER_SETTINGS,
+  UserSettings,
+  UserSettingsFromJson,
+  UserSettingsToJson,
+} from "../users/UserSettings";
 
 export class User {
   //
@@ -12,15 +18,18 @@ export class User {
     }
     user.name = json.name;
     user.passwordEncrypted = json.passwordEncrypted;
+    user.settings = UserSettingsFromJson(json.settings);
     return user;
   }
 
   public id: string;
   public name: string;
   public passwordEncrypted: string;
+  public settings: UserSettings;
 
   constructor() {
     this.id = uuidv4();
+    this.settings = { ...DEFAULT_USER_SETTINGS };
   }
 
   public toJson(): any {
@@ -28,6 +37,7 @@ export class User {
       id: this.id,
       name: this.name,
       passwordEncrypted: this.passwordEncrypted,
+      settings: UserSettingsToJson(this.settings),
     };
   }
 }

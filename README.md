@@ -169,6 +169,22 @@ The application can generate daily news summaries using any OpenAI-compatible ch
 | `LLM_MODEL`             | Model name to use                               | `deepseek-chat`                             |
 | `SUMMARY_SCHEDULE_CRON` | Cron expression for summary schedule (UTC time) | `0 0 * * *` (daily at midnight)             |
 
+### Notifications (Web Push)
+
+Each user can opt in to Web Push notifications in **Settings → Me**: a push when the daily digest is published, pushes for new items (all sources or selected labels only), and a custom summary prompt replacing the default one. The PWA shows an unread badge on browsers supporting the Badging API.
+
+VAPID keys are auto-generated on first boot and persisted in the database, so the feature works with no configuration. Operators can override them with environment variables:
+
+| Variable             | Description                        | Default                         |
+| -------------------- | ---------------------------------- | ------------------------------- |
+| `VAPID_PUBLIC_KEY`   | Web Push VAPID public key          | auto-generated on first boot    |
+| `VAPID_PRIVATE_KEY`  | Web Push VAPID private key         | auto-generated on first boot    |
+| `VAPID_SUBJECT`      | Contact info sent to push services | `mailto:feedwatcher@localhost`  |
+
+Notes:
+- Digest pushes follow `SUMMARY_SCHEDULE_CRON`; new-item pushes follow the fetch cadence (`SOURCE_FETCH_FREQUENCY`), batched at most once per cycle per user.
+- Push requires HTTPS and browser support; unsupported setups simply see the feature disabled in Settings.
+
 ## OpenTelemetry
 
 | Variable                                                  | Description                                 | Default |

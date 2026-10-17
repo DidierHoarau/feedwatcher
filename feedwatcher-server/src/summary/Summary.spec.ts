@@ -43,6 +43,12 @@ jest.mock("node-schedule", () => ({
   scheduleJob: jest.fn(() => ({ cancel: jest.fn() })),
 }));
 
+jest.mock("../notifications/Notifications", () => ({
+  NotificationsSendDigestForUser: jest.fn(),
+}));
+
+import { NotificationsSendDigestForUser } from "../notifications/Notifications";
+
 jest.mock("sanitize-html", () => ({
   __esModule: true,
   default: (html: string) => html,
@@ -186,6 +192,97 @@ test("writes atomically via a temp file and rename (M11)", async () => {
   );
   expect(jest.mocked(fs.rename)).toHaveBeenCalledWith(tmpPath, finalPath);
   expect(fs.pathExistsSync(tmpPath)).toBe(false);
+  const saved = fs.readJsonSync(finalPath);
+  expect(saved["user-1"].summary).toBe("## Summary");
+});
+
+test("uses a custom summary prompt as the system message (N1)", async () => {
+  const dir = newTempDir();
+  tempDirs.push(dir);
+  const config = newConfig(dir, "test-key");
+  jest.mocked(DbUtilsQuerySQL).mockResolvedValue([rawItem(1)]);
+  jest.mocked(UsersDataList).mockResolvedValue([
+    { id: "user-1", settings: { notifications: { digest: false, newItems: "off", newItemsLabels: [] }, summaryPrompt: "You are a pirate. Summarize in haikus." } },
+  ] as any);
+  jest.mocked(axios.post).mockResolvedValue({
+    data: { choices: [{ message: { content: "## Summary" } }] },
+  } as any);
+
+  await SummaryGenerate(config);
+
+  const payload = jest.mocked(axios.post).mock.calls[0][1] as any;
+  expect(payload.messages[0].content).toBe(
+    "You are a pirate. Summarize in haikus."
+  );
+});
+
+test("falls back to the default system prompt when no custom prompt is set (N1)", async () => {
+  const dir = newTempDir();
+  tempDirs.push(dir);
+  const config = newConfig(dir, "test-key");
+  jest.mocked(DbUtilsQuerySQL).mockResolvedValue([rawItem(1)]);
+  jest.mocked(UsersDataList).mockResolvedValue([{ id: "user-1" }] as any);
+  jest.mocked(axios.post).mockResolvedValue({
+    data: { choices: [{ message: { content: "## Summary" } }] },
+  } as any);
+
+  await SummaryGenerate(config);
+
+  const payload = jest.mocked(axios.post).mock.calls[0][1] as any;
+  expect(payload.messages[0].content).not.toBe("");
+  expect(payload.messages[0].content).toContain("You summarize news feeds");
+});
+
+test("sends a digest push for each user with a non-empty summary (N1)", async () => {
+  const dir = newTempDir();
+  tempDirs.push(dir);
+  const config = newConfig(dir, "test-key");
+  jest.mocked(DbUtilsQuerySQL).mockResolvedValue([rawItem(1)]);
+  jest.mocked(UsersDataList).mockResolvedValue([{ id: "user-1" }] as any);
+  jest.mocked(axios.post).mockResolvedValue({
+    data: { choices: [{ message: { content: "## Summary" } }] },
+  } as any);
+
+  await SummaryGenerate(config);
+
+  expect(NotificationsSendDigestForUser).toHaveBeenCalledTimes(1);
+  expect(jest.mocked(NotificationsSendDigestForUser).mock.calls[0][1]).toBe(
+    "user-1"
+  );
+  expect(jest.mocked(NotificationsSendDigestForUser).mock.calls[0][2]).toBe(
+    "## Summary"
+  );
+});
+
+test("does not send a digest push when the summary is empty (N1)", async () => {
+  const dir = newTempDir();
+  tempDirs.push(dir);
+  const config = newConfig(dir, "test-key");
+  jest.mocked(DbUtilsQuerySQL).mockResolvedValue([]);
+  jest.mocked(UsersDataList).mockResolvedValue([{ id: "user-1" }] as any);
+
+  await SummaryGenerate(config);
+
+  expect(NotificationsSendDigestForUser).not.toHaveBeenCalled();
+});
+
+test("keeps generating summaries when the digest push fails (N1)", async () => {
+  const dir = newTempDir();
+  tempDirs.push(dir);
+  const config = newConfig(dir, "test-key");
+  jest.mocked(DbUtilsQuerySQL).mockResolvedValue([rawItem(1)]);
+  jest.mocked(UsersDataList).mockResolvedValue([{ id: "user-1" }] as any);
+  jest.mocked(axios.post).mockResolvedValue({
+    data: { choices: [{ message: { content: "## Summary" } }] },
+  } as any);
+  jest
+    .mocked(NotificationsSendDigestForUser)
+    .mockRejectedValue(new Error("push subsystem down"));
+  const finalPath = path.join(dir, "summary.json");
+  fs.writeJsonSync(finalPath, {});
+  await SummaryInit({} as any, config);
+
+  await expect(SummaryGenerate(config)).resolves.toBeUndefined();
   const saved = fs.readJsonSync(finalPath);
   expect(saved["user-1"].summary).toBe("## Summary");
 });

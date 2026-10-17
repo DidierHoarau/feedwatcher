@@ -16,6 +16,12 @@ import {
 } from "./OTelContext";
 import { ProcessorsInit } from "./procesors/Processors";
 import { ProcessorsRoutes } from "./procesors/ProcessorsRoutes";
+import { NotificationsInit } from "./notifications/Notifications";
+import { PushRoutes } from "./notifications/PushRoutes";
+import {
+  PushSenderGetPublicKey,
+  PushSenderIsEnabled,
+} from "./notifications/PushSender";
 import { RulesRoutes } from "./rules/RulesRoutes";
 import { SourcesSchedulerInit } from "./sources/SourcesScheduler";
 import { ItemsRoutes } from "./sources/ItemsRoutes";
@@ -62,6 +68,7 @@ Promise.resolve().then(async () => {
   await DbUtilsInit(span, config, `${__dirname}/../sql`);
   await AuthInit(span, config);
   await ProcessorsInit(span, config);
+  await NotificationsInit(span, config);
   await SummaryInit(span, config);
   await SourcesSchedulerInit(span, config);
 
@@ -113,12 +120,17 @@ Promise.resolve().then(async () => {
   fastify.register(new SummaryRoutes().getRoutes, {
     prefix: "/api/summary",
   });
+  fastify.register(new PushRoutes().getRoutes, {
+    prefix: "/api/push",
+  });
   fastify.get("/api/status", async () => {
     return {
       started: true,
       podcastSearchEnabled: !!(
         config.PODCAST_INDEX_API_KEY && config.PODCAST_INDEX_API_SECRET
       ),
+      notificationsEnabled: PushSenderIsEnabled(),
+      vapidPublicKey: PushSenderGetPublicKey(),
     };
   });
 

@@ -43,6 +43,9 @@
       </div>
     </article>
 
+    <!-- Notifications -->
+    <NotificationsSettings />
+
     <!-- Preferences -->
     <article class="settings-card">
       <header>
@@ -125,8 +128,12 @@ import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 import { PreferencesService } from "~~/services/PreferencesService";
+import NotificationsSettings from "~~/components/NotificationsSettings.vue";
 
 export default {
+  components: {
+    NotificationsSettings,
+  },
   data() {
     let isDark = false;
     const storedTheme = localStorage.getItem("UI_THEME");

@@ -3,6 +3,7 @@ import rateLimit from "@fastify/rate-limit";
 import { DbUtilsWithLock } from "@devopsplaybook.io/common-utils";
 import { User } from "../model/User";
 import { OTelRequestSpan } from "../OTelContext";
+import { UserSettingsFromJson } from "./UserSettings";
 import { AuthGenerateJWT, AuthGetUserSession } from "./Auth";
 import {
   UserPasswordCheckPassword,
@@ -14,6 +15,7 @@ import {
   UsersDataGetByName,
   UsersDataList,
   UsersDataUpdate,
+  UsersDataUpdateSettings,
 } from "./UsersData";
 
 const LOGIN_MAX_FAILURES = 10;
@@ -193,6 +195,67 @@ export class UsersRoutes {
         req.body.password
       );
       await UsersDataUpdate(OTelRequestSpan(req), user);
+      res.status(201).send({});
+    });
+
+    fastify.get("/settings", async (req, res) => {
+      const userSession = await AuthGetUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      const user = await UsersDataGet(OTelRequestSpan(req), userSession.userId);
+      if (!user) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      return res.status(201).send({ settings: user.settings });
+    });
+
+    interface PutSettings extends RequestGenericInterface {
+      Body: {
+        settings: any;
+      };
+    }
+    fastify.put<PutSettings>("/settings", async (req, res) => {
+      const userSession = await AuthGetUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      const user = await UsersDataGet(OTelRequestSpan(req), userSession.userId);
+      if (!user) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      if (!req.body || typeof req.body.settings !== "object") {
+        return res.status(400).send({ error: "Missing: Settings" });
+      }
+      const input = req.body.settings;
+      const notifications = input.notifications;
+      if (
+        notifications !== undefined &&
+        notifications !== null &&
+        typeof notifications !== "object"
+      ) {
+        return res.status(400).send({ error: "Invalid: Settings" });
+      }
+      if (
+        notifications &&
+        notifications.newItems !== undefined &&
+        notifications.newItems !== "off" &&
+        notifications.newItems !== "all" &&
+        notifications.newItems !== "labels"
+      ) {
+        return res.status(400).send({ error: "Invalid: Settings" });
+      }
+      if (
+        input.summaryPrompt !== undefined &&
+        typeof input.summaryPrompt !== "string"
+      ) {
+        return res.status(400).send({ error: "Invalid: Settings" });
+      }
+      await UsersDataUpdateSettings(
+        OTelRequestSpan(req),
+        userSession.userId,
+        UserSettingsFromJson(input)
+      );
       res.status(201).send({});
     });
   }
