@@ -297,6 +297,7 @@ async function getSearchResultsfromRaw(
     searchItemsResult.pageHasMore = true;
   }
   await hydrateTags(span, userId, searchItemsResult.sourceItems);
+  await hydratePlayback(span, userId, searchItemsResult.sourceItems);
   if (searchItemsResult.sourceItems.length > 0) {    const lastItem =
       searchItemsResult.sourceItems[searchItemsResult.sourceItems.length - 1];
     const lastRaw = sourceItemsRaw[searchItemsResult.sourceItems.length - 1];
@@ -336,6 +337,41 @@ async function hydrateTags(
   }
   for (const sourceItem of sourceItems) {
     sourceItem.tags = tagsByItemId.get(sourceItem.id) || [];
+  }
+}
+
+// Batched playback-position hydration: one query per page instead of per card.
+async function hydratePlayback(
+  span: Span,
+  userId: string,
+  sourceItems: SourceItem[],
+): Promise<void> {
+  if (sourceItems.length === 0) {
+    return;
+  }
+  const itemIds = sourceItems.map((item) => item.id);
+  const placeholders = itemIds.map(() => "?").join(",");
+  const playbackRaw = await DbUtilsQuerySQL(
+    span,
+    `SELECT itemId, positionSeconds, durationSeconds FROM podcast_playback WHERE userId = ? AND itemId IN (${placeholders})`,
+    [userId, ...itemIds],
+  );
+  const playbackByItemId = new Map<
+    string,
+    { positionSeconds: number; durationSeconds: number }
+  >();
+  for (const playback of playbackRaw) {
+    playbackByItemId.set(playback.itemId, {
+      positionSeconds: Number(playback.positionSeconds) || 0,
+      durationSeconds: Number(playback.durationSeconds) || 0,
+    });
+  }
+  for (const sourceItem of sourceItems) {
+    const playback = playbackByItemId.get(sourceItem.id);
+    if (playback) {
+      sourceItem.playbackPositionSeconds = playback.positionSeconds;
+      sourceItem.playbackDurationSeconds = playback.durationSeconds;
+    }
   }
 }
 

@@ -49,6 +49,11 @@
         <span class="podcast-time">{{ playerStore.formattedDuration }}</span>
       </div>
 
+      <p v-if="resumeHintVisible" class="podcast-resume-hint">
+        <i class="bi bi-clock-history"></i>
+        Resumes from {{ formatTime(item.playbackPositionSeconds) }}
+      </p>
+
       <div class="podcast-controls">
         <button
           class="podcast-ctrl-btn outline secondary"
@@ -56,6 +61,17 @@
           title="Rewind 30 seconds"
         >
           <i class="bi bi-skip-backward-fill"></i>
+        </button>
+
+        <button
+          class="podcast-ctrl-btn podcast-speed-btn outline secondary"
+          v-on:click="playerStore.cyclePlaybackRate()"
+          title="Playback speed"
+          aria-label="Playback speed"
+        >
+          <span class="podcast-speed-label"
+            >{{ playerStore.playbackRate }}x</span
+          >
         </button>
 
         <button
@@ -88,6 +104,60 @@
           <i class="bi bi-stop-circle-fill"></i>
         </button>
       </div>
+
+      <div class="podcast-secondary-actions">
+        <button
+          class="podcast-secondary-btn outline secondary"
+          v-on:click="togglePlayed()"
+        >
+          <i
+            class="bi"
+            :class="
+              item.status === 'read' ? 'bi-check2-circle-fill' : 'bi-check2-circle'
+            "
+          ></i>
+          {{ item.status === "read" ? "Played" : "Mark as played" }}
+        </button>
+      </div>
+
+      <div v-if="upNext.length > 0" class="podcast-up-next">
+        <h4 class="podcast-up-next-title">
+          Up next from {{ item.sourceName }}
+        </h4>
+        <ul class="podcast-up-next-list">
+          <li v-for="row in upNext" :key="row.id">
+            <button
+              type="button"
+              class="podcast-up-next-row"
+              v-on:click="playUpNext(row)"
+            >
+              <span class="podcast-up-next-row-main">
+                <span class="podcast-up-next-row-title">
+                  <i
+                    v-if="row.status === 'read'"
+                    class="bi bi-check2-circle podcast-up-next-played"
+                    title="Played"
+                  ></i>
+                  {{ row.title }}
+                </span>
+                <span class="podcast-up-next-row-meta">{{
+                  relativeTime(row.datePublished)
+                }}</span>
+                <span
+                  v-if="upNextProgress(row) > 0"
+                  class="podcast-up-next-progress"
+                >
+                  <span
+                    class="podcast-up-next-progress-fill"
+                    :style="{ width: upNextProgress(row) + '%' }"
+                  ></span>
+                </span>
+              </span>
+              <i class="bi bi-play-circle podcast-up-next-play-icon"></i>
+            </button>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <div v-else class="podcast-no-item">
@@ -101,6 +171,8 @@
 import axios from "axios";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
+import { EventBus, EventTypes } from "~~/services/EventBus";
+import { formatTime } from "~~/stores/PodcastPlayerStore";
 
 const playerStore = PodcastPlayerStore();
 const route = useRoute();
@@ -108,9 +180,17 @@ const router = useRouter();
 
 const item = ref(null);
 const loading = ref(true);
+const upNext = ref([]);
 
 const artwork = computed(() => {
   return item.value?.info?.artwork || item.value?.thumbnail || null;
+});
+
+const resumeHintVisible = computed(() => {
+  const position = Number(item.value?.playbackPositionSeconds) || 0;
+  return (
+    position > 3 && !playerStore.isPlaying && playerStore.currentTime < 3
+  );
 });
 
 function goBack() {
@@ -139,6 +219,97 @@ function stopPlayback() {
   item.value = null;
 }
 
+async function togglePlayed() {
+  if (!item.value) return;
+  const status = item.value.status === "read" ? "unread" : "read";
+  try {
+    await axios.put(
+      `${(await Config.get()).SERVER_URL}/items/status`,
+      { status, itemIds: [item.value.id] },
+      await AuthService.getAuthHeader(),
+    );
+    item.value.status = status;
+    EventBus.emit(EventTypes.ITEMS_UPDATED, {});
+  } catch (err) {
+    console.error("Failed to update played state", err);
+  }
+}
+
+function upNextProgress(row) {
+  if (row.status === "read") return 0;
+  const position = Number(row.playbackPositionSeconds) || 0;
+  const duration = Number(row.playbackDurationSeconds) || 0;
+  if (position <= 0 || duration <= 0) return 0;
+  return Math.min(100, (position / duration) * 100);
+}
+
+async function playUpNext(row) {
+  item.value = row;
+  playerStore.play(row);
+  router.replace({ query: { itemId: row.id } });
+  await loadUpNext(row);
+}
+
+async function loadUpNext(currentItem) {
+  if (!currentItem?.sourceId) {
+    upNext.value = [];
+    return;
+  }
+  try {
+    const res = await axios.post(
+      `${(await Config.get()).SERVER_URL}/items/search`,
+      {
+        searchCriteria: "sourceId",
+        sourceId: currentItem.sourceId,
+        filterStatus: "all",
+        sort: "date_desc",
+      },
+      await AuthService.getAuthHeader(),
+    );
+    const rows = (res.data?.sourceItems || []).filter(
+      (row) => row.id !== currentItem.id,
+    );
+    upNext.value = rows.slice(0, 5);
+  } catch (err) {
+    console.error("Failed to load up next episodes", err);
+  }
+}
+
+function relativeTime(date) {
+  const delta = Math.round((new Date() - new Date(date)) / 1000);
+  const minute = 60,
+    hour = minute * 60,
+    day = hour * 24,
+    week = day * 7,
+    month = day * 30,
+    year = day * 365;
+  if (delta < 60) {
+    return "just now";
+  } else if (delta < hour) {
+    return Math.floor(delta / minute) + " minutes ago";
+  } else if (delta < 2 * hour) {
+    return "1 hour ago";
+  } else if (delta < day) {
+    return Math.floor(delta / hour) + " hours ago";
+  } else if (delta < 2 * day) {
+    return "1 day ago";
+  } else if (delta < week) {
+    return Math.floor(delta / day) + " days ago";
+  } else if (delta < 2 * week) {
+    return "1 week ago";
+  } else if (delta < month) {
+    return Math.floor(delta / week) + " weeks ago";
+  } else if (delta < 2 * month) {
+    return "1 month ago";
+  } else if (delta < year) {
+    return Math.floor(delta / month) + " months ago";
+  } else if (delta < 2 * year) {
+    return "1 year ago";
+  } else {
+    return Math.floor(delta / year) + " years ago";
+  }
+}
+
 onMounted(async () => {
   const itemId = route.query.itemId;
   if (!itemId) {
@@ -146,12 +317,16 @@ onMounted(async () => {
       item.value = playerStore.currentItem;
     }
     loading.value = false;
+    if (item.value) {
+      loadUpNext(item.value);
+    }
     return;
   }
 
   if (playerStore.currentItem?.id === itemId) {
     item.value = playerStore.currentItem;
     loading.value = false;
+    loadUpNext(item.value);
     return;
   }
 
@@ -164,6 +339,7 @@ onMounted(async () => {
     if (item.value?.info?.audioUrl) {
       playerStore.play(item.value);
     }
+    loadUpNext(item.value);
   } catch (err) {
     console.error("Failed to load podcast item", err);
   }
@@ -293,6 +469,15 @@ onMounted(async () => {
   margin: 0;
 }
 
+.podcast-resume-hint {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
 .podcast-controls {
   display: flex;
   align-items: center;
@@ -313,6 +498,111 @@ onMounted(async () => {
 
 .podcast-ctrl-btn i {
   font-size: 1.4em;
+}
+
+.podcast-speed-btn {
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+.podcast-speed-label {
+  white-space: nowrap;
+}
+
+.podcast-secondary-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.podcast-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--font-sm);
+  cursor: pointer;
+}
+
+.podcast-up-next {
+  width: 100%;
+  margin-top: var(--space-md);
+}
+
+.podcast-up-next-title {
+  margin: 0 0 var(--space-sm) 0;
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.podcast-up-next-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.podcast-up-next-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  text-align: left;
+  padding: var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  cursor: pointer;
+}
+
+.podcast-up-next-row:hover {
+  background: var(--color-bg-hover);
+}
+
+.podcast-up-next-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.podcast-up-next-row-title {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.podcast-up-next-played {
+  color: var(--color-primary);
+}
+
+.podcast-up-next-row-meta {
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+}
+
+.podcast-up-next-progress {
+  height: 3px;
+  background-color: var(--color-border);
+  border-radius: 2px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.podcast-up-next-progress-fill {
+  display: block;
+  height: 100%;
+  background-color: var(--color-primary);
+}
+
+.podcast-up-next-play-icon {
+  font-size: 1.4em;
+  color: var(--color-primary);
+  flex-shrink: 0;
 }
 
 .podcast-no-item {

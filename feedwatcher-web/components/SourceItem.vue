@@ -17,6 +17,15 @@
         relativeTime(item.datePublished)
       }}</span>
       {{ item.title }}
+      <span
+        v-if="podcastProgressPercent > 0"
+        class="sourceitem-podcast-progress"
+      >
+        <span
+          class="sourceitem-podcast-progress-fill"
+          :style="{ width: podcastProgressPercent + '%' }"
+        ></span>
+      </span>
     </div>
 
     <div class="sourceitem-layout-meta">
@@ -33,8 +42,8 @@
         v-if="isPodcastItem"
         type="button"
         class="sourceitem-overlay-btn podcast-play-icon"
-        :title="isCurrentlyPlaying ? 'Pause episode' : 'Play episode'"
-        :aria-label="isCurrentlyPlaying ? 'Pause episode' : 'Play episode'"
+        :title="playButtonTitle"
+        :aria-label="playButtonTitle"
         @click.stop="playPodcast()"
       >
         <i
@@ -47,6 +56,24 @@
         ></i>
       </button>
       <button
+        v-if="isPodcastItem"
+        type="button"
+        class="sourceitem-overlay-btn"
+        :title="
+          item.status == 'read' ? 'Mark as not played' : 'Mark as played (skip)'
+        "
+        :aria-label="
+          item.status == 'read' ? 'Mark as not played' : 'Mark as played (skip)'
+        "
+        @click.stop="markReadStatus(item.status == 'read' ? 'unread' : 'read')"
+      >
+        <i
+          :class="item.status == 'read' ? 'bi bi-check2-circle' : 'bi bi-circle'"
+          class="source-action"
+        ></i>
+      </button>
+      <button
+        v-else
         type="button"
         class="sourceitem-overlay-btn"
         :title="item.status == 'read' ? 'Mark as unread' : 'Mark as read'"
@@ -144,6 +171,27 @@ export default {
     isCurrentlyPlaying() {
       const store = PodcastPlayerStore();
       return store.currentItem?.id === this.item?.id && store.isPlaying;
+    },
+    podcastProgressPercent() {
+      if (!this.isPodcastItem || this.item.status === "read") return 0;
+      const position = Number(this.item.playbackPositionSeconds) || 0;
+      const duration = Number(this.item.playbackDurationSeconds) || 0;
+      if (position <= 0 || duration <= 0) return 0;
+      return Math.min(100, (position / duration) * 100);
+    },
+    hasSavedPodcastPosition() {
+      return (
+        this.isPodcastItem &&
+        (Number(this.item.playbackPositionSeconds) || 0) > 3 &&
+        this.podcastProgressPercent < 100
+      );
+    },
+    playButtonTitle() {
+      if (this.isCurrentlyPlaying) return "Pause episode";
+      if (this.hasSavedPodcastPosition) {
+        return `Resume from ${this.formatTime(this.item.playbackPositionSeconds)}`;
+      }
+      return "Play episode";
     },
     iframeContent() {
       const isDark = (localStorage.getItem("UI_THEME") || "dark") === "dark";
@@ -320,6 +368,16 @@ export default {
         frame.style.height = height + "px";
       }
     },
+    formatTime(seconds) {
+      if (!seconds || isNaN(seconds)) return "0:00";
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = Math.floor(seconds % 60);
+      if (h > 0) {
+        return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      }
+      return `${m}:${String(s).padStart(2, "0")}`;
+    },
     relativeTime(date) {
       const delta = Math.round((new Date() - new Date(date)) / 1000);
       const minute = 60,
@@ -426,6 +484,19 @@ export default {
 .sourceitem-date {
   font-size: var(--font-xs);
   padding-right: var(--space-md);
+}
+.sourceitem-podcast-progress {
+  display: block;
+  height: 3px;
+  margin-top: 4px;
+  background-color: var(--color-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.sourceitem-podcast-progress-fill {
+  display: block;
+  height: 100%;
+  background-color: var(--color-primary);
 }
 .sourceitem-read,
 .sourceitem-date,

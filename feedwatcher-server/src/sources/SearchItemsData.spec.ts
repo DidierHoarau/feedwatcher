@@ -365,6 +365,35 @@ describe("SearchItemsData filters", () => {
     expect(tagsById.get("item-001")).toEqual(["deepwork"]);
     expect(tagsById.get("item-002")).toEqual(["news"]);
   });
+
+  test("hydrates saved playback positions on results scoped to the requesting user", async () => {
+    const date = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-1", "user-1", 2, date, "item");
+    await DbUtilsExecSQL(span, "INSERT INTO podcast_playback (id, itemId, userId, positionSeconds, durationSeconds, dateUpdated) VALUES (?, ?, ?, ?, ?, ?)", [
+      "pb-1",
+      "item-001",
+      "user-1",
+      615,
+      3600,
+      "2026-10-17T00:00:00.000Z",
+    ]);
+    await DbUtilsExecSQL(span, "INSERT INTO podcast_playback (id, itemId, userId, positionSeconds, durationSeconds, dateUpdated) VALUES (?, ?, ?, ?, ?, ?)", [
+      "pb-2",
+      "item-001",
+      "user-2",
+      999,
+      3600,
+      "2026-10-17T00:00:00.000Z",
+    ]);
+
+    const result = await SearchItemsDataListForUser(span, "user-1", new SearchItemsOptions());
+    const item1 = result.sourceItems.find((item) => item.id === "item-001");
+    const item2 = result.sourceItems.find((item) => item.id === "item-002");
+    expect(item1.playbackPositionSeconds).toBe(615);
+    expect(item1.playbackDurationSeconds).toBe(3600);
+    expect(item2.playbackPositionSeconds).toBeUndefined();
+    expect(item2.playbackDurationSeconds).toBeUndefined();
+  });
 });
 
 
