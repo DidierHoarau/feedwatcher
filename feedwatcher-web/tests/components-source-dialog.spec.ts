@@ -208,4 +208,21 @@ describe("SourceDialog reader view", () => {
       expect.stringContaining("Load Full"),
     ]);
   });
+
+  test("keeps the dialog article a three-region grid (header, body, footer)", async () => {
+    const wrapper = await mountDialog({ item: newItem() });
+
+    const article = wrapper.find("dialog.source-dialog article");
+    expect(article.exists()).toBe(true);
+
+    const regions = Array.from(article.element.children).map((el) => ({
+      tag: el.tagName.toLowerCase(),
+      className: el.className,
+    }));
+    expect(regions).toEqual([
+      { tag: "header", className: "" },
+      { tag: "div", className: "source-dialog-body" },
+      { tag: "footer", className: "source-dialog-footer" },
+    ]);
+  });
 });

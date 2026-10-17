@@ -1,0 +1,12 @@
+{
+  "name": "feedwatcher-layout-checks",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Headless layout invariant checks for the FeedWatcher web UI (real server + production build).",
+  "scripts": {
+    "check": "node layout-check.mjs"
+  },
+  "devDependencies": {
+    "puppeteer": "^25.13.0"
+  }
+}
