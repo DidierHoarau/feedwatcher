@@ -15,6 +15,8 @@ export class SourceItem {
   public info: any;
   public isSaved: boolean;
   public tags: string[];
+  public playbackPositionSeconds?: number;
+  public playbackDurationSeconds?: number;
 
   constructor() {
     this.id = uuidv4();

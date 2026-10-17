@@ -16,6 +16,10 @@ import {
   ItemTagsDataListForUser,
   ItemTagsDataSetForItem,
 } from "./ItemTagsData";
+import {
+  PodcastPlaybackDataGetForItem,
+  PodcastPlaybackDataSetForItem,
+} from "./PodcastPlaybackData";
 import { AuthGetUserSession } from "../users/Auth";
 import { OTelRequestSpan } from "../OTelContext";
 import { UrlSafetyError } from "../utils-std-ts/UrlSafety";
@@ -48,6 +52,15 @@ export class ItemsRoutes {
         req.params.itemId,
         userSession.userId,
       );
+      const playback = await PodcastPlaybackDataGetForItem(
+        OTelRequestSpan(req),
+        req.params.itemId,
+        userSession.userId,
+      );
+      if (playback) {
+        sourceItem.playbackPositionSeconds = playback.positionSeconds;
+        sourceItem.playbackDurationSeconds = playback.durationSeconds;
+      }
       return res.status(200).send(sourceItem);
     });
 
@@ -136,6 +149,83 @@ export class ItemsRoutes {
           userSession.userId,
         );
         return res.status(200).send({ tags });
+      },
+    );
+
+    interface GetItemIdPlaybackRequest extends RequestGenericInterface {
+      Params: {
+        itemId: string;
+      };
+    }
+    fastify.get<GetItemIdPlaybackRequest>(
+      "/:itemId/playback",
+      async (req, res) => {
+        const userSession = await AuthGetUserSession(req);
+        if (!userSession.isAuthenticated) {
+          return res.status(403).send({ error: "Access Denied" });
+        }
+        const sourceItem = await SourceItemsDataGetForUser(
+          OTelRequestSpan(req),
+          req.params.itemId,
+          userSession.userId,
+        );
+        if (!sourceItem) {
+          return res.status(404).send({ error: "Item Not Found" });
+        }
+        const playback = await PodcastPlaybackDataGetForItem(
+          OTelRequestSpan(req),
+          req.params.itemId,
+          userSession.userId,
+        );
+        return res.status(200).send({
+          positionSeconds: playback?.positionSeconds || 0,
+          durationSeconds: playback?.durationSeconds || 0,
+          dateUpdated: playback?.dateUpdated || "",
+        });
+      },
+    );
+
+    interface PutItemIdPlaybackRequest extends RequestGenericInterface {
+      Params: {
+        itemId: string;
+      };
+      Body: {
+        positionSeconds: number;
+        durationSeconds: number;
+      };
+    }
+    const playbackBodySchema = {
+      type: "object",
+      required: ["positionSeconds", "durationSeconds"],
+      properties: {
+        positionSeconds: { type: "number", minimum: 0, maximum: 86400 },
+        durationSeconds: { type: "number", minimum: 0, maximum: 86400 },
+      },
+    };
+    fastify.put<PutItemIdPlaybackRequest>(
+      "/:itemId/playback",
+      { schema: { body: playbackBodySchema } },
+      async (req, res) => {
+        const userSession = await AuthGetUserSession(req);
+        if (!userSession.isAuthenticated) {
+          return res.status(403).send({ error: "Access Denied" });
+        }
+        const sourceItem = await SourceItemsDataGetForUser(
+          OTelRequestSpan(req),
+          req.params.itemId,
+          userSession.userId,
+        );
+        if (!sourceItem) {
+          return res.status(404).send({ error: "Item Not Found" });
+        }
+        await PodcastPlaybackDataSetForItem(
+          OTelRequestSpan(req),
+          req.params.itemId,
+          userSession.userId,
+          req.body.positionSeconds,
+          req.body.durationSeconds,
+        );
+        return res.status(200).send({});
       },
     );
 

@@ -10,6 +10,10 @@ import {
   ItemTagsDataListForUser,
   ItemTagsDataSetForItem,
 } from "./ItemTagsData";
+import {
+  PodcastPlaybackDataGetForItem,
+  PodcastPlaybackDataSetForItem,
+} from "./PodcastPlaybackData";
 
 jest.mock("../OTelContext", () => ({
   OTelRequestSpan: jest.fn(() => ({})),
@@ -45,6 +49,11 @@ jest.mock("./ItemTagsData", () => ({
   ItemTagsDataGetForItem: jest.fn(),
   ItemTagsDataListForUser: jest.fn(),
   ItemTagsDataSetForItem: jest.fn(),
+}));
+
+jest.mock("./PodcastPlaybackData", () => ({
+  PodcastPlaybackDataGetForItem: jest.fn(),
+  PodcastPlaybackDataSetForItem: jest.fn(),
 }));
 
 jest.mock("axios", () => ({
@@ -510,5 +519,172 @@ describe("ItemsRoutes item tags", () => {
     });
     expect(response.statusCode).toBe(403);
     expect(ItemTagsDataSetForItem).not.toHaveBeenCalled();
+  });
+});
+
+describe("ItemsRoutes podcast playback", () => {
+  let fastify: FastifyInstance;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: true,
+      userId: "user-1",
+    });
+    fastify = Fastify();
+    await new ItemsRoutes().getRoutes(fastify);
+  });
+
+  afterEach(async () => {
+    await fastify.close();
+  });
+
+  test("GET /:itemId/playback returns the saved position", async () => {
+    jest.mocked(SourceItemsDataGetForUser).mockResolvedValue({
+      id: "item-1",
+    } as any);
+    jest.mocked(PodcastPlaybackDataGetForItem).mockResolvedValue({
+      positionSeconds: 615,
+      durationSeconds: 3600,
+      dateUpdated: "2026-10-17T00:00:00.000Z",
+    });
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/item-1/playback",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({
+      positionSeconds: 615,
+      durationSeconds: 3600,
+      dateUpdated: "2026-10-17T00:00:00.000Z",
+    });
+  });
+
+  test("GET /:itemId/playback returns zeros when nothing is saved", async () => {
+    jest.mocked(SourceItemsDataGetForUser).mockResolvedValue({
+      id: "item-1",
+    } as any);
+    jest.mocked(PodcastPlaybackDataGetForItem).mockResolvedValue(null);
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/item-1/playback",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({
+      positionSeconds: 0,
+      durationSeconds: 0,
+      dateUpdated: "",
+    });
+  });
+
+  test("GET /:itemId/playback requires authentication", async () => {
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: false,
+    });
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/item-1/playback",
+    });
+    expect(response.statusCode).toBe(403);
+    expect(SourceItemsDataGetForUser).not.toHaveBeenCalled();
+  });
+
+  test("GET /:itemId/playback returns 404 for an item the user does not own", async () => {
+    jest.mocked(SourceItemsDataGetForUser).mockResolvedValue(null as any);
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/other-users-item/playback",
+    });
+    expect(response.statusCode).toBe(404);
+    expect(PodcastPlaybackDataGetForItem).not.toHaveBeenCalled();
+  });
+
+  test("PUT /:itemId/playback saves the position", async () => {
+    jest.mocked(SourceItemsDataGetForUser).mockResolvedValue({
+      id: "item-1",
+    } as any);
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/item-1/playback",
+      payload: { positionSeconds: 615, durationSeconds: 3600 },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(PodcastPlaybackDataSetForItem).toHaveBeenCalledWith(
+      expect.anything(),
+      "item-1",
+      "user-1",
+      615,
+      3600,
+    );
+  });
+
+  test("PUT /:itemId/playback returns 404 for an item the user does not own", async () => {
+    jest.mocked(SourceItemsDataGetForUser).mockResolvedValue(null as any);
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/other-users-item/playback",
+      payload: { positionSeconds: 10, durationSeconds: 60 },
+    });
+    expect(response.statusCode).toBe(404);
+    expect(PodcastPlaybackDataSetForItem).not.toHaveBeenCalled();
+  });
+
+  test("PUT /:itemId/playback requires authentication", async () => {
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: false,
+    });
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/item-1/playback",
+      payload: { positionSeconds: 10, durationSeconds: 60 },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(PodcastPlaybackDataSetForItem).not.toHaveBeenCalled();
+  });
+
+  test("PUT /:itemId/playback rejects a negative position with 400", async () => {
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/item-1/playback",
+      payload: { positionSeconds: -5, durationSeconds: 60 },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(PodcastPlaybackDataSetForItem).not.toHaveBeenCalled();
+  });
+
+  test("PUT /:itemId/playback rejects a body without durationSeconds with 400", async () => {
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/item-1/playback",
+      payload: { positionSeconds: 10 },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(PodcastPlaybackDataSetForItem).not.toHaveBeenCalled();
+  });
+
+  test("GET /:itemId includes the playback position in the response", async () => {
+    jest
+      .mocked(SourceItemsDataGetForUser)
+      .mockResolvedValue({ id: "item-1", tags: [] } as any);
+    jest.mocked(PodcastPlaybackDataGetForItem).mockResolvedValue({
+      positionSeconds: 120,
+      durationSeconds: 3600,
+      dateUpdated: "2026-10-17T00:00:00.000Z",
+    });
+    const response = await fastify.inject({ method: "GET", url: "/item-1" });
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.playbackPositionSeconds).toBe(120);
+    expect(body.playbackDurationSeconds).toBe(3600);
+  });
+
+  test("GET /:itemId omits the playback fields when nothing is saved", async () => {
+    jest
+      .mocked(SourceItemsDataGetForUser)
+      .mockResolvedValue({ id: "item-1", tags: [] } as any);
+    jest.mocked(PodcastPlaybackDataGetForItem).mockResolvedValue(null);
+    const response = await fastify.inject({ method: "GET", url: "/item-1" });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).playbackPositionSeconds).toBeUndefined();
   });
 });
