@@ -288,6 +288,22 @@ dialog {
   grid-template-rows: auto 1fr auto;
 }
 
+/* Pin each region to its own track: with auto-placement, a header that
+   fails to generate a box (hidden, removed, out of flow) slides the body
+   into row 1 and the footer into the 1fr row, stretching its buttons
+   grotesquely. */
+.source-dialog article > header {
+  grid-row: 1;
+}
+
+.source-dialog article > .source-dialog-body {
+  grid-row: 2;
+}
+
+.source-dialog article > footer.source-dialog-footer {
+  grid-row: 3;
+}
+
 .source-dialog-title {
   font-weight: 600;
   white-space: nowrap;
@@ -365,6 +381,7 @@ dialog {
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
+  align-content: start;
   gap: calc(var(--pico-spacing) * 0.5);
 }
 
