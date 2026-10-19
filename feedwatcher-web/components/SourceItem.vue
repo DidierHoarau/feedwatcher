@@ -29,92 +29,97 @@
     </div>
 
     <div class="sourceitem-layout-meta">
-      {{ item.sourceName }}
-      <div v-if="item.tags && item.tags.length > 0" class="sourceitem-tags">
-        <span v-for="tag in item.tags" :key="tag" class="sourceitem-tag">{{
-          tag
-        }}</span>
+      <div class="sourceitem-meta-text">
+        <span class="sourceitem-source-name">{{ item.sourceName }}</span>
+        <div
+          v-if="item.tags && item.tags.length > 0"
+          class="sourceitem-tags"
+        >
+          <span v-for="tag in item.tags" :key="tag" class="sourceitem-tag">{{
+            tag
+          }}</span>
+        </div>
       </div>
-    </div>
 
-    <div class="sourceitem-actions-overlay">
-      <button
-        v-if="isPodcastItem"
-        type="button"
-        class="sourceitem-overlay-btn podcast-play-icon"
-        :title="playButtonTitle"
-        :aria-label="playButtonTitle"
-        @click.stop="playPodcast()"
-      >
-        <i
-          :class="
-            isCurrentlyPlaying
-              ? 'bi bi-pause-circle-fill'
-              : 'bi bi-play-circle-fill'
+      <div class="sourceitem-actions-row">
+        <button
+          v-if="isPodcastItem"
+          type="button"
+          class="sourceitem-overlay-btn podcast-play-icon"
+          :title="playButtonTitle"
+          :aria-label="playButtonTitle"
+          @click.stop="playPodcast()"
+        >
+          <i
+            :class="
+              isCurrentlyPlaying
+                ? 'bi bi-pause-circle-fill'
+                : 'bi bi-play-circle-fill'
+            "
+            class="source-action"
+          ></i>
+        </button>
+        <button
+          v-if="isPodcastItem"
+          type="button"
+          class="sourceitem-overlay-btn"
+          :title="
+            item.status == 'read' ? 'Mark as not played' : 'Mark as played (skip)'
           "
-          class="source-action"
-        ></i>
-      </button>
-      <button
-        v-if="isPodcastItem"
-        type="button"
-        class="sourceitem-overlay-btn"
-        :title="
-          item.status == 'read' ? 'Mark as not played' : 'Mark as played (skip)'
-        "
-        :aria-label="
-          item.status == 'read' ? 'Mark as not played' : 'Mark as played (skip)'
-        "
-        @click.stop="markReadStatus(item.status == 'read' ? 'unread' : 'read')"
-      >
-        <i
-          :class="item.status == 'read' ? 'bi bi-check2-circle' : 'bi bi-circle'"
-          class="source-action"
-        ></i>
-      </button>
-      <button
-        v-else
-        type="button"
-        class="sourceitem-overlay-btn"
-        :title="item.status == 'read' ? 'Mark as unread' : 'Mark as read'"
-        :aria-label="item.status == 'read' ? 'Mark as unread' : 'Mark as read'"
-        @click.stop="markReadStatus(item.status == 'read' ? 'unread' : 'read')"
-      >
-        <i
-          :class="item.status == 'read' ? 'bi bi-envelope-open' : 'bi bi-envelope'"
-          class="source-action"
-        ></i>
-      </button>
-      <button
-        type="button"
-        class="sourceitem-overlay-btn"
-        :title="isSaved ? 'Remove bookmark' : 'Save bookmark'"
-        :aria-label="isSaved ? 'Remove bookmark' : 'Save bookmark'"
-        @click.stop="isSaved ? unSaveItem() : saveItem()"
-      >
-        <i
-          :class="isSaved ? 'bi bi-bookmark-check-fill' : 'bi bi-bookmark-plus'"
-          class="source-action"
-        ></i>
-      </button>
-      <button
-        type="button"
-        class="sourceitem-overlay-btn"
-        title="Edit tags"
-        aria-label="Edit tags"
-        @click.stop="editTags()"
-      >
-        <i class="bi bi-tags source-action"></i>
-      </button>
-      <button
-        type="button"
-        class="sourceitem-overlay-btn"
-        title="Open link"
-        aria-label="Open link"
-        @click.stop="openItemLink()"
-      >
-        <i class="bi bi-box-arrow-up-right source-action"></i>
-      </button>
+          :aria-label="
+            item.status == 'read' ? 'Mark as not played' : 'Mark as played (skip)'
+          "
+          @click.stop="markReadStatus(item.status == 'read' ? 'unread' : 'read')"
+        >
+          <i
+            :class="item.status == 'read' ? 'bi bi-check2-circle' : 'bi bi-circle'"
+            class="source-action"
+          ></i>
+        </button>
+        <button
+          v-else
+          type="button"
+          class="sourceitem-overlay-btn"
+          :title="item.status == 'read' ? 'Mark as unread' : 'Mark as read'"
+          :aria-label="item.status == 'read' ? 'Mark as unread' : 'Mark as read'"
+          @click.stop="markReadStatus(item.status == 'read' ? 'unread' : 'read')"
+        >
+          <i
+            :class="item.status == 'read' ? 'bi bi-envelope-open' : 'bi bi-envelope'"
+            class="source-action"
+          ></i>
+        </button>
+        <button
+          type="button"
+          class="sourceitem-overlay-btn"
+          :title="isSaved ? 'Remove bookmark' : 'Save bookmark'"
+          :aria-label="isSaved ? 'Remove bookmark' : 'Save bookmark'"
+          @click.stop="isSaved ? unSaveItem() : saveItem()"
+        >
+          <i
+            :class="isSaved ? 'bi bi-bookmark-check-fill' : 'bi bi-bookmark-plus'"
+            class="source-action"
+          ></i>
+        </button>
+        <button
+          type="button"
+          class="sourceitem-overlay-btn"
+          title="Edit tags"
+          aria-label="Edit tags"
+          @click.stop="editTags()"
+        >
+          <i class="bi bi-tags source-action"></i>
+        </button>
+        <button
+          type="button"
+          class="sourceitem-overlay-btn"
+          title="Open link"
+          aria-label="Open link"
+          @click.stop="openItemLink()"
+        >
+          <i class="bi bi-box-arrow-up-right source-action"></i>
+        </button>
+      </div>
     </div>
 
     <div
@@ -428,7 +433,10 @@ export default {
 .sourceitem-layout {
   display: grid;
   grid-template-rows: auto auto 1fr;
-  grid-template-columns: auto 1fr;
+  /* minmax(0, 1fr): the meta row holds unshrinkable action buttons next to
+     an ellipsized source name — the track must be allowed below the content
+     min-width or it overflows the card on narrow screens */
+  grid-template-columns: auto minmax(0, 1fr);
   width: 100%;
   height: auto;
   grid-gap: var(--space-sm);
@@ -464,8 +472,29 @@ export default {
 .sourceitem-layout-meta {
   grid-row: 2;
   grid-column: 2 / 3;
-  font-size: var(--font-xs);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
   text-align: left;
+}
+.sourceitem-meta-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: var(--font-xs);
+  opacity: 0.5;
+}
+.sourceitem-source-name {
+  display: block;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sourceitem-actions-row {
+  display: flex;
+  gap: var(--space-xs);
+  margin-left: auto;
+  flex-shrink: 0;
 }
 .sourceitem-tags {
   display: flex;
@@ -499,27 +528,13 @@ export default {
   background-color: var(--color-primary);
 }
 .sourceitem-read,
-.sourceitem-date,
-.sourceitem-layout-meta {
+.sourceitem-date {
   opacity: 0.5;
 }
 .source-action {
   font-size: 1.4em;
 }
 
-.sourceitem-actions-overlay {
-  display: flex;
-  position: absolute;
-  right: var(--space-sm);
-  bottom: var(--space-sm);
-  z-index: 2;
-  gap: var(--space-xs);
-  padding: var(--space-xs);
-  border-radius: var(--radius-full);
-  border: 1px solid color-mix(in srgb, var(--color-border) 35%, transparent);
-  background: color-mix(in srgb, var(--color-bg) 30%, transparent);
-  backdrop-filter: blur(2px);
-}
 .sourceitem-overlay-btn {
   width: 32px;
   height: 32px;
@@ -532,7 +547,6 @@ export default {
   margin: 0;
   cursor: pointer;
   border-radius: var(--radius-full);
-  opacity: 0.75;
 }
 .sourceitem-overlay-btn .source-action {
   font-size: 1em;
@@ -542,7 +556,6 @@ export default {
 }
 .sourceitem-overlay-btn:active {
   background: var(--color-bg-hover);
-  opacity: 1;
 }
 /* Pico draws its ring on :focus (not :focus-visible), which leaves it stuck after a tap/click */
 .sourceitem-overlay-btn:focus {
@@ -555,7 +568,7 @@ export default {
 
 @media (max-width: 700px) {
   .sourceitem-layout {
-    grid-template-columns: 4em 1fr;
+    grid-template-columns: 4em minmax(0, 1fr);
     grid-gap: var(--space-xs) var(--space-sm);
     padding: var(--space-sm) 0;
   }

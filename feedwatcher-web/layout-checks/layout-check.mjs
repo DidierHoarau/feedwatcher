@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Layout invariant checks for the FeedWatcher item dialog.
+ * Layout invariant checks for the FeedWatcher item dialog and list pages.
  *
  * Boots the real feedwatcher-server (tsx) with the production web build
  * (feedwatcher-web/.output/public — run `npm run generate` first), seeds a
@@ -8,7 +8,9 @@
  * layout invariants — not golden screenshots — across viewports, dialog
  * states and degraded-DOM mutations (e.g. a dialog header that fails to
  * generate a box, which historically stretched the footer buttons
- * grotesquely).
+ * grotesquely). The list-page state additionally asserts no horizontal
+ * overflow, item actions that do not cover the title text, and a single-line
+ * actions bar while the advanced filters are closed.
  *
  * Prerequisites:
  *   - feedwatcher-server: npm ci
@@ -236,6 +238,7 @@ async function main() {
         isMobile: viewport.isMobile,
         hasTouch: viewport.isMobile,
       });
+      await runListPageState(page, base, authHeaders, seedItems, viewport, tmpDir);
       for (const state of STATES) {
         await runState(page, base, authHeaders, seedItems, state, viewport, tmpDir);
       }
@@ -348,6 +351,106 @@ async function resetItemsUnread(base, authHeaders, items) {
   });
   if (!res.ok) {
     throw new Error(`Resetting items to unread failed: ${res.status}`);
+  }
+}
+
+// Sources list page, no dialog open, advanced filters closed (fresh store).
+function collectListGeometry() {
+  const rectOf = (el) => {
+    if (!el) {
+      return null;
+    }
+    const r = el.getBoundingClientRect();
+    return {
+      top: r.top,
+      bottom: r.bottom,
+      left: r.left,
+      right: r.right,
+    };
+  };
+  const cards = [...document.querySelectorAll("article.sourceitem-layout")].map(
+    (card) => ({
+      card: rectOf(card),
+      title: rectOf(card.querySelector(".sourceitem-layout-title")),
+      actions: rectOf(card.querySelector(".sourceitem-actions-row")),
+    }),
+  );
+  const actionsBar = document.querySelector("#sources-items-actions");
+  return {
+    viewportWidth: window.innerWidth,
+    docScrollWidth: document.documentElement.scrollWidth,
+    cards,
+    actionsBarHeight: actionsBar ? actionsBar.clientHeight : null,
+  };
+}
+
+async function runListPageState(page, base, authHeaders, seedItems, viewport, tmpDir) {
+  const caseName = `${viewport.name}/list-page`;
+  console.log(`  ${viewport.name} / list-page`);
+
+  await resetItemsUnread(base, authHeaders, Object.values(seedItems.items));
+  await page.goto(`${base}/sources`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".sourceitem-layout-title", {
+    timeout: WAIT_TIMEOUT_MS,
+  });
+  await page.waitForSelector(".sourceitem-actions-row", {
+    timeout: WAIT_TIMEOUT_MS,
+  });
+
+  const data = await page.evaluate(collectListGeometry);
+
+  if (data.docScrollWidth > data.viewportWidth) {
+    fail(
+      caseName,
+      `horizontal overflow: document scrollWidth ${data.docScrollWidth}px > viewport ${data.viewportWidth}px`,
+    );
+  }
+
+  if (data.cards.length === 0) {
+    fail(caseName, "no item cards rendered");
+  }
+  for (let i = 0; i < data.cards.length; i++) {
+    const { card, title, actions } = data.cards[i];
+    if (!title || !actions) {
+      fail(caseName, `card #${i} is missing a title or actions row box`);
+      continue;
+    }
+    const overlapsHorizontally =
+      actions.left < title.right - 1 && actions.right > title.left + 1;
+    const overlapsVertically =
+      actions.top < title.bottom - 1 && actions.bottom > title.top + 1;
+    if (overlapsHorizontally && overlapsVertically) {
+      fail(
+        caseName,
+        `card #${i} actions row [${actions.top.toFixed(0)}-${actions.bottom.toFixed(0)}] overlaps title box [${title.top.toFixed(0)}-${title.bottom.toFixed(0)}]`,
+      );
+    }
+    // The in-flow actions row must stay inside its card — a wider min-content
+    // (buttons + ellipsized name) must compress the text, not overflow the
+    // card edge where the list's overflow: hidden clips the last button.
+    if (card && actions.right > card.right + 1) {
+      fail(
+        caseName,
+        `card #${i} actions row right edge ${actions.right.toFixed(0)}px exceeds card right edge ${card.right.toFixed(0)}px`,
+      );
+    }
+  }
+
+  if (
+    viewport.isMobile &&
+    data.actionsBarHeight !== null &&
+    data.actionsBarHeight > 60
+  ) {
+    fail(
+      caseName,
+      `actions bar height ${data.actionsBarHeight}px > 60px on mobile with filters closed`,
+    );
+  }
+
+  if (failures.some((f) => f.caseName === caseName)) {
+    const shot = path.join(tmpDir, `${caseName.replace(/[^\w.-]+/g, "_")}.png`);
+    await page.screenshot({ path: shot }).catch(() => {});
+    console.error(`    Screenshot: ${shot}`);
   }
 }
 
