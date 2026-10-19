@@ -248,6 +248,18 @@
 #sources-items-actions .actions-row-date {
   max-width: 9.5em;
 }
+/* Collapsible advanced filters (sort, dates, tags) behind the funnel toggle */
+.actions-row-advanced {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  flex-basis: 100%;
+  align-items: center;
+  justify-content: flex-start;
+}
+#sources-items-actions .filters-active {
+  color: var(--color-primary);
+}
 #sources-items-list-page-next {
   padding-bottom: var(--space-md);
   padding-top: var(--space-md);
@@ -328,6 +340,11 @@
     padding-top: 0;
     padding-bottom: 0;
   }
+  /* Match the 44px touch-target icons; the Pico search input's natural
+     height (50px) would inflate the single-line actions bar */
+  #sources-items-actions #sources-items-search-filter {
+    height: 44px;
+  }
 }
 
 @media (min-width: 701px) {
@@ -388,9 +405,7 @@
   min-width: 0;
   border-radius: var(--radius-md);
   color: var(--color-text);
-  height: 100%;
 }
-
 #sources-items-search-filter::placeholder::placeholder {
   color: var(--color-text-placeholder);
 }

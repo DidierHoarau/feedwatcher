@@ -10,7 +10,7 @@ vi.mock("axios");
 const NuxtLinkStub = { template: "<a><slot /></a>", props: ["to"] };
 const ConfirmPopoverStub = { template: "<span></span>" };
 
-function mountRow(filterStatus = "unread") {
+function mountRow(filterStatus = "unread", storeSetup = {}) {
   setActivePinia(createPinia());
   vi.mocked(axios.get).mockResolvedValue({ data: { tags: [] } });
   vi.mocked(axios.post).mockResolvedValue({
@@ -19,6 +19,7 @@ function mountRow(filterStatus = "unread") {
   (globalThis as any).SourceItemsStore = SourceItemsStore;
   const store = SourceItemsStore();
   store.sourceItems = [{ id: "item-1", status: "unread" }] as any;
+  Object.assign(store, storeSetup);
   return mount(SourceItemsActionsRow, {
     props: { filterPlaceholder: "Filter items", filterStatus },
     global: {
@@ -109,5 +110,54 @@ describe("SourceItemsActionsRow filters", () => {
     const wrapper = mountRow();
     expect(wrapper.find('select[aria-label="Filter by tag"]').exists()).toBe(false);
     wrapper.unmount();
+  });
+});
+
+describe("SourceItemsActionsRow advanced filters", () => {
+  test("advanced filters are hidden by default on a fresh store", () => {
+    const wrapper = mountRow();
+
+    expect(wrapper.find(".actions-row-advanced").isVisible()).toBe(false);
+    wrapper.unmount();
+  });
+
+  test("the funnel toggle shows and hides the advanced filters", async () => {
+    const wrapper = mountRow();
+    const funnel = wrapper.find('[aria-label="More filters"]');
+    const advancedDisplay = () =>
+      wrapper.find(".actions-row-advanced").element.style.display;
+
+    await funnel.trigger("click");
+    expect(advancedDisplay()).toBe("");
+    expect(funnel.attributes("aria-expanded")).toBe("true");
+
+    await funnel.trigger("click");
+    expect(advancedDisplay()).toBe("none");
+    expect(funnel.attributes("aria-expanded")).toBe("false");
+    wrapper.unmount();
+  });
+
+  test("the advanced filters open automatically when a filter is active", () => {
+    const cases = [
+      { sort: "relevance" },
+      { minDate: "2026-10-01" },
+      { maxDate: "2026-10-05" },
+      { searchTagName: "news" },
+    ];
+    for (const storeSetup of cases) {
+      const wrapper = mountRow("unread", storeSetup);
+      expect(wrapper.find(".actions-row-advanced").isVisible()).toBe(true);
+      wrapper.unmount();
+    }
+  });
+
+  test("the funnel is highlighted while a filter is active", () => {
+    const active = mountRow("unread", { searchTagName: "news" });
+    expect(active.find(".bi-funnel").classes()).toContain("filters-active");
+    active.unmount();
+
+    const plain = mountRow();
+    expect(plain.find(".bi-funnel").classes()).not.toContain("filters-active");
+    plain.unmount();
   });
 });

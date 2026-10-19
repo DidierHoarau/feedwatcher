@@ -127,6 +127,32 @@ describe("SourceItem tags", () => {  test("renders the item tags as chips on the
   });
 });
 
+describe("SourceItem actions placement", () => {
+  test("the actions render in the meta row, not in a floating overlay", () => {
+    const wrapper = mount(SourceItem, { props: { item: newItem() } });
+
+    expect(
+      wrapper.find(".sourceitem-layout-meta .sourceitem-actions-row").exists(),
+    ).toBe(true);
+    expect(wrapper.find(".sourceitem-actions-overlay").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  test("tag chips render inside the meta text next to the actions row", () => {
+    const wrapper = mount(SourceItem, {
+      props: { item: newItem({ tags: ["news"] }) },
+    });
+
+    expect(wrapper.find(".sourceitem-meta-text .sourceitem-tags").exists()).toBe(
+      true,
+    );
+    expect(
+      wrapper.find(".sourceitem-layout-meta .sourceitem-actions-row").exists(),
+    ).toBe(true);
+    wrapper.unmount();
+  });
+});
+
 describe("SourceItem podcast played state", () => {
   function newPodcastItem(overrides = {}) {
     return newItem({

@@ -8,42 +8,14 @@
       :placeholder="filterPlaceholder"
       @search="onSearchInput"
     />
-    <select
-      v-model="sourceItemsStore.sort"
-      class="actions-row-select"
-      aria-label="Sort items"
-      v-on:change="sourceItemsStore.fetch()"
-    >
-      <option value="date_desc">Newest</option>
-      <option value="date_asc">Oldest</option>
-      <option value="relevance">Best match</option>
-    </select>
-    <input
-      class="actions-row-date"
-      type="date"
-      v-model="sourceItemsStore.minDate"
-      aria-label="Show items from date"
-      v-on:change="sourceItemsStore.fetch()"
-    />
-    <input
-      class="actions-row-date"
-      type="date"
-      v-model="sourceItemsStore.maxDate"
-      aria-label="Show items until date"
-      v-on:change="sourceItemsStore.fetch()"
-    />
-    <select
-      v-if="sourceItemsStore.availableTags.length > 0"
-      v-model="sourceItemsStore.searchTagName"
-      class="actions-row-select"
-      aria-label="Filter by tag"
-      v-on:change="sourceItemsStore.fetch()"
-    >
-      <option value="">All tags</option>
-      <option v-for="tag in sourceItemsStore.availableTags" :key="tag" :value="tag">
-        {{ tag }}
-      </option>
-    </select>
+    <i
+      v-on:click="filtersOpen = !filtersOpen"
+      class="bi bi-funnel"
+      :class="{ 'filters-active': hasActiveFilters }"
+      title="More filters (sort, dates, tags)"
+      aria-label="More filters"
+      :aria-expanded="filtersOpen"
+    ></i>
     <NuxtLink
       v-if="sourceItemsStore.selectedSource"
       :to="'/sources/' + sourceItemsStore.selectedSource"
@@ -74,6 +46,46 @@
       @confirm="onConfirmMarkAll"
       @cancel="onCancelMarkAll"
     />
+    <div v-show="filtersOpen" class="actions-row-advanced">
+      <select
+        v-model="sourceItemsStore.sort"
+        class="actions-row-select"
+        aria-label="Sort items"
+        v-on:change="sourceItemsStore.fetch()"
+      >
+        <option value="date_desc">Newest</option>
+        <option value="date_asc">Oldest</option>
+        <option value="relevance">Best match</option>
+      </select>
+      <input
+        class="actions-row-date"
+        type="date"
+        v-model="sourceItemsStore.minDate"
+        aria-label="Show items from date"
+        title="Show items from date"
+        v-on:change="sourceItemsStore.fetch()"
+      />
+      <input
+        class="actions-row-date"
+        type="date"
+        v-model="sourceItemsStore.maxDate"
+        aria-label="Show items until date"
+        title="Show items until date"
+        v-on:change="sourceItemsStore.fetch()"
+      />
+      <select
+        v-if="sourceItemsStore.availableTags.length > 0"
+        v-model="sourceItemsStore.searchTagName"
+        class="actions-row-select"
+        aria-label="Filter by tag"
+        v-on:change="sourceItemsStore.fetch()"
+      >
+        <option value="">All tags</option>
+        <option v-for="tag in sourceItemsStore.availableTags" :key="tag" :value="tag">
+          {{ tag }}
+        </option>
+      </select>
+    </div>
   </div>
 </template>
 
@@ -96,6 +108,15 @@ const sourceItemsStore = SourceItemsStore();
 const searchText = ref(sourceItemsStore.searchPattern || "");
 const confirmOpen = ref(false);
 const confirmAnchor = ref(null);
+
+const hasActiveFilters = computed(
+  () =>
+    sourceItemsStore.sort !== "date_desc" ||
+    !!sourceItemsStore.minDate ||
+    !!sourceItemsStore.maxDate ||
+    !!sourceItemsStore.searchTagName,
+);
+const filtersOpen = ref(hasActiveFilters.value);
 
 const readStatusIcons = {
   unread: "bi bi-envelope",
