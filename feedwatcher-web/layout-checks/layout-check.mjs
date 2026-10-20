@@ -9,7 +9,8 @@
  * states and degraded-DOM mutations (e.g. a dialog header that fails to
  * generate a box, which historically stretched the footer buttons
  * grotesquely). The list-page state additionally asserts no horizontal
- * overflow, item actions that do not cover the title text, and a single-line
+ * overflow, item actions that do not cover the title text, a symmetric gap
+ * above and below the search input in the item actions bar, and a single-line
  * actions bar while the advanced filters are closed.
  *
  * Prerequisites:
@@ -381,6 +382,10 @@ function collectListGeometry() {
     docScrollWidth: document.documentElement.scrollWidth,
     cards,
     actionsBarHeight: actionsBar ? actionsBar.clientHeight : null,
+    actionsBar: rectOf(actionsBar),
+    searchInput: rectOf(
+      document.querySelector("#sources-items-search-filter"),
+    ),
   };
 }
 
@@ -439,12 +444,25 @@ async function runListPageState(page, base, authHeaders, seedItems, viewport, tm
   if (
     viewport.isMobile &&
     data.actionsBarHeight !== null &&
-    data.actionsBarHeight > 60
+    data.actionsBarHeight > 48
   ) {
     fail(
       caseName,
-      `actions bar height ${data.actionsBarHeight}px > 60px on mobile with filters closed`,
+      `actions bar height ${data.actionsBarHeight}px > 48px on mobile with filters closed`,
     );
+  }
+
+  if (!data.actionsBar || !data.searchInput) {
+    fail(caseName, "actions bar or search input box is missing");
+  } else {
+    const topSpace = data.searchInput.top - data.actionsBar.top;
+    const bottomSpace = data.actionsBar.bottom - data.searchInput.bottom;
+    if (Math.abs(topSpace - bottomSpace) > 1) {
+      fail(
+        caseName,
+        `actions bar spacing is asymmetric around the search input: ${topSpace.toFixed(0)}px above vs ${bottomSpace.toFixed(0)}px below`,
+      );
+    }
   }
 
   if (failures.some((f) => f.caseName === caseName)) {
