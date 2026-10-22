@@ -5,9 +5,9 @@ import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 
 const EDITABLE_TAGS = ["INPUT", "TEXTAREA", "SELECT"];
 
-// Keyboard-first navigation over the item lists (sources, bookmarks,
-// dashboard): j/k to move, m/s to act on the active item, o/v/r to read,
-// / and ? for the filter and the shortcuts help.
+// Keyboard-first navigation over the item lists (sources, bookmarks):
+// j/k to move, m/s to act on the active item, o/v/r to read, / and ? for
+// the filter and the shortcuts help.
 export function useItemKeyboardNav({ getItems }) {
   const activeIndex = ref(-1);
 

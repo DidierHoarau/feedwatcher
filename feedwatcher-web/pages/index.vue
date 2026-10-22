@@ -10,107 +10,8 @@
       />
     </form>
     <Loading v-if="loading" />
-    <div v-if="!summary && recentItems.length > 0" class="summary-section">
-      <h2>Posts from the last 24h</h2>
-      <div class="summary-items">
-        <div class="items-actions">
-          <span>{{ displayedRecentItems.length }} posts</span>
-          <span class="items-actions-icons">
-            <i
-              v-if="displayedRecentItems.length > 0"
-              v-on:click="markAllRead('recent', $event)"
-              class="bi bi-check2-square"
-              title="Mark all as read"
-              aria-label="Mark all as read"
-            ></i>
-            <i
-              v-if="recentShowUnreadOnly"
-              v-on:click="toggleFilter('recent')"
-              class="bi bi-envelope"
-              title="Show all"
-              aria-label="Show all"
-            ></i>
-            <i
-              v-else
-              v-on:click="toggleFilter('recent')"
-              class="bi bi-envelope-open"
-              title="Show unread only"
-              aria-label="Show unread only"
-            ></i>
-          </span>
-        </div>
-        <div class="summary-items-list">
-          <div
-            class="item-list-card"
-            v-for="sourceItem in displayedRecentItems"
-            v-bind:key="sourceItem.id"
-            v-bind:data-kb-card="sourceItem.id"
-          >
-            <LazySourceItem
-              class="fade-in-fast item-list-card"
-              :item="sourceItem"
-            />
-          </div>
-        </div>
-        <div
-          v-if="displayedRecentItems.length > 0"
-          class="items-mark-read-bottom"
-        >
-          <button v-on:click="markAllRead('recent', $event)">
-            <i class="bi bi-check2-square"></i> Mark all as read
-          </button>
-        </div>
-      </div>
-    </div>
 
     <div v-if="summary" class="summary-section">
-      <div v-if="newItems.length > 0" class="summary-items">
-        <div class="items-actions">
-          <span>{{ newItems.length }} recent posts</span>
-          <span class="items-actions-icons">
-            <i
-              v-if="displayedNewItems.length > 0"
-              v-on:click="markAllRead('new', $event)"
-              class="bi bi-check2-square"
-              title="Mark all as read"
-              aria-label="Mark all as read"
-            ></i>
-            <i
-              v-if="newShowUnreadOnly"
-              v-on:click="toggleFilter('new')"
-              class="bi bi-envelope"
-              title="Show all"
-              aria-label="Show all"
-            ></i>
-            <i
-              v-else
-              v-on:click="toggleFilter('new')"
-              class="bi bi-envelope-open"
-              title="Show unread only"
-              aria-label="Show unread only"
-            ></i>
-          </span>
-        </div>
-        <div class="summary-items-list">
-          <div
-            class="item-list-card"
-            v-for="sourceItem in displayedNewItems"
-            v-bind:key="sourceItem.id"
-            v-bind:data-kb-card="sourceItem.id"
-          >
-            <LazySourceItem
-              class="fade-in-fast item-list-card"
-              :item="sourceItem"
-            />
-          </div>
-        </div>
-        <div v-if="displayedNewItems.length > 0" class="items-mark-read-bottom">
-          <button v-on:click="markAllRead('new', $event)">
-            <i class="bi bi-check2-square"></i> Mark all as read
-          </button>
-        </div>
-      </div>
-
       <h2>News Summary</h2>
       <div class="summary-content">
         <div
@@ -119,70 +20,9 @@
           v-html="formattedSummary"
         ></div>
       </div>
-
-      <div v-if="summaryItems.length > 0" class="summary-items">
-        <div class="items-actions">
-          <span>{{ summaryItems.length }} posts from the 24h before</span>
-          <span class="items-actions-icons">
-            <i
-              v-if="displayedSummaryItems.length > 0"
-              v-on:click="markAllRead('summary', $event)"
-              class="bi bi-check2-square"
-              title="Mark all as read"
-              aria-label="Mark all as read"
-            ></i>
-            <i
-              v-if="summaryShowUnreadOnly"
-              v-on:click="toggleFilter('summary')"
-              class="bi bi-envelope"
-              title="Show all"
-              aria-label="Show all"
-            ></i>
-            <i
-              v-else
-              v-on:click="toggleFilter('summary')"
-              class="bi bi-envelope-open"
-              title="Show unread only"
-              aria-label="Show unread only"
-            ></i>
-          </span>
-        </div>
-        <div class="summary-items-list">
-          <div
-            class="item-list-card"
-            v-for="sourceItem in displayedSummaryItems"
-            v-bind:key="sourceItem.id"
-            v-bind:data-kb-card="sourceItem.id"
-          >
-            <LazySourceItem
-              class="fade-in-fast item-list-card"
-              :item="sourceItem"
-            />
-          </div>
-        </div>
-        <div
-          v-if="displayedSummaryItems.length > 0"
-          class="items-mark-read-bottom"
-        >
-          <button v-on:click="markAllRead('summary', $event)">
-            <i class="bi bi-check2-square"></i> Mark all as read
-          </button>
-        </div>
-      </div>
     </div>
 
     <SourcesAttention v-if="authenticated" />
-
-    <ConfirmPopover
-      v-model="confirmOpen"
-      :anchor="confirmAnchor"
-      title="Mark all items as read?"
-      description="You can undo this for a few seconds."
-      confirm-label="Mark read"
-      cancel-label="Cancel"
-      @confirm="confirmMarkAll"
-      @cancel="cancelMarkAll"
-    />
 
     <p>These are the types of URLs that you can follow on this server:</p>
     <div class="processor-info-list">
@@ -211,45 +51,15 @@ import DOMPurify from "dompurify";
 import { marked } from "marked";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService.ts";
-import { EventBus, EventTypes } from "~~/services/EventBus";
 
 export default {
-  setup() {
-    // Options-API page: resolve the displayed lists lazily from the instance
-    // so the keyboard composable can register its listeners in setup context.
-    const instance = getCurrentInstance();
-    useItemKeyboardNav({
-      getItems: () => {
-        const vm = instance?.proxy;
-        if (!vm) {
-          return [];
-        }
-        return vm.displayedNewItems?.length
-          ? vm.displayedNewItems
-          : vm.displayedRecentItems || [];
-      },
-    });
-    return {};
-  },
   data() {
     return {
       dashboardSearch: "",
       processorInfos: [],
       summary: null,
-      recentItems: [],
-      newItems: [],
-      summaryItems: [],
-      displayedRecentItems: [],
-      displayedNewItems: [],
-      displayedSummaryItems: [],
-      recentShowUnreadOnly: true,
-      newShowUnreadOnly: true,
-      summaryShowUnreadOnly: true,
       loading: false,
       authenticated: false,
-      confirmOpen: false,
-      confirmAnchor: null,
-      pendingMarkAllSection: null,
     };
   },
   computed: {
@@ -271,119 +81,6 @@ export default {
       if (!processorInfo?.description) return "";
       return DOMPurify.sanitize(processorInfo.description);
     },
-    rebuildDisplayed(listName) {
-      const sourceMap = {
-        recent: "recentItems",
-        new: "newItems",
-        summary: "summaryItems",
-      };
-      const displayMap = {
-        recent: "displayedRecentItems",
-        new: "displayedNewItems",
-        summary: "displayedSummaryItems",
-      };
-      const filterMap = {
-        recent: "recentShowUnreadOnly",
-        new: "newShowUnreadOnly",
-        summary: "summaryShowUnreadOnly",
-      };
-      const source = this[sourceMap[listName]];
-      if (this[filterMap[listName]]) {
-        this[displayMap[listName]] = source.filter(
-          (item) => item.status === "unread",
-        );
-      } else {
-        this[displayMap[listName]] = [...source];
-      }
-    },
-    toggleFilter(listName) {
-      const filterMap = {
-        recent: "recentShowUnreadOnly",
-        new: "newShowUnreadOnly",
-        summary: "summaryShowUnreadOnly",
-      };
-      this[filterMap[listName]] = !this[filterMap[listName]];
-      this.rebuildDisplayed(listName);
-    },
-    async markAllRead(listName, event) {
-      const items = this.displayedListFor(listName);
-      if (!items || items.length === 0) return;
-      if (items.length > 1) {
-        this.pendingMarkAllSection = listName;
-        this.confirmAnchor = event?.currentTarget || null;
-        this.confirmOpen = true;
-        return;
-      }
-      await this.applyMarkAllRead(listName);
-    },
-    displayedListFor(listName) {
-      const displayMap = {
-        recent: "displayedRecentItems",
-        new: "displayedNewItems",
-        summary: "displayedSummaryItems",
-      };
-      return this[displayMap[listName]];
-    },
-    confirmMarkAll() {
-      const listName = this.pendingMarkAllSection;
-      this.pendingMarkAllSection = null;
-      if (listName) {
-        this.applyMarkAllRead(listName);
-      }
-    },
-    cancelMarkAll() {
-      this.pendingMarkAllSection = null;
-    },
-    async applyMarkAllRead(listName) {
-      const items = this.displayedListFor(listName);
-      if (!items || items.length === 0) return;
-      const restoreIds = items
-        .filter((item) => item.status !== "read")
-        .map((item) => item.id);
-      const itemIds = items.map((item) => item.id);
-      try {
-        await axios.put(
-          `${(await Config.get()).SERVER_URL}/items/status`,
-          { status: "read", itemIds },
-          await AuthService.getAuthHeader(),
-        );
-        for (const item of items) {
-          item.status = "read";
-        }
-        EventBus.emit(EventTypes.ALERT_MESSAGE, {
-          text: "All items marked as read",
-          actionLabel: "Undo",
-          durationMs: 6000,
-          onAction: () => this.undoMarkAllRead(listName, restoreIds),
-        });
-      } catch (error) {
-        console.error("Failed to mark items as read", error);
-      }
-    },
-    async undoMarkAllRead(listName, restoreIds) {
-      if (!restoreIds || restoreIds.length === 0) return;
-      const sourceMap = {
-        recent: "recentItems",
-        new: "newItems",
-        summary: "summaryItems",
-      };
-      const source = this[sourceMap[listName]] || [];
-      try {
-        await axios.put(
-          `${(await Config.get()).SERVER_URL}/items/status`,
-          { status: "unread", itemIds: restoreIds },
-          await AuthService.getAuthHeader(),
-        );
-        for (const item of source) {
-          if (restoreIds.includes(item.id)) {
-            item.status = "unread";
-          }
-        }
-        this.rebuildDisplayed(listName);
-      } catch (error) {
-        console.error("Failed to restore items as unread", error);
-      }
-    },
   },
   async created() {
     await axios
@@ -397,77 +94,17 @@ export default {
       this.authenticated = true;
       SourcesStore().fetch();
       this.loading = true;
-      const headers = await AuthService.getAuthHeader();
-
-      // Fetch summary
-      let summaryData = null;
       try {
         const res = await axios.get(
           `${(await Config.get()).SERVER_URL}/summary`,
-          headers,
+          await AuthService.getAuthHeader(),
         );
-        summaryData = res.data;
+        const summaryData = res.data;
         if (summaryData && summaryData.summary) {
           this.summary = summaryData;
         }
       } catch (error) {
         console.error("Failed to fetch summary", error);
-      }
-
-      // Fetch items based on summary availability
-      try {
-        let sinceDate;
-        if (this.summary && this.summary.generatedAt) {
-          // Fetch items from 24h before the summary until now
-          sinceDate = new Date(
-            new Date(this.summary.generatedAt).getTime() - 24 * 60 * 60 * 1000,
-          ).toISOString();
-        } else {
-          // No summary: fetch items from the last 24h
-          sinceDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        }
-
-        const allItems = [];
-        let cursor = null;
-        const MAX_PAGES = 20;
-        for (let page = 0; page < MAX_PAGES; page++) {
-          const res = await axios.post(
-            `${(await Config.get()).SERVER_URL}/items/search`,
-            {
-              searchCriteria: "all",
-              filterStatus: "all",
-              sinceDate,
-              ...(cursor ? { cursor } : {}),
-            },
-            headers,
-          );
-          allItems.push(...(res.data.sourceItems || []));
-          if (!res.data.pageHasMore || !res.data.nextCursor) {
-            break;
-          }
-          cursor = res.data.nextCursor;
-        }
-
-        if (this.summary && this.summary.generatedAt) {
-          const summaryTime = new Date(this.summary.generatedAt).getTime();
-          // Posts newer than the summary
-          this.newItems = allItems.filter(
-            (item) => new Date(item.datePublished).getTime() > summaryTime,
-          );
-          // Posts from the 24h before the summary
-          this.summaryItems = allItems.filter(
-            (item) => new Date(item.datePublished).getTime() <= summaryTime,
-          );
-        } else {
-          // No summary: all items are recent
-          this.recentItems = allItems;
-        }
-        // Build initial displayed lists (snapshot of unread)
-        this.rebuildDisplayed("recent");
-        this.rebuildDisplayed("new");
-        this.rebuildDisplayed("summary");
-      } catch (error) {
-        console.error("Failed to fetch recent items", error);
       }
       this.loading = false;
     }
@@ -506,43 +143,6 @@ export default {
 }
 .summary-text {
   line-height: 1.6;
-}
-.summary-items {
-  margin-top: var(--space-xl);
-}
-.items-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-sm);
-}
-.items-actions-icons {
-  font-size: 1.1em;
-}
-.items-actions-icons i {
-  cursor: pointer;
-  margin-left: var(--space-md);
-  opacity: 0.7;
-}
-.items-actions-icons i:hover {
-  opacity: 1;
-}
-.items-mark-read-bottom {
-  margin-top: var(--space-md);
-  margin-bottom: var(--space-md);
-  text-align: center;
-}
-.items-mark-read-bottom button {
-  cursor: pointer;
-  padding: var(--space-xs) var(--space-base);
-  font-size: var(--font-base);
-}
-.summary-items-list {
-  display: flex;
-  align-items: flex-start;
-  align-content: flex-start;
-  flex-wrap: wrap;
-  gap: var(--space-md);
 }
 
 .processor-info-list {
