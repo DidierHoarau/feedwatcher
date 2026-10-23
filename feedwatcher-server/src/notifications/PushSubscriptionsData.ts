@@ -16,9 +16,12 @@ export interface PushSubscription {
   keys: PushSubscriptionKeys;
 }
 
-// Re-subscribing with an endpoint the instance already knows (same browser,
-// new keys, or another user on a shared profile) updates the row instead of
-// failing on the unique endpoint index.
+// An endpoint identifies a browser installation. Re-subscribing with an
+// endpoint the instance already knows (same browser, new keys, or another user
+// on a shared profile) reassigns the row to the new user instead of failing on
+// the unique endpoint index: the previous user stops receiving pushes on that
+// browser. Unsubscribing, in contrast, is scoped to the calling user and never
+// removes another user's row.
 export async function PushSubscriptionsDataUpsert(
   context: Span,
   userId: string,
@@ -55,12 +58,15 @@ export async function PushSubscriptionsDataUpsert(
 
 export async function PushSubscriptionsDataDelete(
   context: Span,
+  userId: string,
   endpoint: string
 ): Promise<void> {
   const span = OTelTracer().startSpan("PushSubscriptionsDataDelete", context);
-  await DbUtilsExecSQL(span, "DELETE FROM push_subscriptions WHERE endpoint = ?", [
-    endpoint,
-  ]);
+  await DbUtilsExecSQL(
+    span,
+    "DELETE FROM push_subscriptions WHERE userId = ? AND endpoint = ?",
+    [userId, endpoint]
+  );
   span.end();
 }
 

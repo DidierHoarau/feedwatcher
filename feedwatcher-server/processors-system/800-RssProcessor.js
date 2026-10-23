@@ -1,8 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const axios = require("axios");
 const { parseFeed } = require("@rowanmanning/feed-parser");
+const { fetchText } = require("./lib/ssrf-http");
 
-const AXIOS_TIMEOUT_MS = 10000;
+const FETCH_TIMEOUT_MS = 10000;
+const MAX_FEED_BYTES = 5 * 1024 * 1024;
 
 // eslint-disable-next-line no-undef
 module.exports = {
@@ -19,7 +20,13 @@ module.exports = {
   test: async (source) => {
     try {
       const feed = parseFeed(
-        (await axios.get(source.info.url, { timeout: AXIOS_TIMEOUT_MS })).data,
+        (
+          await fetchText(source.info.url, {
+            timeoutMs: FETCH_TIMEOUT_MS,
+            maxContentLength: MAX_FEED_BYTES,
+            allowedContentTypes: null,
+          })
+        ).data,
       );
       if (feed.title) {
         return { name: feed.title, icon: "rss" };
@@ -32,7 +39,13 @@ module.exports = {
 
   fetchLatest: async (source, lastSourceItemSaved) => {
     const feed = parseFeed(
-      (await axios.get(source.info.url, { timeout: AXIOS_TIMEOUT_MS })).data,
+      (
+        await fetchText(source.info.url, {
+          timeoutMs: FETCH_TIMEOUT_MS,
+          maxContentLength: MAX_FEED_BYTES,
+          allowedContentTypes: null,
+        })
+      ).data,
     );
     const fetchTime = new Date();
     const sourceItems = [];

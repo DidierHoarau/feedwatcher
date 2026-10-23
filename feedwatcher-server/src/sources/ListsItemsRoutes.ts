@@ -7,6 +7,7 @@ import {
   ListsItemsDataDeleteForUser,
   ListsItemsDataGetItemForUser,
 } from "./ListsItemsData";
+import { SourceItemsDataGetForUser } from "./SourceItemsData";
 
 export class ListsItemsRoutes {
   //
@@ -46,6 +47,16 @@ export class ListsItemsRoutes {
       }
       if (!req.body.itemId) {
         return res.status(400).send({ error: "Missing Parameter: itemId" });
+      }
+      // Only items of the caller's own sources can be bookmarked: otherwise
+      // any user who learns an item UUID could read its title and content.
+      const sourceItem = await SourceItemsDataGetForUser(
+        OTelRequestSpan(req),
+        req.body.itemId,
+        userSession.userId
+      );
+      if (!sourceItem) {
+        return res.status(404).send({ error: "Item Not Found" });
       }
       const listItem = new ListItem();
       listItem.itemId = req.body.itemId;

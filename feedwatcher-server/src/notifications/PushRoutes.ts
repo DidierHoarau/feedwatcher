@@ -68,6 +68,7 @@ export class PushRoutes {
       }
       await PushSubscriptionsDataDelete(
         OTelRequestSpan(req),
+        userSession.userId,
         req.body.endpoint
       );
       return res.status(201).send({});

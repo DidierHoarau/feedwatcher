@@ -103,11 +103,16 @@ describe("PushSubscriptionsData", () => {
     ]);
   });
 
-  test("deletes by endpoint (N1)", async () => {
-    await PushSubscriptionsDataDelete(span, "https://push.example.com/sub-1");
+  test("deletes only the caller's own subscription (cross-tenant)", async () => {
+    await PushSubscriptionsDataDelete(
+      span,
+      "user-1",
+      "https://push.example.com/sub-1"
+    );
 
     const [_calledSpan, sql, params] = jest.mocked(DbUtilsExecSQL).mock.calls[0];
     expect(sql).toContain("DELETE FROM push_subscriptions");
-    expect(params).toEqual(["https://push.example.com/sub-1"]);
+    expect(sql).toContain("WHERE userId = ? AND endpoint = ?");
+    expect(params).toEqual(["user-1", "https://push.example.com/sub-1"]);
   });
 });

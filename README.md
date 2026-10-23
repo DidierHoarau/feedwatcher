@@ -108,13 +108,16 @@ Configuration values can be set via environment variables or through the `config
 
 Adding a source supports pasting any site URL: FeedWatcher discovers the site's feeds (`<link rel="alternate">` tags, or the URL itself when it is already a feed), shows a preview of the latest items and lets the user confirm the subscription.
 
+> **SSRF protection:** source URLs, URL previews and article fetches are validated before connecting: only `http`/`https` URLs are accepted, hostnames must resolve to public addresses, every redirect is revalidated, and the connection is pinned to the validated IP. Loopback, link-local, private, metadata and other special-use ranges are rejected. Self-hosted and home-lab installs that intentionally follow feeds on their local network can set `SOURCE_ALLOW_PRIVATE_NETWORK=true`; this disables the address restrictions and should stay `false` on shared or public instances. The setting is read at startup: restart the application after changing it.
+
 ## General
 
 | Variable                 | Description                                     | Default             |
 | ------------------------ | ----------------------------------------------- | ------------------- |
-| `JWT_VALIDITY_DURATION`  | JWT token validity duration in seconds          | `8035200` (93 days) |
-| `SOURCE_FETCH_FREQUENCY` | Interval between source fetches in milliseconds | `1800000` (30 min)  |
-| `PROCESSOR_CONCURRENCY`  | Number of concurrent source fetches             | `2`                 |
+| `JWT_VALIDITY_DURATION`        | JWT token validity duration in seconds          | `8035200` (93 days) |
+| `SOURCE_FETCH_FREQUENCY`       | Interval between source fetches in milliseconds | `1800000` (30 min)  |
+| `PROCESSOR_CONCURRENCY`        | Number of concurrent source fetches             | `2`                 |
+| `SOURCE_ALLOW_PRIVATE_NETWORK` | Allow source URLs and URL previews to resolve private/special-use IP ranges (self-hosted/home-lab). Disables SSRF protection; keep `false` on shared or public instances | `false` |
 
 ### Source Health
 

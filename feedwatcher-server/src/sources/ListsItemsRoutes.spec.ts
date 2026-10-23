@@ -6,6 +6,7 @@ import {
   ListsItemsDataDeleteForUser,
   ListsItemsDataGetItemForUser,
 } from "./ListsItemsData";
+import { SourceItemsDataGetForUser } from "./SourceItemsData";
 import { AuthGetUserSession } from "../users/Auth";
 
 jest.mock("../OTelContext", () => ({
@@ -22,6 +23,10 @@ jest.mock("./ListsItemsData", () => ({
   ListsItemsDataGetItemForUser: jest.fn(),
 }));
 
+jest.mock("./SourceItemsData", () => ({
+  SourceItemsDataGetForUser: jest.fn(),
+}));
+
 describe("ListsItemsRoutes", () => {
   let fastify: FastifyInstance;
 
@@ -31,6 +36,10 @@ describe("ListsItemsRoutes", () => {
       isAuthenticated: true,
       userId: "user-1",
     });
+    jest
+      .mocked(SourceItemsDataGetForUser)
+      .mockResolvedValue(new SourceItem());
+    jest.mocked(ListsItemsDataAdd).mockResolvedValue(undefined);
     fastify = Fastify();
     await new ListsItemsRoutes().getRoutes(fastify);
   });
@@ -83,6 +92,39 @@ describe("ListsItemsRoutes", () => {
     expect(statusResponse.statusCode).toBe(200);
     expect(JSON.parse(statusResponse.body)).toEqual(
       expect.objectContaining({ id: expect.any(String) })
+    );
+  });
+
+  test("rejects bookmarking an item of another user's source with 404", async () => {
+    jest.mocked(SourceItemsDataGetForUser).mockResolvedValue(null);
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/items",
+      payload: { itemId: "item-of-user-2" },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(JSON.parse(response.body)).toEqual({ error: "Item Not Found" });
+    expect(SourceItemsDataGetForUser).toHaveBeenCalledWith(
+      expect.anything(),
+      "item-of-user-2",
+      "user-1"
+    );
+    expect(ListsItemsDataAdd).not.toHaveBeenCalled();
+  });
+
+  test("bookmarks an item owned by the caller", async () => {
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/items",
+      payload: { itemId: "item-1" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(ListsItemsDataAdd).toHaveBeenCalledTimes(1);
+    expect(jest.mocked(ListsItemsDataAdd).mock.calls[0][1]).toEqual(
+      expect.objectContaining({ itemId: "item-1", userId: "user-1" })
     );
   });
 

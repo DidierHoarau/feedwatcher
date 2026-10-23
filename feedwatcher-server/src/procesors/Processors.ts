@@ -36,6 +36,13 @@ export async function ProcessorsInit(
 ): Promise<void> {
   const span = OTelTracer().startSpan("ProcessorsInit", context);
   config = configIn;
+  const ssrfHttp = require(path.join(
+    __dirname,
+    "../../processors-system/lib/ssrf-http.js",
+  ));
+  ssrfHttp.configure({
+    allowPrivateNetwork: configIn.SOURCE_ALLOW_PRIVATE_NETWORK === true,
+  });
   for (const processorsFile of await fs.readdir(config.PROCESSORS_USER)) {
     if (path.extname(processorsFile) === ".js") {
       processorsFiles.push({

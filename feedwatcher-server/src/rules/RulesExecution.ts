@@ -77,7 +77,7 @@ async function executeRuleInfo(
           pattern: rulePattern.pattern,
         });
       } else if (ruleInfo.sourceId) {
-        await execRuleForSource(context, action, ruleInfo.sourceId, {
+        await execRuleForSource(context, action, ruleInfo.sourceId, userId, {
           maxDate,
         });
       }
@@ -115,14 +115,18 @@ async function execRuleForSource(
   context: Span,
   action: RuleAction,
   sourceId: string,
+  userId: string,
   searchOptions: SearchItemsOptions,
 ): Promise<void> {
   const span = OTelTracer().startSpan("execRuleForSource", context);
   const filters = getFilters(searchOptions);
   await DbUtilsExecSQL(
     span,
-    getRuleActionSql(action) + "WHERE sourceId = ? " + filters.query,
-    [sourceId, ...filters.params],
+    getRuleActionSql(action) +
+      "WHERE sources_items.sourceId = ? " +
+      "  AND sources_items.sourceId IN ( SELECT id FROM sources WHERE userId = ? ) " +
+      filters.query,
+    [sourceId, userId, ...filters.params],
   );
   span.end();
 }

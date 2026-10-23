@@ -1,11 +1,55 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const axios = require("axios");
 const _ = require("lodash");
+const { fetchText } = require("./lib/ssrf-http");
+
+const FETCH_TIMEOUT_MS = 30000;
 
 const headers = {
   "User-Agent":
     "FeedWatcher/0.1.0 (https://github.com/DidierHoarau/feedwatcher)",
 };
+
+// Extracts the language and page name from a Wikipedia URL. The host must be
+// an actual Wikipedia hostname: the language is looked up from the parsed URL,
+// never from arbitrary text matched anywhere in the input, so URLs such as
+// https://attacker.com/.wikipedia.org/wiki/X are rejected.
+function parseWikipediaUrl(raw) {
+  let url;
+  try {
+    url = new URL(String(raw));
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return null;
+  }
+  if (url.username || url.password) {
+    return null;
+  }
+  const match = /^([a-z0-9-]{2,12})\.(?:m\.)?wikipedia\.org$/.exec(
+    url.hostname.toLowerCase(),
+  );
+  if (!match) {
+    return null;
+  }
+  if (!url.pathname.startsWith("/wiki/")) {
+    return null;
+  }
+  const pageName = url.pathname.slice("/wiki/".length);
+  if (!pageName) {
+    return null;
+  }
+  return { pageLanguage: match[1], pageName };
+}
+
+async function fetchJson(url) {
+  const response = await fetchText(url, {
+    timeoutMs: FETCH_TIMEOUT_MS,
+    allowedContentTypes: ["application/json"],
+    headers,
+  });
+  return JSON.parse(response.data);
+}
 
 // eslint-disable-next-line no-undef
 module.exports = {
@@ -21,41 +65,26 @@ module.exports = {
   },
 
   test: async (source) => {
-    let urlMatch = /.*\/\/(.+)(\.m)?.wikipedia.org\/wiki\/(.+)/.exec(
-      source.info.url,
-    );
-    if (urlMatch) {
-      const pageLanguage = urlMatch[1];
-      const pageName = urlMatch[3];
-      const pageInfo = (
-        await axios.get(
-          `https://${pageLanguage}.wikipedia.org/w/rest.php/v1/page/${pageName}/bare`,
-          { timeout: 30000, headers },
-        )
-      ).data;
-      return { name: pageInfo.title, icon: "wikipedia" };
+    const page = parseWikipediaUrl(source.info.url);
+    if (!page) {
+      return null;
     }
-    return null;
+    const pageInfo = await fetchJson(
+      `https://${page.pageLanguage}.wikipedia.org/w/rest.php/v1/page/${page.pageName}/bare`,
+    );
+    return { name: pageInfo.title, icon: "wikipedia" };
   },
 
   fetchLatest: async (source, lastSourceItemSaved) => {
-    let urlMatch = /.*\/\/(.+)(\.m)?.wikipedia.org\/wiki\/(.+)/.exec(
-      source.info.url,
+    const page = parseWikipediaUrl(source.info.url);
+    if (!page) {
+      throw new Error(`Invalid Wikipedia URL: ${source.info.url}`);
+    }
+    const { pageLanguage, pageName } = page;
+    const pageHistory = await fetchJson(
+      `https://${pageLanguage}.wikipedia.org/w/rest.php/v1/page/${pageName}/history`,
     );
-    const pageLanguage = urlMatch[1];
-    const pageName = urlMatch[3];
-    const pageRevisions = _.sortBy(
-      (
-        await axios.get(
-          `https://${pageLanguage}.wikipedia.org/w/rest.php/v1/page/${pageName}/history`,
-          {
-            timeout: 30000,
-            headers,
-          },
-        )
-      ).data.revisions,
-      ["timestamp"],
-    );
+    const pageRevisions = _.sortBy(pageHistory.revisions, ["timestamp"]);
     const sourceItems = [];
     for (let i = 0; i < pageRevisions.length; i++) {
       const item = pageRevisions[i];

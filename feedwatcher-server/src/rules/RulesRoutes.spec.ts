@@ -1,6 +1,7 @@
 import Fastify, { FastifyInstance } from "fastify";
 import { RulesRoutes } from "./RulesRoutes";
 import { RulesDataListForUser, RulesDataUpdate } from "./RulesData";
+import { SourcesDataListForUser } from "../sources/SourcesData";
 import { AuthGetUserSession } from "../users/Auth";
 
 jest.mock("../OTelContext", () => ({
@@ -16,6 +17,10 @@ jest.mock("./RulesData", () => ({
   RulesDataUpdate: jest.fn(),
 }));
 
+jest.mock("../sources/SourcesData", () => ({
+  SourcesDataListForUser: jest.fn(),
+}));
+
 describe("RulesRoutes", () => {
   let fastify: FastifyInstance;
 
@@ -25,6 +30,9 @@ describe("RulesRoutes", () => {
       isAuthenticated: true,
       userId: "user-1",
     });
+    jest
+      .mocked(SourcesDataListForUser)
+      .mockResolvedValue([{ id: "source-1" }] as any);
     fastify = Fastify();
     await new RulesRoutes().getRoutes(fastify);
   });
@@ -92,6 +100,53 @@ describe("RulesRoutes", () => {
         ],
       })
     );
+  });
+
+  test("rejects a rule pointing at another user's source with 400", async () => {
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/",
+      payload: {
+        rules: {
+          info: [{ sourceId: "source-2", autoRead: [{ pattern: "*", ageDays: 3 }] }],
+        },
+      },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.body)).toEqual({ error: "Invalid: sourceId" });
+    expect(RulesDataUpdate).not.toHaveBeenCalled();
+  });
+
+  test("rejects a rule pointing at an unknown source with 400", async () => {
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/",
+      payload: {
+        rules: {
+          info: [{ sourceId: "source-unknown", autoDelete: [{ pattern: "*", ageDays: 3 }] }],
+        },
+      },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(RulesDataUpdate).not.toHaveBeenCalled();
+  });
+
+  test("stores a rule scoped to a source owned by the caller", async () => {
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/",
+      payload: {
+        rules: {
+          info: [{ sourceId: "source-1", autoRead: [{ pattern: "*", ageDays: 3 }] }],
+        },
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(SourcesDataListForUser).toHaveBeenCalledWith(
+      expect.anything(),
+      "user-1"
+    );
+    expect(RulesDataUpdate).toHaveBeenCalledTimes(1);
   });
 
   test("returns 403 when unauthenticated", async () => {
