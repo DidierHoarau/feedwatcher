@@ -3,6 +3,86 @@ import * as dns from "dns";
 import { Source } from "../../model/Source";
 import processor from "../../../processors-system/700-PodcastProcessor";
 
+const { createFeedFetchContext } = require(
+  "../../../processors-system/lib/feed-cache"
+);
+
+const PODCAST_FEED_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Test Podcast</title>
+    <item>
+      <title>Episode 1</title>
+      <link>https://example.com/episode-1</link>
+      <guid>https://example.com/episode-1</guid>
+      <pubDate>Wed, 01 Oct 2025 12:00:00 GMT</pubDate>
+      <description>Episode one</description>
+      <enclosure url="https://example.com/episode-1.mp3" type="audio/mpeg" length="12345"/>
+    </item>
+  </channel>
+</rss>`;
+
+describe("Podcast processor: shared fetch context", () => {
+  const publicLookup = [{ address: "93.184.216.34", family: 4 }] as any;
+
+  test("test and fetchLatest share exactly one HTTP GET", async () => {
+    const lookupSpy = jest
+      .spyOn(dns.promises, "lookup")
+      .mockResolvedValue(publicLookup);
+    const getSpy = jest.spyOn(axios, "get").mockResolvedValue({
+      status: 200,
+      headers: { "content-type": "application/rss+xml" },
+      data: PODCAST_FEED_XML,
+    } as any);
+    const source = new Source();
+    source.info = { url: "https://example.com/podcast.xml" };
+    const context = createFeedFetchContext();
+
+    const detected = await processor.test(source, context);
+    const sourceItems = await processor.fetchLatest(source, null, context);
+
+    expect(detected).toMatchObject({ name: "Test Podcast", icon: "headphones" });
+    expect(sourceItems).toHaveLength(1);
+    expect(sourceItems[0].info).toMatchObject({
+      isPodcast: true,
+      audioUrl: "https://example.com/episode-1.mp3",
+    });
+    expect(getSpy).toHaveBeenCalledTimes(1);
+
+    getSpy.mockRestore();
+    lookupSpy.mockRestore();
+  });
+
+  test("a 304 makes test return null and fetchLatest reject as not modified", async () => {
+    const lookupSpy = jest
+      .spyOn(dns.promises, "lookup")
+      .mockResolvedValue(publicLookup);
+    const getSpy = jest.spyOn(axios, "get").mockResolvedValue({
+      status: 304,
+      headers: { etag: '"v1"' },
+      data: "",
+    } as any);
+    const source = new Source();
+    source.info = { url: "https://example.com/podcast.xml" };
+    const context = createFeedFetchContext({
+      validators: {
+        url: "https://example.com/podcast.xml",
+        etag: '"v1"',
+        lastModified: null,
+      },
+    });
+
+    await expect(processor.test(source, context)).resolves.toBeNull();
+    await expect(
+      processor.fetchLatest(source, null, context)
+    ).rejects.toMatchObject({ name: "FeedNotModifiedError" });
+    expect(getSpy).toHaveBeenCalledTimes(1);
+
+    getSpy.mockRestore();
+    lookupSpy.mockRestore();
+  });
+});
+
 describe("Podcast processor: getInfo", () => {
   test("bounds every outbound request with a timeout (M4)", async () => {
     const lookupSpy = jest.spyOn(dns.promises, "lookup").mockResolvedValue([

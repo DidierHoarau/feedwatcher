@@ -123,10 +123,10 @@ export async function SourcesSchedulerRunCycle(span0: Span): Promise<void> {
         config.SOURCE_BACKOFF_MAX,
       )
     ) {
-      promisePoolGet().add(async () => {
+      promisePoolGet().add(async (signal) => {
         const span = OTelTracer().startSpan("FetchSourceItems");
         try {
-          await ProcessorsFetchSourceItems(span, source);
+          await ProcessorsFetchSourceItems(span, source, signal);
         } catch (err) {
           logger.error(
             `FetchSourceItems failed for source ${source.id}`,

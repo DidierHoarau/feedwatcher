@@ -37,6 +37,61 @@ const FETCH_RETRY_DELAYS_MS = [250, 500, 1000];
 const CHANNEL_URL_PATTERN =
   /^https?:\/\/(www\.|m\.)?youtube\.com\/(@[^/?#]+|(channel|user|c)\/[^/?#]+)/i;
 
+// A video's short/not-short status is immutable, so classify it once and keep
+// the result across fetch cycles. Bounded TTL + FIFO eviction keeps the cache
+// small; only definitive outcomes (2xx = short, 3xx = not short) are stored so
+// transient failures are retried on the next cycle.
+const SHORTS_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const SHORTS_CACHE_MAX_ENTRIES = 5000;
+const shortsCache = new Map();
+
+function getCachedShortsClassification(videoId) {
+  const entry = shortsCache.get(videoId);
+  if (!entry) {
+    return undefined;
+  }
+  if (entry.expiresAt <= Date.now()) {
+    shortsCache.delete(videoId);
+    return undefined;
+  }
+  return entry.isShort;
+}
+
+function cacheShortsClassification(videoId, isShort) {
+  if (shortsCache.size >= SHORTS_CACHE_MAX_ENTRIES) {
+    const oldestKey = shortsCache.keys().next().value;
+    shortsCache.delete(oldestKey);
+  }
+  shortsCache.set(videoId, {
+    isShort,
+    expiresAt: Date.now() + SHORTS_CACHE_TTL_MS,
+  });
+}
+
+function resetShortsCache() {
+  shortsCache.clear();
+}
+
+async function probeIsShort(videoId) {
+  try {
+    const response = await axios.get(`https://www.youtube.com/shorts/${videoId}`, {
+      maxRedirects: 0,
+      timeout: AXIOS_TIMEOUT_MS,
+      validateStatus: () => true,
+    });
+    const status = response && response.status;
+    if (status >= 200 && status < 300) {
+      return { definitive: true, isShort: true };
+    }
+    if (status >= 300 && status < 400) {
+      return { definitive: true, isShort: false };
+    }
+  } catch (err) {
+    // Network errors stay uncached so they are retried next cycle.
+  }
+  return { definitive: false, isShort: false };
+}
+
 // Extraction strategies against the channel page HTML, tried in order.
 // The (?![A-Za-z0-9_-]) lookahead prevents matching a truncated ID from a
 // longer malformed string.
@@ -149,6 +204,7 @@ function extractChannelTitleFromPage(pageRaw) {
 
 // eslint-disable-next-line no-undef
 module.exports = {
+  resetShortsCache,
   //
   getInfo: () => {
     return {
@@ -271,13 +327,16 @@ module.exports = {
       const videoId = item.id.split(":")[2];
       let isShort = shortsProbeCache.get(videoId);
       if (isShort === undefined) {
-        isShort = await axios
-          .get(`https://www.youtube.com/shorts/${videoId}`, {
-            maxRedirects: 0,
-            timeout: AXIOS_TIMEOUT_MS,
-          })
-          .then(() => true)
-          .catch(() => false);
+        isShort = getCachedShortsClassification(videoId);
+      }
+      if (isShort === undefined) {
+        const probe = await probeIsShort(videoId);
+        // Cache the in-cycle outcome even when not definitive (so a duplicate
+        // video is not re-probed now) but persist only definitive results.
+        isShort = probe.isShort;
+        if (probe.definitive) {
+          cacheShortsClassification(videoId, isShort);
+        }
         shortsProbeCache.set(videoId, isShort);
       }
       if (isShort) {

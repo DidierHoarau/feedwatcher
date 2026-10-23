@@ -66,3 +66,27 @@ const response = await fetchText(source.info.url, {
 ```
 
 User processors installed in `processors-user` can reuse the same helper through that relative path. The processor contract (`getInfo`/`test`/`fetchLatest`) is unchanged.
+
+## Per-cycle fetch context
+
+The scheduler calls processors with an optional third argument (second for `test`) that memoizes the feed download and its parsed form for the current source cycle:
+
+```javascript
+test: async (source, context) => { ... },
+
+fetchLatest: async (source, lastSourceItemSaved, context) => {
+  // One conditional GET per source cycle, shared with test()
+  const feed = await context.getFeed(source.info.url, {
+    timeoutMs: 10000,
+    maxContentLength: 5 * 1024 * 1024,
+  });
+  ...
+},
+```
+
+- `context.getFeed(url, options)` returns the parsed feed (`@rowanmanning/feed-parser`), reusing the HTTP response and parse result for that URL within the cycle.
+- `ETag`/`Last-Modified` are persisted per source and sent back as `If-None-Match`/`If-Modified-Since` on the next cycle.
+- On `304 Not Modified` it throws a `FeedNotModifiedError` (`err.name === "FeedNotModifiedError"`); the scheduler treats it as a successful fetch with no new items, without parsing the body.
+- The scheduler passes an `AbortSignal` through the context, so a timeout cancels the HTTP request.
+
+The extra argument is optional: processors that only need the older `test(source)` / `fetchLatest(source, last)` signatures keep working unchanged. `processors-system/700-PodcastProcessor.js` and `processors-system/800-RssProcessor.js` are reference implementations; the helper module is `processors-system/lib/feed-cache.js`.

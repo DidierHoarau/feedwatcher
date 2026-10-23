@@ -6,6 +6,7 @@ import {
   DbUtilsExecSQL,
   DbUtilsQuerySQL,
 } from "@devopsplaybook.io/common-utils";
+import { SourcesFetchStateDataDelete } from "./SourcesFetchStateData";
 
 const logger = OTelLogger().createModuleLogger(path.basename(__filename));
 
@@ -165,6 +166,7 @@ export async function SourcesDataDelete(
     "DELETE FROM sources_labels WHERE sourceId = ?",
     [sourceId],
   );
+  await SourcesFetchStateDataDelete(span, sourceId);
   SourcesDataInvalidateUserCache(span, source.userId);
   span.end();
 }

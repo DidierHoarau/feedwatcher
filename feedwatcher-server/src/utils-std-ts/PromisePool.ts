@@ -1,3 +1,7 @@
+import { OTelLogger } from "../OTelContext";
+
+const logger = OTelLogger().createModuleLogger("PromisePool");
+
 export class PromisePool {
   private maxConcurrency: number;
   private currentConcurrency: number;
@@ -22,31 +26,11 @@ export class PromisePool {
   // Tasks are best-effort: the returned promise resolves with the task
   // result, or with undefined when the task failed or timed out (the error
   // is logged). A failing task must never produce an unhandled rejection.
+  // On timeout the signal is aborted but the slot stays taken until the task
+  // actually settles, so getInFlightCount() reflects real in-flight work.
   public add(promiseGenerator) {
     return new Promise((resolve) => {
-      const controller = new AbortController();
-      const signal = controller.signal;
-
-      const wrappedPromise = () =>
-        new Promise((innerResolve, innerReject) => {
-          const timeoutId = setTimeout(() => {
-            controller.abort();
-            innerReject(new Error("Promise cancelled due to timeout"));
-          }, this.timeout);
-
-          Promise.resolve()
-            .then(() => promiseGenerator(signal))
-            .then((result) => {
-              clearTimeout(timeoutId);
-              innerResolve(result);
-            })
-            .catch((error) => {
-              clearTimeout(timeoutId);
-              innerReject(error);
-            });
-        });
-
-      this.queue.push({ wrappedPromise, resolve });
+      this.queue.push({ promiseGenerator, resolve });
       this.runNext();
     });
   }
@@ -56,22 +40,54 @@ export class PromisePool {
       this.currentConcurrency < this.maxConcurrency &&
       this.queue.length > 0
     ) {
-      const { wrappedPromise, resolve } = this.queue.shift();
+      const { promiseGenerator, resolve } = this.queue.shift();
       this.currentConcurrency++;
+      const controller = new AbortController();
+      let settled = false;
+      let released = false;
 
-      wrappedPromise()
+      const timeoutId = setTimeout(() => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        controller.abort();
+        logger.error(
+          "PromisePool task failed: Promise cancelled due to timeout",
+        );
+        resolve(undefined);
+      }, this.timeout);
+
+      // The slot is released only when the underlying task settles, and
+      // before the caller resumes, so in-flight/queue counts stay truthful.
+      const release = () => {
+        if (released) {
+          return;
+        }
+        released = true;
+        clearTimeout(timeoutId);
+        this.currentConcurrency--;
+        this.runNext();
+      };
+
+      Promise.resolve()
+        .then(() => promiseGenerator(controller.signal))
         .then((result) => {
-          resolve(result);
-          this.currentConcurrency--;
-          this.runNext();
+          if (!settled) {
+            settled = true;
+            resolve(result);
+          }
+          release();
         })
         .catch((error) => {
-          console.error(
-            `PromisePool task failed: ${error?.message ?? String(error)}`,
-          );
-          resolve(undefined);
-          this.currentConcurrency--;
-          this.runNext();
+          if (!settled) {
+            settled = true;
+            logger.error(
+              `PromisePool task failed: ${error?.message ?? String(error)}`,
+            );
+            resolve(undefined);
+          }
+          release();
         });
     }
   }
