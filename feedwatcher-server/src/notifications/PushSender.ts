@@ -132,7 +132,7 @@ export async function PushSenderSendToUser(
         sent++;
       } catch (err: any) {
         if (err.statusCode === 404 || err.statusCode === 410) {
-          await PushSubscriptionsDataDelete(span, subscription.endpoint);
+          await PushSubscriptionsDataDelete(span, userId, subscription.endpoint);
           logger.info(`Removed expired push subscription for user ${userId}`);
         } else {
           logger.warn(`Push send failed for user ${userId}: ${err.message}`);

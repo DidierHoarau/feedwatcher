@@ -88,6 +88,55 @@ describe("RulesExecutionExecuteUserRules", () => {
     expect(params[2]).toBe(sqlInjectionPayload);
   });
 
+  test("scopes a source read rule to the rule owner (cross-tenant)", async () => {
+    await RulesExecutionExecuteUserRules({} as any, {
+      userId: "user-1",
+      info: [
+        {
+          sourceId: "source-of-user-2",
+          autoRead: [{ pattern: "*", ageDays: 3 }],
+        },
+      ],
+    } as any);
+
+    expect(DbUtilsExecSQL).toHaveBeenCalledTimes(1);
+    const call = jest.mocked(DbUtilsExecSQL).mock.calls[0] as any[];
+    const sql = call[1] as string;
+    const params = call[2] as any[];
+    expect(sql).toContain("UPDATE sources_items SET status = 'read'");
+    expect(sql).toContain("sources_items.sourceId = ?");
+    expect(sql).toContain(
+      "SELECT id FROM sources WHERE userId = ?"
+    );
+    expect(params[0]).toBe("source-of-user-2");
+    expect(params[1]).toBe("user-1");
+    expect(params[2]).toEqual(expect.any(String));
+    expect(params).not.toContain("user-2");
+  });
+
+  test("scopes a source delete rule to the rule owner (cross-tenant)", async () => {
+    await RulesExecutionExecuteUserRules({} as any, {
+      userId: "user-1",
+      info: [
+        {
+          sourceId: "source-of-user-2",
+          autoDelete: [{ pattern: "*", ageDays: 10 }],
+        },
+      ],
+    } as any);
+
+    const call = jest.mocked(DbUtilsExecSQL).mock.calls[0] as any[];
+    const sql = call[1] as string;
+    const params = call[2] as any[];
+    expect(sql).toContain("DELETE FROM sources_items");
+    expect(sql).toContain(
+      "sources_items.sourceId IN ( SELECT id FROM sources WHERE userId = ? )"
+    );
+    expect(params[0]).toBe("source-of-user-2");
+    expect(params[1]).toBe("user-1");
+    expect(params).not.toContain("user-2");
+  });
+
   test("deletes matching items for a delete rule with bound parameters", async () => {
     await RulesExecutionExecuteUserRules({} as any, {
       userId: "user-1",

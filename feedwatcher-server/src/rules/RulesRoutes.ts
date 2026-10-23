@@ -1,6 +1,7 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { Rules } from "../model/Rules";
 import { RulesDataListForUser, RulesDataUpdate } from "./RulesData";
+import { SourcesDataListForUser } from "../sources/SourcesData";
 import { AuthGetUserSession } from "../users/Auth";
 import { OTelRequestSpan } from "../OTelContext";
 
@@ -73,6 +74,24 @@ export class RulesRoutes {
         }
         const rules = Rules.fromJson(req.body.rules);
         rules.userId = userSession.userId;
+        // A source-scoped rule must only reference the caller's own sources;
+        // otherwise any user could delete or mark-read another user's items.
+        const requestedSourceIds = (Array.isArray(rules.info) ? rules.info : [])
+          .map((ruleInfo) => ruleInfo?.sourceId)
+          .filter((sourceId) => !!sourceId);
+        if (requestedSourceIds.length > 0) {
+          const sources = await SourcesDataListForUser(
+            OTelRequestSpan(req),
+            userSession.userId
+          );
+          const ownedSourceIds = new Set(sources.map((source) => source.id));
+          const hasForeignSource = requestedSourceIds.some(
+            (sourceId) => !ownedSourceIds.has(sourceId)
+          );
+          if (hasForeignSource) {
+            return res.status(400).send({ error: "Invalid: sourceId" });
+          }
+        }
         await RulesDataUpdate(OTelRequestSpan(req), rules);
         return res.status(200).send({});
       },

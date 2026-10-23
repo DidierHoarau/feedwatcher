@@ -1,12 +1,20 @@
 import axios from "axios";
+import * as dns from "dns";
 import { Source } from "../../model/Source";
 import processor from "../../../processors-system/700-PodcastProcessor";
 
 describe("Podcast processor: getInfo", () => {
   test("bounds every outbound request with a timeout (M4)", async () => {
+    const lookupSpy = jest.spyOn(dns.promises, "lookup").mockResolvedValue([
+      { address: "93.184.216.34", family: 4 },
+    ] as any);
     const spy = jest
       .spyOn(axios, "get")
-      .mockResolvedValue({ data: "<rss></rss>" } as any);
+      .mockResolvedValue({
+        status: 200,
+        headers: { "content-type": "application/rss+xml" },
+        data: "<rss></rss>",
+      } as any);
     const source = new Source();
     source.info = { url: "https://example.com/feed" };
 
@@ -15,9 +23,10 @@ describe("Podcast processor: getInfo", () => {
 
     expect(spy.mock.calls.length).toBeGreaterThanOrEqual(2);
     for (const call of spy.mock.calls) {
-      expect((call[1] as any)?.timeout).toBe(10000);
+      expect(call[1]).toEqual(expect.objectContaining({ timeout: 10000 }));
     }
     spy.mockRestore();
+    lookupSpy.mockRestore();
   });
 
   test("returns correct metadata", () => {

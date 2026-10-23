@@ -1,8 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const axios = require("axios");
 const { parseFeed } = require("@rowanmanning/feed-parser");
+const { fetchText } = require("./lib/ssrf-http");
 
-const AXIOS_TIMEOUT_MS = 10000;
+const FETCH_TIMEOUT_MS = 10000;
+const MAX_FEED_BYTES = 5 * 1024 * 1024;
 
 /**
  * Extract the audio enclosure URL from a feed item's raw XML element.
@@ -87,7 +88,13 @@ module.exports = {
   test: async (source) => {
     try {
       const feed = parseFeed(
-        (await axios.get(source.info.url, { timeout: AXIOS_TIMEOUT_MS })).data,
+        (
+          await fetchText(source.info.url, {
+            timeoutMs: FETCH_TIMEOUT_MS,
+            maxContentLength: MAX_FEED_BYTES,
+            allowedContentTypes: null,
+          })
+        ).data,
       );
       if (!isPodcastFeed(feed)) {
         return null;
@@ -104,7 +111,13 @@ module.exports = {
 
   fetchLatest: async (source, lastSourceItemSaved) => {
     const feed = parseFeed(
-      (await axios.get(source.info.url, { timeout: AXIOS_TIMEOUT_MS })).data,
+      (
+        await fetchText(source.info.url, {
+          timeoutMs: FETCH_TIMEOUT_MS,
+          maxContentLength: MAX_FEED_BYTES,
+          allowedContentTypes: null,
+        })
+      ).data,
     );
     const feedArtwork =
       getItunesImageUrl(feed.element) || (feed.image && feed.image.url) || null;

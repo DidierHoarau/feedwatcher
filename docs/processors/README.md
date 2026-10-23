@@ -50,3 +50,19 @@ module.exports = {
 ```
 
 It is recommenede to have a look at the existing [System Processors](../../feedwatcher-server/processors-system/).
+
+## Fetching URLs safely
+
+Bundled processors never call `axios` directly for user-provided URLs. They use the shared helper in [processors-system/lib/ssrf-http.js](../../feedwatcher-server/processors-system/lib/ssrf-http.js), which only allows `http`/`https`, rejects private/special-use addresses (unless `SOURCE_ALLOW_PRIVATE_NETWORK` is enabled), pins the validated IP for the connection, revalidates every redirect and caps the response size and timeout:
+
+```javascript
+const { fetchText } = require("../processors-system/lib/ssrf-http");
+
+const response = await fetchText(source.info.url, {
+  timeoutMs: 10000,
+  maxContentLength: 5 * 1024 * 1024,
+  allowedContentTypes: null,
+});
+```
+
+User processors installed in `processors-user` can reuse the same helper through that relative path. The processor contract (`getInfo`/`test`/`fetchLatest`) is unchanged.

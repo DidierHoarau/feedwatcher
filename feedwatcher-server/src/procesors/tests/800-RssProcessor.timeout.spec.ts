@@ -2,10 +2,20 @@ import * as http from "http";
 import { Source } from "../../model/Source";
 import processor from "../../../processors-system/800-RssProcessor";
 
+const ssrfHttp = require("../../../processors-system/lib/ssrf-http.js");
+
 // Real axios (no mock): a local server that accepts connections but never
 // responds proves the processor request actually times out instead of
 // hanging a pool worker forever (M4).
 describe("RSS processor request timeout (M4)", () => {
+  beforeAll(() => {
+    ssrfHttp.configure({ allowPrivateNetwork: true });
+  });
+
+  afterAll(() => {
+    ssrfHttp.configure({ allowPrivateNetwork: false });
+  });
+
   test(
     "gives up on a hanging server instead of blocking forever",
     async () => {

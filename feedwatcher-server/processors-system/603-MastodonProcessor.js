@@ -1,7 +1,42 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const axios = require("axios");
 const _ = require("lodash");
+const net = require("net");
 const sanitizeHtml = require("sanitize-html");
+const { fetchText } = require("./lib/ssrf-http");
+
+const FETCH_TIMEOUT_MS = 30000;
+
+// A handle is @username@instance. The instance must be a plain DNS name: no
+// scheme, port, path or credentials, so it can never redirect the request to
+// another host or an internal address.
+function parseHandle(raw) {
+  const match = /^@([A-Za-z0-9_.-]+)@([A-Za-z0-9.-]+)$/.exec(
+    String(raw || "").trim(),
+  );
+  if (!match) {
+    return null;
+  }
+  const instance = match[2].toLowerCase();
+  if (net.isIP(instance)) {
+    return null;
+  }
+  if (
+    !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(
+      instance,
+    )
+  ) {
+    return null;
+  }
+  return { username: match[1], instance };
+}
+
+async function fetchJson(url) {
+  const response = await fetchText(url, {
+    timeoutMs: FETCH_TIMEOUT_MS,
+    allowedContentTypes: ["application/json"],
+  });
+  return JSON.parse(response.data);
+}
 
 // eslint-disable-next-line no-undef
 module.exports = {
@@ -16,37 +51,49 @@ module.exports = {
   },
 
   test: async (source) => {
-    let urlMatch = /@(.*)@(.*)/.exec(source.info.url);
-    if (urlMatch) {
-      const instance = urlMatch[2];
-      const username = urlMatch[1];
-      if (source.info.accountId) {
-        return source.info;
+    const handle = parseHandle(source.info.url);
+    if (!handle) {
+      return null;
+    }
+    const { username, instance } = handle;
+    if (source.info.accountId) {
+      return source.info;
+    }
+    const accountSearch = await fetchJson(
+      `https://${instance}/api/v2/search?q=${encodeURIComponent(username)}`,
+    );
+    const account = _.find(accountSearch.accounts, { username });
+    if (account) {
+      const accountId = String(account.id);
+      if (!/^[0-9]+$/.test(accountId)) {
+        return null;
       }
-      const accountSearch = (await axios.get(`https://${instance}/api/v2/search?q=${username}`, { timeout: 30000 }))
-        .data;
-      const account = _.find(accountSearch.accounts, { username });
-      if (account) {
-        const accountId = account.id;
-        const userInfo = (await axios.get(`https://${instance}/api/v1/accounts/${accountId}`, { timeout: 30000 })).data;
-        if (userInfo.display_name) {
-          return {
-            name: `${userInfo.display_name} @${username}@${instance}`,
-            icon: "mastodon",
-            accountId,
-          };
-        }
+      const userInfo = await fetchJson(
+        `https://${instance}/api/v1/accounts/${accountId}`,
+      );
+      if (userInfo.display_name) {
+        return {
+          name: `${userInfo.display_name} @${username}@${instance}`,
+          icon: "mastodon",
+          accountId,
+        };
       }
     }
     return null;
   },
 
   fetchLatest: async (source, lastSourceItemSaved) => {
-    let urlMatch = /@(.*)@(.*)/.exec(source.info.url);
-    const instance = urlMatch[2];
-    const posts = (
-      await axios.get(`https://${instance}/api/v1/accounts/${source.info.accountId}/statuses`, { timeout: 30000 })
-    ).data;
+    const handle = parseHandle(source.info.url);
+    if (!handle) {
+      throw new Error(`Invalid Mastodon handle: ${source.info.url}`);
+    }
+    const accountId = String(source.info.accountId || "");
+    if (!/^[0-9]+$/.test(accountId)) {
+      throw new Error("Invalid Mastodon account ID");
+    }
+    const posts = await fetchJson(
+      `https://${handle.instance}/api/v1/accounts/${accountId}/statuses`,
+    );
     const sourceItems = [];
     for (const item of posts) {
       const sourceItem = {};

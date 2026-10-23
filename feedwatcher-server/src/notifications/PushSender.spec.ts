@@ -216,6 +216,7 @@ describe("PushSenderSendToUser", () => {
     expect(sent).toBe(0);
     expect(PushSubscriptionsDataDelete).toHaveBeenCalledWith(
       expect.anything(),
+      "user-1",
       "https://push.example.com/gone"
     );
   });

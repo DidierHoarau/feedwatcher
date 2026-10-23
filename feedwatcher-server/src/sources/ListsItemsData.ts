@@ -52,12 +52,14 @@ export async function ListsItemsDataGetItemForUser(
   const sourceItemRaw = await DbUtilsQuerySQL(
     span,
     "SELECT sources_items.* " +
-      "FROM sources_items, lists_items " +
+      "FROM sources_items, lists_items, sources " +
       "WHERE sources_items.id = ? " +
       "  AND lists_items.itemId = ? " +
       "  AND lists_items.userId = ? " +
+      "  AND sources.id = sources_items.sourceId " +
+      "  AND sources.userId = ? " +
       "ORDER BY datePublished DESC",
-    [itemId, itemId, userId]
+    [itemId, itemId, userId, userId]
   );
   let sourceItem: SourceItem = null;
   if (sourceItemRaw.length > 0) {
