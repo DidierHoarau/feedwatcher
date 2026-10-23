@@ -162,7 +162,7 @@ export class SourcesIdRoutes {
       // title: the user-provided name wins on a URL update.
       source.name = req.body.name;
       await SourcesDataUpdate(OTelRequestSpan(req), source);
-      if (req.body.labels && req.body.labels.length > 0) {
+      if (Array.isArray(req.body.labels)) {
         await SourceLabelsDataSetSourceLabels(
           OTelRequestSpan(req),
           source.id,

@@ -194,8 +194,11 @@ export class UsersRoutes {
         user,
         req.body.password
       );
+      user.tokenVersion = (Number(user.tokenVersion) || 0) + 1;
       await UsersDataUpdate(OTelRequestSpan(req), user);
-      res.status(201).send({});
+      // Every previously issued token is now revoked; hand the acting browser
+      // a fresh one so it is not logged out of the current session.
+      res.status(201).send({ token: await AuthGenerateJWT(user) });
     });
 
     fastify.get("/settings", async (req, res) => {

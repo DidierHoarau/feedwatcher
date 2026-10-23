@@ -130,6 +130,44 @@ describe("SourcesIdRoutes (M1/L3)", () => {
     );
   });
 
+  test("PUT with an empty labels array clears all labels", async () => {
+    jest.mocked(SourcesDataGet).mockResolvedValue(newSource("user-1"));
+    jest.mocked(SourceLabelsDataSetSourceLabels).mockResolvedValue(undefined);
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/api/sources/source-1",
+      payload: { name: "Renamed", labels: [] },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(SourceLabelsDataSetSourceLabels).toHaveBeenCalledWith(
+      expect.anything(),
+      "source-1",
+      []
+    );
+  });
+
+  test("PUT without labels leaves the labels untouched", async () => {
+    jest.mocked(SourcesDataGet).mockResolvedValue(newSource("user-1"));
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/api/sources/source-1",
+      payload: { name: "Renamed" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(SourceLabelsDataSetSourceLabels).not.toHaveBeenCalled();
+  });
+
+  test("PUT with non-array labels leaves the labels untouched", async () => {
+    jest.mocked(SourcesDataGet).mockResolvedValue(newSource("user-1"));
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/api/sources/source-1",
+      payload: { name: "Renamed", labels: "news" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(SourceLabelsDataSetSourceLabels).not.toHaveBeenCalled();
+  });
+
   test("PUT with a changed URL updates it and re-detects the processor", async () => {
     const source = newSource("user-1");
     source.info = {

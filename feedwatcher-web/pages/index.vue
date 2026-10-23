@@ -86,9 +86,12 @@ export default {
     await axios
       .get(`${(await Config.get()).SERVER_URL}/processors`)
       .then((res) => {
-        const catchAllProcessor = res.data.pop();
-        res.data.unshift(catchAllProcessor);
-        this.processorInfos = res.data;
+        const processors = Array.isArray(res.data) ? [...res.data] : [];
+        const catchAllProcessor = processors.pop();
+        if (catchAllProcessor) {
+          processors.unshift(catchAllProcessor);
+        }
+        this.processorInfos = processors;
       });
     if (await AuthService.isAuthenticated()) {
       this.authenticated = true;

@@ -223,6 +223,10 @@ export async function SourceItemsDataCleanupOrphans(
     span,
     "DELETE FROM sources_items WHERE sourceId NOT IN (SELECT id FROM sources)",
   );
+  await DbUtilsExecSQL(
+    span,
+    "DELETE FROM lists_items WHERE itemId NOT IN (SELECT id FROM sources_items)",
+  );
   span.end();
 }
 

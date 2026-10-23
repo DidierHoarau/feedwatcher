@@ -13,7 +13,10 @@ import * as path from "path";
 import { Config } from "../Config";
 import { SourceItem } from "../model/SourceItem";
 import { OTelLogger, OTelSetTracer, OTelTracer } from "../OTelContext";
-import { SourceItemsDataAddMany } from "./SourceItemsData";
+import {
+  SourceItemsDataAddMany,
+  SourceItemsDataCleanupOrphans,
+} from "./SourceItemsData";
 import { SourcesDataInvalidateUserCache } from "./SourcesData";
 
 jest.mock("./SourcesData", () => {
@@ -85,6 +88,81 @@ async function countItems(): Promise<number> {
   );
   return rows[0].count;
 }
+
+async function insertItem(id: string, sourceId: string): Promise<void> {
+  await DbUtilsExecSQL(
+    span,
+    "INSERT INTO sources_items " +
+      "(id, sourceId, title, content, url, status, datePublished, thumbnail, info) " +
+      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    [
+      id,
+      sourceId,
+      id,
+      "content",
+      `https://example.com/${id}`,
+      "unread",
+      "2026-01-01T00:00:00.000Z",
+      "",
+      "{}",
+    ],
+  );
+}
+
+async function insertListItem(
+  id: string,
+  itemId: string,
+  userId: string,
+): Promise<void> {
+  await DbUtilsExecSQL(
+    span,
+    "INSERT INTO lists_items (id,itemId,userId,name,info) VALUES (?,?,?,?,?)",
+    [id, itemId, userId, "saved", "{}"],
+  );
+}
+
+describe("SourceItemsDataCleanupOrphans", () => {
+  test("deletes saved-list rows whose item no longer exists", async () => {
+    await insertItem("item-1", "src-1");
+    await insertListItem("li-1", "item-1", "user-1");
+    await insertListItem("li-orphan", "item-gone", "user-1");
+
+    await SourceItemsDataCleanupOrphans(span);
+
+    const rows = await DbUtilsQuerySQL(
+      span,
+      "SELECT id FROM lists_items ORDER BY id",
+    );
+    expect(rows.map((row: any) => row.id)).toEqual(["li-1"]);
+  });
+
+  test("cleans saved-list rows of items removed with their source in one pass", async () => {
+    await DbUtilsExecSQL(
+      span,
+      "INSERT INTO sources (id, userId, name, info) VALUES (?, ?, ?, ?)",
+      ["src-2", "user-1", "Gone Source", "{}"],
+    );
+    await insertItem("item-2", "src-2");
+    await insertListItem("li-2", "item-2", "user-1");
+    await insertItem("item-1", "src-1");
+    await insertListItem("li-1", "item-1", "user-1");
+
+    await DbUtilsExecSQL(span, "DELETE FROM sources WHERE id = ?", ["src-2"]);
+
+    await SourceItemsDataCleanupOrphans(span);
+
+    const items = await DbUtilsQuerySQL(
+      span,
+      "SELECT id FROM sources_items ORDER BY id",
+    );
+    expect(items.map((row: any) => row.id)).toEqual(["item-1"]);
+    const listRows = await DbUtilsQuerySQL(
+      span,
+      "SELECT id FROM lists_items ORDER BY id",
+    );
+    expect(listRows.map((row: any) => row.id)).toEqual(["li-1"]);
+  });
+});
 
 describe("SourceItemsDataAddMany", () => {
   test("inserts a whole batch and invalidates the user cache once", async () => {

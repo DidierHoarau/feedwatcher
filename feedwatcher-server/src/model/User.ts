@@ -18,6 +18,7 @@ export class User {
     }
     user.name = json.name;
     user.passwordEncrypted = json.passwordEncrypted;
+    user.tokenVersion = Number(json.tokenVersion ?? 0) || 0;
     user.settings = UserSettingsFromJson(json.settings);
     return user;
   }
@@ -25,6 +26,7 @@ export class User {
   public id: string;
   public name: string;
   public passwordEncrypted: string;
+  public tokenVersion: number = 0;
   public settings: UserSettings;
 
   constructor() {
@@ -37,6 +39,7 @@ export class User {
       id: this.id,
       name: this.name,
       passwordEncrypted: this.passwordEncrypted,
+      tokenVersion: this.tokenVersion,
       settings: UserSettingsToJson(this.settings),
     };
   }

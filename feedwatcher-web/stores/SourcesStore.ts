@@ -26,6 +26,17 @@ function persistListMenuOpened(open: boolean) {
   );
 }
 
+// A label scope covers the exact label and its hierarchical children only:
+// "news" matches "news" and "news/tech", never "newspaper".
+function isLabelInScope(labelName: string, scopeLabelName: string): boolean {
+  if (scopeLabelName === "") {
+    return true;
+  }
+  return (
+    labelName === scopeLabelName || labelName.startsWith(`${scopeLabelName}/`)
+  );
+}
+
 export const SourcesStore = defineStore("SourcesStore", {
   state: () => ({
     sourcesStr: "",
@@ -287,7 +298,7 @@ export const SourcesStore = defineStore("SourcesStore", {
         const source = this.sources[i] as any;
         if (
           parentCollapsedLabel &&
-          `${source.labelName}/`.indexOf(parentCollapsedLabel) === 0
+          isLabelInScope(source.labelName, parentCollapsedLabel)
         ) {
           source.isVisible = false;
         } else if (source.isLabel && !source.isCollapsed) {
@@ -328,7 +339,7 @@ function assignCounts(sources: any[], counts: any[], field: string) {
       const sourceNext = sources[nextIteration] as any;
       if (
         !sourceNext.isLabel &&
-        sourceNext.labelName.indexOf(source.labelName) === 0
+        isLabelInScope(sourceNext.labelName, source.labelName)
       ) {
         const sourceCountNext = countsBySourceId.get(sourceNext.sourceId);
         if (sourceCountNext) {

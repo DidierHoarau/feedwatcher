@@ -54,15 +54,20 @@ export class AuthService {
 
   public static async getToken() {
     const storedKey = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (storedKey) {
-      const decoded = jwtDecode(storedKey);
-      if ((decoded as any).exp < Date.now() / 1000) {
+    if (!storedKey) {
+      return null;
+    }
+    try {
+      const decoded: any = jwtDecode(storedKey);
+      if (!decoded.exp || decoded.exp < Date.now() / 1000) {
         console.log("Auth token expired");
         localStorage.removeItem(AUTH_TOKEN_KEY);
         return null;
       }
       return storedKey;
-    } else {
+    } catch {
+      // A corrupted stored token must not break app bootstrap.
+      localStorage.removeItem(AUTH_TOKEN_KEY);
       return null;
     }
   }

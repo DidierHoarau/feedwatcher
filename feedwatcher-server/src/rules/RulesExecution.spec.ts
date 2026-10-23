@@ -18,6 +18,12 @@ jest.mock("@devopsplaybook.io/common-utils", () => ({
   DbUtilsExecSQL: jest.fn(),
 }));
 
+jest.mock("../sources/SourcesData", () => ({
+  SourcesDataInvalidateUserCache: jest.fn(async () => undefined),
+}));
+
+import { SourcesDataInvalidateUserCache } from "../sources/SourcesData";
+
 describe("RulesExecutionExecuteUserRules", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -33,6 +39,7 @@ describe("RulesExecutionExecuteUserRules", () => {
     ).resolves.toBeUndefined();
 
     expect(DbUtilsExecSQL).not.toHaveBeenCalled();
+    expect(SourcesDataInvalidateUserCache).not.toHaveBeenCalled();
   });
 
   test("keeps executing the next rule when one rule fails", async () => {
@@ -61,6 +68,56 @@ describe("RulesExecutionExecuteUserRules", () => {
     } as any);
 
     expect(DbUtilsExecSQL).not.toHaveBeenCalled();
+    expect(SourcesDataInvalidateUserCache).not.toHaveBeenCalled();
+  });
+
+  test("invalidates the user count cache once per run across rules and scopes", async () => {
+    await RulesExecutionExecuteUserRules({} as any, {
+      userId: "user-1",
+      info: [
+        { isRoot: true, autoRead: [{ pattern: "*", ageDays: 1 }] },
+        { labelName: "news", autoRead: [{ pattern: "*", ageDays: 2 }] },
+        { sourceId: "source-1", autoDelete: [{ pattern: "*", ageDays: 3 }] },
+      ],
+    } as any);
+
+    expect(DbUtilsExecSQL).toHaveBeenCalledTimes(3);
+    expect(SourcesDataInvalidateUserCache).toHaveBeenCalledTimes(1);
+    expect(jest.mocked(SourcesDataInvalidateUserCache)).toHaveBeenCalledWith(
+      expect.anything(),
+      "user-1",
+    );
+  });
+
+  test("does not invalidate the cache when no rule action ran", async () => {
+    await RulesExecutionExecuteUserRules({} as any, {
+      userId: "user-1",
+      info: [
+        { isRoot: true, autoRead: [{ pattern: "*", ageDays: -1 }] },
+        { autoRead: [{ pattern: "*", ageDays: 1 }] },
+        {},
+      ],
+    } as any);
+
+    expect(DbUtilsExecSQL).not.toHaveBeenCalled();
+    expect(SourcesDataInvalidateUserCache).not.toHaveBeenCalled();
+  });
+
+  test("matches a label exactly or as a hierarchy, never as a raw prefix", async () => {
+    await RulesExecutionExecuteUserRules({} as any, {
+      userId: "user-1",
+      info: [{ labelName: "news", autoRead: [{ pattern: "*", ageDays: 7 }] }],
+    } as any);
+
+    const call = jest.mocked(DbUtilsExecSQL).mock.calls[0] as any[];
+    const sql = call[1] as string;
+    const params = call[2] as any[];
+    expect(sql).toContain(
+      "AND (sources_labels.name = ? OR sources_labels.name LIKE ?)",
+    );
+    expect(params[0]).toBe("user-1");
+    expect(params[1]).toBe("news");
+    expect(params[2]).toBe("news/%");
   });
 
   test("sends titles and dates as bound parameters, never interpolated (H1)", async () => {

@@ -159,21 +159,6 @@ export default {
         this.$emit("onSourceSelected", source);
       }
     },
-    isLabelDisplayed(index) {
-      if (!SourcesStore().sourceLabels[index].labelName) {
-        return false;
-      }
-      if (index === 0) {
-        return true;
-      }
-      if (
-        SourcesStore().sourceLabels[index].labelName ===
-        SourcesStore().sourceLabels[index - 1].labelName
-      ) {
-        return false;
-      }
-      return true;
-    },
     indentStyle(source) {
       return {
         width: `calc(${source.depth} * 1rem + 0.25rem)`,

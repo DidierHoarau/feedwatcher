@@ -162,7 +162,10 @@ export default {
             this.user,
             await AuthService.getAuthHeader(),
           )
-          .then((res) => {
+          .then(async (res) => {
+            if (res.data?.token) {
+              await AuthService.saveToken(res.data.token);
+            }
             EventBus.emit(EventTypes.ALERT_MESSAGE, {
               type: "info",
               text: "Password Changed",

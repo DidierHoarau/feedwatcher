@@ -191,10 +191,10 @@ describe("NotificationsCheckNewItems", () => {
         if (String(sql).includes("notification_state")) {
           return [{ userId: "user-1", lastNewItemsAt: "2026-10-16T00:00:00.000Z" }];
         }
-        return [
-          { id: "i1", title: "First item", datePublished: "2026-10-17T02:00:00.000Z" },
-          { id: "i2", title: "Second item", datePublished: "2026-10-17T01:00:00.000Z" },
-        ];
+        if (String(sql).includes("COUNT(*)")) {
+          return [{ count: 2, newestAt: "2026-10-17T02:00:00.000Z" }];
+        }
+        return [{ title: "First item" }];
       });
 
     await NotificationsCheckNewItems(span);
@@ -231,7 +231,7 @@ describe("NotificationsCheckNewItems", () => {
         expect(String(sql)).toContain("si.datePublished > ?");
         expect(params[0]).toBe("user-1");
         expect(params[1]).toBe("2026-10-16T00:00:00.000Z");
-        return [];
+        return [{ count: 0, newestAt: null }];
       });
 
     await NotificationsCheckNewItems(span);
@@ -253,7 +253,7 @@ describe("NotificationsCheckNewItems", () => {
         }
         expect(String(sql)).toContain("EXISTS (SELECT 1 FROM sources_labels");
         expect(params.slice(2)).toEqual(["tech", "news"]);
-        return [];
+        return [{ count: 0, newestAt: null }];
       });
 
     await NotificationsCheckNewItems(span);
@@ -292,15 +292,12 @@ describe("NotificationsCheckNewItems", () => {
             { userId: "user-ok", lastNewItemsAt: "2026-10-16T00:00:00.000Z" },
           ];
         }
-        return params[0] === "user-ok"
-          ? [
-              {
-                id: "i1",
-                title: "Item",
-                datePublished: "2026-10-17T02:00:00.000Z",
-              },
-            ]
-          : [];
+        if (String(sql).includes("COUNT(*)")) {
+          return params[0] === "user-ok"
+            ? [{ count: 1, newestAt: "2026-10-17T02:00:00.000Z" }]
+            : [{ count: 0, newestAt: null }];
+        }
+        return [{ title: "Item" }];
       });
 
     await NotificationsCheckNewItems(span);
@@ -313,31 +310,99 @@ describe("NotificationsCheckNewItems", () => {
     jest
       .mocked(UsersDataList)
       .mockResolvedValue([user("user-1", newItemsSettings("all"))] as any);
-    // First cycle: two new items
+    let watermark = "2026-10-16T00:00:00.000Z";
     jest
       .mocked(DbUtilsQuerySQL)
-      .mockImplementationOnce(async () => [
-        { userId: "user-1", lastNewItemsAt: "2026-10-16T00:00:00.000Z" },
-      ])
-      .mockImplementationOnce(async () => [
-        { id: "i1", title: "Item", datePublished: "2026-10-17T02:00:00.000Z" },
-      ]);
+      .mockImplementation(async (_span, sql, params) => {
+        if (String(sql).includes("notification_state")) {
+          return [{ userId: "user-1", lastNewItemsAt: watermark }];
+        }
+        if (String(sql).includes("COUNT(*)")) {
+          return params[1] === "2026-10-16T00:00:00.000Z"
+            ? [{ count: 1, newestAt: "2026-10-17T02:00:00.000Z" }]
+            : [{ count: 0, newestAt: null }];
+        }
+        return [{ title: "Item" }];
+      });
     await NotificationsCheckNewItems(span);
     expect(PushSenderSendToUser).toHaveBeenCalledTimes(1);
+    const upsert = jest
+      .mocked(DbUtilsExecSQL)
+      .mock.calls.find((call) =>
+        String(call[1]).includes("ON CONFLICT(userId) DO UPDATE")
+      );
+    expect(upsert[2]).toEqual(["user-1", "2026-10-17T02:00:00.000Z"]);
+    watermark = (upsert[2] as any[])[1];
 
-    // Second cycle: no item newer than the advanced watermark
+    await NotificationsCheckNewItems(span);
+
+    expect(PushSenderSendToUser).toHaveBeenCalledTimes(1);
+  });
+
+  test("reports the true count when more than 20 items are pending", async () => {
+    jest
+      .mocked(UsersDataList)
+      .mockResolvedValue([user("user-1", newItemsSettings("all"))] as any);
+    const queries: string[] = [];
     jest
       .mocked(DbUtilsQuerySQL)
-      .mockImplementationOnce(async () => [
-        { userId: "user-1", lastNewItemsAt: "2026-10-17T02:00:00.000Z" },
-      ])
-      .mockImplementationOnce(async (_span, sql, params) => {
-        expect(params[1]).toBe("2026-10-17T02:00:00.000Z");
-        return [];
+      .mockImplementation(async (_span, sql) => {
+        queries.push(String(sql));
+        if (String(sql).includes("notification_state")) {
+          return [{ userId: "user-1", lastNewItemsAt: "2026-10-16T00:00:00.000Z" }];
+        }
+        if (String(sql).includes("COUNT(*)")) {
+          return [{ count: 25, newestAt: "2026-10-17T02:00:00.000Z" }];
+        }
+        return [{ title: "Item 25" }];
       });
 
     await NotificationsCheckNewItems(span);
 
+    const payload = jest.mocked(PushSenderSendToUser).mock.calls[0][2];
+    expect(payload.body).toBe("25 new item(s) — Item 25");
+    const countQuery = queries.find((sql) => sql.includes("COUNT(*)"));
+    expect(countQuery).toBeDefined();
+    expect(countQuery).not.toContain("LIMIT");
+    const titleQuery = queries.find((sql) => sql.includes("SELECT si.title"));
+    expect(titleQuery).toContain("LIMIT 1");
+  });
+
+  test("a shared newest timestamp is counted once and advances the watermark", async () => {
+    jest
+      .mocked(UsersDataList)
+      .mockResolvedValue([user("user-1", newItemsSettings("all"))] as any);
+    const newestAt = "2026-10-17T02:00:00.000Z";
+    let watermark = "2026-10-16T00:00:00.000Z";
+    jest
+      .mocked(DbUtilsQuerySQL)
+      .mockImplementation(async (_span, sql, params) => {
+        if (String(sql).includes("notification_state")) {
+          return [{ userId: "user-1", lastNewItemsAt: watermark }];
+        }
+        if (String(sql).includes("COUNT(*)")) {
+          return params[1] === "2026-10-16T00:00:00.000Z"
+            ? [{ count: 3, newestAt }]
+            : [{ count: 0, newestAt: null }];
+        }
+        return [{ title: "Shared timestamp item" }];
+      });
+
+    await NotificationsCheckNewItems(span);
+
+    expect(PushSenderSendToUser).toHaveBeenCalledTimes(1);
+    expect(jest.mocked(PushSenderSendToUser).mock.calls[0][2].body).toBe(
+      "3 new item(s) — Shared timestamp item"
+    );
+    const upsert = jest
+      .mocked(DbUtilsExecSQL)
+      .mock.calls.find((call) =>
+        String(call[1]).includes("ON CONFLICT(userId) DO UPDATE")
+      );
+    expect(upsert[2]).toEqual(["user-1", newestAt]);
+    watermark = (upsert[2] as any[])[1];
+
+    await NotificationsCheckNewItems(span);
     expect(PushSenderSendToUser).toHaveBeenCalledTimes(1);
   });
 });

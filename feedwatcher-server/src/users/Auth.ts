@@ -10,7 +10,7 @@ import {
   DbUtilsQuerySQL,
   DbUtilsWithLock,
 } from "@devopsplaybook.io/common-utils";
-import { OTelLogger, OTelTracer } from "../OTelContext";
+import { OTelLogger, OTelRequestSpan, OTelTracer } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger(path.basename(__filename));
 let config: Config;
@@ -67,6 +67,7 @@ export async function AuthGenerateJWT(user: User): Promise<string> {
       exp: Math.floor(Date.now() / 1000) + config.JWT_VALIDITY_DURATION,
       userId: user.id,
       userName: user.name,
+      tokenVersion: Number(user.tokenVersion) || 0,
     },
     config.JWT_KEY,
   );
@@ -75,17 +76,46 @@ export async function AuthGenerateJWT(user: User): Promise<string> {
 export async function AuthGetUserSession(req: any): Promise<UserSession> {
   const userSession: UserSession = { isAuthenticated: false };
   if (req.headers.authorization) {
+    let info: any;
     try {
-      const info = jwt.verify(
+      info = jwt.verify(
         req.headers.authorization.split(" ")[1],
         config.JWT_KEY,
       );
-      userSession.userId = info.userId;
-      userSession.isAuthenticated = true;
     } catch (err) {
       // Expired/invalid tokens are a normal condition, not a server error
       logger.warn(`Invalid user session token: ${err.message}`);
+      return userSession;
     }
+    // A password change bumps users.tokenVersion: tokens carrying an older
+    // version are rejected even though their signature is still valid.
+    const span = OTelTracer().startSpan(
+      "AuthCheckTokenVersion",
+      OTelRequestSpan(req),
+    );
+    try {
+      const usersRaw = await DbUtilsQuerySQL(
+        span,
+        "SELECT tokenVersion FROM users WHERE id = ?",
+        [info.userId],
+      );
+      if (usersRaw.length === 0) {
+        logger.warn(`Rejected session token of unknown user ${info.userId}`);
+        return userSession;
+      }
+      const storedVersion =
+        Number(usersRaw[0].tokenVersion ?? usersRaw[0].tokenversion ?? 0) || 0;
+      if (storedVersion !== (Number(info.tokenVersion ?? 0) || 0)) {
+        logger.warn(
+          `Rejected session token with stale version for user ${info.userId}`,
+        );
+        return userSession;
+      }
+    } finally {
+      span.end();
+    }
+    userSession.userId = info.userId;
+    userSession.isAuthenticated = true;
   }
   return userSession;
 }

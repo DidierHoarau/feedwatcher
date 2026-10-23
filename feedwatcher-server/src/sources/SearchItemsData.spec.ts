@@ -315,6 +315,36 @@ describe("SearchItemsData filters", () => {
     expect(new Set(allIds).size).toBe(60);
   });
 
+  test("a label listing matches the exact label and its children only", async () => {
+    const date = new Date("2026-10-01T12:00:00.000Z");
+    await seedSource("src-news", "user-1", 1, date, "news");
+    await seedSource("src-tech", "user-1", 1, date, "tech");
+    await seedSource("src-paper", "user-1", 1, date, "paper");
+    await seedSource("src-other", "user-2", 1, date, "other");
+    const addLabel = async (id: string, sourceId: string, name: string) =>
+      DbUtilsExecSQL(
+        span,
+        "INSERT INTO sources_labels (id, sourceId, name, info) VALUES (?, ?, ?, ?)",
+        [id, sourceId, name, "{}"],
+      );
+    await addLabel("sl-news", "src-news", "news");
+    await addLabel("sl-tech", "src-tech", "news/tech");
+    await addLabel("sl-paper", "src-paper", "newspaper");
+    await addLabel("sl-other", "src-other", "news");
+
+    const result = await SearchItemsDataListItemsForLabel(
+      span,
+      "news",
+      "user-1",
+      new SearchItemsOptions(),
+    );
+
+    expect(result.sourceItems.map((item) => item.id).sort()).toEqual([
+      "news-001",
+      "tech-001",
+    ]);
+  });
+
   test("filters items by tag name", async () => {
     const date = new Date("2026-10-01T12:00:00.000Z");
     await seedSource("src-1", "user-1", 2, date, "item");

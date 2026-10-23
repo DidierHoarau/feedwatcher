@@ -5,9 +5,9 @@ import cors from "@fastify/cors";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
-import { watchFile } from "fs-extra";
 import * as path from "path";
 import { ConfigGet } from "./Config";
+import { ConfigWatcherStart } from "./ConfigWatcher";
 import {
   OTelLogger,
   OTelSetMeter,
@@ -52,10 +52,7 @@ Promise.resolve().then(async () => {
   //
   const config = ConfigGet();
   await config.reload((msg) => logger.info(msg));
-  watchFile(config.CONFIG_FILE, () => {
-    logger.info(`Config updated: ${config.CONFIG_FILE}`);
-    config.reload((msg) => logger.info(msg));
-  });
+  ConfigWatcherStart(config);
 
   OTelSetTracer(new StandardTracer(config));
   OTelSetMeter(new StandardMeter(config));

@@ -1,5 +1,6 @@
 import { Span } from "@opentelemetry/sdk-trace-base";
 import {
+  DbUtilsExecSQL,
   DbUtilsGetDatabase,
   DbUtilsInit,
   DbUtilsQuerySQL,
@@ -51,6 +52,18 @@ async function storedAuthKey(span: Span): Promise<string> {
   return rows.length > 0 ? rows[0].value : null;
 }
 
+async function insertUser(
+  span: Span,
+  user: User,
+  tokenVersion = 0,
+): Promise<void> {
+  await DbUtilsExecSQL(
+    span,
+    "INSERT INTO users (id,name,passwordEncrypted,tokenVersion) VALUES (?,?,?,?)",
+    [user.id, user.name || "alice", user.passwordEncrypted || "hash", tokenVersion],
+  );
+}
+
 afterEach(() => {
   const db = DbUtilsGetDatabase();
   if (db && typeof db.close === "function") {
@@ -76,6 +89,8 @@ test("fresh database with no configured JWT_KEY generates and persists a key", a
   expect(await storedAuthKey(span)).toBe(config.JWT_KEY);
 
   const user = new User();
+  user.name = "alice";
+  await insertUser(span, user);
   const token = await AuthGenerateJWT(user);
   const session = await AuthGetUserSession({
     headers: { authorization: `Bearer ${token}` },
@@ -94,6 +109,8 @@ test("fresh database with a configured JWT_KEY persists that key", async () => {
   expect(await storedAuthKey(span)).toBe("configured-key-1234");
 
   const user = new User();
+  user.name = "alice";
+  await insertUser(span, user);
   const token = await AuthGenerateJWT(user);
   const session = await AuthGetUserSession({
     headers: { authorization: `Bearer ${token}` },
@@ -136,12 +153,86 @@ test("rotates the stored key when a new JWT_KEY is configured", async () => {
   });
   expect(staleSession.isAuthenticated).toBe(false);
 
+  await insertUser(secondSpan, user);
   const freshToken = await AuthGenerateJWT(user);
   const freshSession = await AuthGetUserSession({
     headers: { authorization: `Bearer ${freshToken}` },
   });
   expect(freshSession.isAuthenticated).toBe(true);
   expect(freshSession.userId).toBe(user.id);
+});
+
+test("accepts a legacy token without a tokenVersion claim at version 0", async () => {
+  const config = newConfig(newTempDir(), "legacy-key");
+  const span = await initDb(config);
+  await AuthInit(span, config);
+
+  const user = new User();
+  user.name = "alice";
+  await insertUser(span, user);
+
+  const legacyToken = jwt.sign(
+    {
+      exp: Math.floor(Date.now() / 1000) + config.JWT_VALIDITY_DURATION,
+      userId: user.id,
+      userName: user.name,
+    },
+    config.JWT_KEY,
+  );
+  const session = await AuthGetUserSession({
+    headers: { authorization: `Bearer ${legacyToken}` },
+  });
+  expect(session.isAuthenticated).toBe(true);
+  expect(session.userId).toBe(user.id);
+});
+
+test("rejects tokens issued before a password change", async () => {
+  const config = newConfig(newTempDir(), "versioned-key");
+  const span = await initDb(config);
+  await AuthInit(span, config);
+
+  const user = new User();
+  user.name = "alice";
+  await insertUser(span, user);
+
+  const oldToken = await AuthGenerateJWT(user);
+  const beforeChange = await AuthGetUserSession({
+    headers: { authorization: `Bearer ${oldToken}` },
+  });
+  expect(beforeChange.isAuthenticated).toBe(true);
+
+  await DbUtilsExecSQL(
+    span,
+    "UPDATE users SET tokenVersion = 1 WHERE id = ?",
+    [user.id],
+  );
+  const afterChange = await AuthGetUserSession({
+    headers: { authorization: `Bearer ${oldToken}` },
+  });
+  expect(afterChange.isAuthenticated).toBe(false);
+
+  user.tokenVersion = 1;
+  const newToken = await AuthGenerateJWT(user);
+  const currentSession = await AuthGetUserSession({
+    headers: { authorization: `Bearer ${newToken}` },
+  });
+  expect(currentSession.isAuthenticated).toBe(true);
+  expect(currentSession.userId).toBe(user.id);
+});
+
+test("rejects a token whose user row does not exist", async () => {
+  const config = newConfig(newTempDir(), "deleted-user-key");
+  const span = await initDb(config);
+  await AuthInit(span, config);
+
+  const user = new User();
+  user.name = "deleted";
+  const token = await AuthGenerateJWT(user);
+
+  const session = await AuthGetUserSession({
+    headers: { authorization: `Bearer ${token}` },
+  });
+  expect(session.isAuthenticated).toBe(false);
 });
 
 test("repeated boots without a configured key keep the same key", async () => {

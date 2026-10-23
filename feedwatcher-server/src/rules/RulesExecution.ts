@@ -3,6 +3,7 @@ import { Rules } from "../model/Rules";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { DbUtilsExecSQL } from "@devopsplaybook.io/common-utils";
 import { OTelLogger, OTelTracer } from "../OTelContext";
+import { SourcesDataInvalidateUserCache } from "../sources/SourcesData";
 
 const logger = OTelLogger().createModuleLogger("RulesExecution");
 
@@ -24,12 +25,18 @@ export async function RulesExecutionExecuteUserRules(
       );
       return;
     }
+    let didExecute = false;
     for (const ruleInfo of rules.info) {
       try {
-        await executeRuleInfo(span, rules.userId, ruleInfo);
+        if (await executeRuleInfo(span, rules.userId, ruleInfo)) {
+          didExecute = true;
+        }
       } catch (err) {
         logger.error(`Rule for user ${rules.userId} failed`, err, span);
       }
+    }
+    if (didExecute) {
+      await SourcesDataInvalidateUserCache(span, rules.userId);
     }
     logger.info(`Rules for user ${rules.userId} executed`, span);
   } finally {
@@ -48,7 +55,8 @@ async function executeRuleInfo(
   context: Span,
   userId: string,
   ruleInfo: any,
-): Promise<void> {
+): Promise<boolean> {
+  let didExecute = false;
   const actions = [
     { patterns: ruleInfo?.autoRead, action: RuleAction.archive },
     { patterns: ruleInfo?.autoDelete, action: RuleAction.delete },
@@ -67,22 +75,26 @@ async function executeRuleInfo(
         continue;
       }
       if (ruleInfo.isRoot) {
+        didExecute = true;
         await execRuleForUser(context, action, userId, {
           maxDate,
           pattern: rulePattern.pattern,
         });
       } else if (ruleInfo.labelName) {
+        didExecute = true;
         await execRuleForLabel(context, action, ruleInfo.labelName, userId, {
           maxDate,
           pattern: rulePattern.pattern,
         });
       } else if (ruleInfo.sourceId) {
+        didExecute = true;
         await execRuleForSource(context, action, ruleInfo.sourceId, userId, {
           maxDate,
         });
       }
     }
   }
+  return didExecute;
 }
 
 function rulePatternMaxDate(rulePattern: any): Date {
@@ -147,10 +159,11 @@ async function execRuleForLabel(
       "    SELECT sources.id " +
       "    FROM sources, sources_labels " +
       "    WHERE sources.userId = ? " +
-      "          AND sources_labels.sourceId = sources.id AND sources_labels.name LIKE ? " +
+      "          AND sources_labels.sourceId = sources.id " +
+      "          AND (sources_labels.name = ? OR sources_labels.name LIKE ?) " +
       "  ) " +
       filters.query,
-    [userId, `${label}%`, ...filters.params],
+    [userId, label, `${label}/%`, ...filters.params],
   );
   span.end();
 }
