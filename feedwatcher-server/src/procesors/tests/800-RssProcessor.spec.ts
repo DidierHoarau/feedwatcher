@@ -3,6 +3,10 @@ import * as dns from "dns";
 import { Source } from "../../model/Source";
 import processor from "../../../processors-system/800-RssProcessor";
 
+const { createFeedFetchContext } = require(
+  "../../../processors-system/lib/feed-cache"
+);
+
 jest.mock("axios", () => ({
   __esModule: true,
   default: { get: jest.fn() },
@@ -108,6 +112,50 @@ describe("RSS processor fetchLatest (M3)", () => {
       "https://example.com/feed",
       expect.objectContaining({ timeout: 10000 })
     );
+  });
+});
+
+describe("RSS processor shared fetch context", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.mocked(dns.promises.lookup).mockResolvedValue(publicLookup);
+  });
+
+  test("test and fetchLatest share exactly one HTTP GET", async () => {
+    mockFeedResponse(FEED_XML);
+    const source = new Source();
+    source.info = { url: "https://example.com/feed" };
+    const context = createFeedFetchContext();
+
+    const detected = await processor.test(source, context);
+    const sourceItems = await processor.fetchLatest(source, null, context);
+
+    expect(detected).toEqual({ name: "Test Feed", icon: "rss" });
+    expect(sourceItems).toHaveLength(3);
+    expect(axios.get).toHaveBeenCalledTimes(1);
+  });
+
+  test("a 304 makes test return null and fetchLatest reject as not modified", async () => {
+    jest.mocked(axios.get).mockResolvedValue({
+      status: 304,
+      headers: { etag: '"v1"' },
+      data: "",
+    } as any);
+    const source = new Source();
+    source.info = { url: "https://example.com/feed" };
+    const context = createFeedFetchContext({
+      validators: {
+        url: "https://example.com/feed",
+        etag: '"v1"',
+        lastModified: null,
+      },
+    });
+
+    await expect(processor.test(source, context)).resolves.toBeNull();
+    await expect(
+      processor.fetchLatest(source, null, context)
+    ).rejects.toMatchObject({ name: "FeedNotModifiedError" });
+    expect(axios.get).toHaveBeenCalledTimes(1);
   });
 });
 

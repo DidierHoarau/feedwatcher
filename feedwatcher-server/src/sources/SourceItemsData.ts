@@ -3,8 +3,12 @@ import { SourceItem } from "../model/SourceItem";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { OTelTracer } from "../OTelContext";
 import {
+  convertToPostgresPlaceholders,
   DbUtilsExecSQL,
+  DbUtilsGetDatabase,
+  DbUtilsGetType,
   DbUtilsQuerySQL,
+  PostgresDbUtilsGetPool,
 } from "@devopsplaybook.io/common-utils";
 import { SourcesDataGet, SourcesDataInvalidateUserCache } from "./SourcesData";
 
@@ -31,39 +35,84 @@ export async function SourceItemsDataGetForUser(
   return sourceItem;
 }
 
-export async function SourceItemsDataAdd(
+const INSERT_ITEM_SQL =
+  "INSERT INTO sources_items " +
+  "(id, sourceId, title, content, url, status, datePublished, thumbnail, info) " +
+  "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ? " +
+  "WHERE ? = '' OR NOT EXISTS ( " +
+  "  SELECT 1 FROM sources_items WHERE sourceId = ? AND url = ? " +
+  ")";
+
+function itemInsertParams(sourceId: string, sourceItem: SourceItem): any[] {
+  return [
+    sourceItem.id,
+    sourceId,
+    sourceItem.title,
+    sourceItem.content,
+    sourceItem.url,
+    sourceItem.status,
+    sourceItem.datePublished.toISOString(),
+    sourceItem.thumbnail,
+    JSON.stringify(sourceItem.info),
+    sourceItem.url,
+    sourceId,
+    sourceItem.url,
+  ];
+}
+
+// Inserts one source's new items in a single batch/transaction, then
+// invalidates the owner's cache once. URL dedupe is preserved per item:
+// re-fetched items (e.g. date-less feeds reprocessed every cycle) are skipped,
+// items without a url skip the guard. A failure rolls back the whole batch.
+export async function SourceItemsDataAddMany(
   context: Span,
-  sourceItem: SourceItem,
+  sourceId: string,
+  userId: string,
+  sourceItems: SourceItem[],
 ): Promise<void> {
-  const span = OTelTracer().startSpan("SourceItemsDataAdd", context);
-  // URL dedupe: re-fetched items (e.g. date-less feeds reprocessed every
-  // cycle) must not be inserted twice. Items without a url skip the guard.
-  await DbUtilsExecSQL(
-    span,
-    "INSERT INTO sources_items " +
-      "(id, sourceId, title, content, url, status, datePublished, thumbnail, info) " +
-      "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ? " +
-      "WHERE ? = '' OR NOT EXISTS ( " +
-      "  SELECT 1 FROM sources_items WHERE sourceId = ? AND url = ? " +
-      ")",
-    [
-      sourceItem.id,
-      sourceItem.sourceId,
-      sourceItem.title,
-      sourceItem.content,
-      sourceItem.url,
-      sourceItem.status,
-      sourceItem.datePublished.toISOString(),
-      sourceItem.thumbnail,
-      JSON.stringify(sourceItem.info),
-      sourceItem.url,
-      sourceItem.sourceId,
-      sourceItem.url,
-    ],
-  );
-  const source = await SourcesDataGet(span, sourceItem.sourceId);
-  await SourcesDataInvalidateUserCache(span, await source.userId);
-  span.end();
+  if (!sourceItems || sourceItems.length === 0) {
+    return;
+  }
+  const span = OTelTracer().startSpan("SourceItemsDataAddMany", context);
+  try {
+    if (DbUtilsGetType() === "postgres") {
+      // Pin one pooled connection so BEGIN/COMMIT cannot land on different
+      // sessions (the deprecated Start/Commit helpers do not).
+      const client = await PostgresDbUtilsGetPool().connect();
+      try {
+        await client.query("BEGIN");
+        const sql = convertToPostgresPlaceholders(INSERT_ITEM_SQL);
+        for (const sourceItem of sourceItems) {
+          // eslint-disable-next-line no-await-in-loop
+          await client.query(sql, itemInsertParams(sourceId, sourceItem));
+        }
+        await client.query("COMMIT");
+      } catch (err) {
+        try {
+          await client.query("ROLLBACK");
+        } catch {
+          // The connection is released below regardless.
+        }
+        throw err;
+      } finally {
+        client.release();
+      }
+    } else {
+      // better-sqlite3 transactions are synchronous, so two concurrent cycles
+      // cannot interleave BEGIN/COMMIT across await points.
+      const db = DbUtilsGetDatabase();
+      const insert = db.prepare(INSERT_ITEM_SQL);
+      const runBatch = db.transaction((items: SourceItem[]) => {
+        for (const sourceItem of items) {
+          insert.run(...itemInsertParams(sourceId, sourceItem));
+        }
+      });
+      runBatch(sourceItems);
+    }
+    await SourcesDataInvalidateUserCache(span, userId);
+  } finally {
+    span.end();
+  }
 }
 
 export async function SourceItemsDataUpdate(

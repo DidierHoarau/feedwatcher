@@ -41,8 +41,8 @@ const SNIPPET_PAGE_TITLE = `<meta property="og:title" content="RiskReversal Medi
 const SNIPPET_PAGE_TITLE_ENCODED = `<meta property="og:title" content="A &amp; B Show">`;
 const PAGE_WITH_ID_AND_TITLE = `<html><head>${SNIPPET_PAGE_TITLE}</head><body>${SNIPPET_EXTERNAL_ID}</body></html>`;
 
-function reply(data: unknown): AxiosResponse {
-  return { data } as AxiosResponse;
+function reply(data: unknown, status = 200): AxiosResponse {
+  return { data, status } as AxiosResponse;
 }
 
 function httpError(status: number): Error {
@@ -81,6 +81,7 @@ function mockNetworkBlocked(): jest.SpyInstance {
 
 afterEach(() => {
   jest.restoreAllMocks();
+  processor.resetShortsCache();
 });
 
 function newSource(url: string): Source {
@@ -501,6 +502,34 @@ describe("YouTube processor: fetchLatest", () => {
     expect(shortsProbeCount).toBe(1);
     expect(sourceItems[0].title).toContain("(#shorts)");
     expect(sourceItems[1].title).toContain("(#shorts)");
+  });
+
+  test("does not re-probe videos already classified in a previous cycle", async () => {
+    let shortsProbeCount = 0;
+    const spy = jest
+      .spyOn(axios, "get")
+      .mockImplementation(async (url: string): Promise<AxiosResponse> => {
+        if (url.startsWith("https://www.youtube.com/feeds/videos.xml")) {
+          return reply(FEED_XML);
+        }
+        if (url.startsWith("https://www.youtube.com/shorts/")) {
+          shortsProbeCount++;
+          return reply("<html></html>", 302);
+        }
+        return reply("");
+      });
+    const source = newSource("https://www.youtube.com/@riskreversalmedia");
+    source.info.channelId = CHANNEL_ID;
+
+    const firstCycle = await processor.fetchLatest(source, null);
+    const secondCycle = await processor.fetchLatest(source, null);
+
+    expect(shortsProbeCount).toBe(1);
+    expect(firstCycle[0].title).toBe("Test video title");
+    expect(secondCycle[0].title).toBe("Test video title");
+    // The feed is fetched once per cycle, the shorts probe only once overall.
+    expect(spy.mock.calls.filter((call) => String(call[0]).includes("/shorts/")))
+      .toHaveLength(1);
   });
 
   test("bounds every outbound request with a timeout (M4)", async () => {

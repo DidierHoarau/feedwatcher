@@ -273,6 +273,53 @@ describe("ssrf-http fetchText", () => {
     ).resolves.toMatchObject({ data: "feed" });
   });
 
+  test("returns 304 as a normal result instead of a failed redirect", async () => {
+    jest.mocked(axios.get).mockResolvedValue({
+      status: 304,
+      headers: { etag: '"v1"' },
+      data: "",
+    } as any);
+
+    const response = await ssrfHttp.fetchText("https://example.com/feed", {
+      headers: { "If-None-Match": '"v1"' },
+    });
+
+    expect(response.status).toBe(304);
+    expect(response.headers.etag).toBe('"v1"');
+    expect(response.data).toBe("");
+    expect(axios.get).toHaveBeenCalledTimes(1);
+  });
+
+  test("forwards conditional request headers to axios", async () => {
+    jest.mocked(axios.get).mockResolvedValue(okResponse("feed", "text/xml"));
+
+    await ssrfHttp.fetchText("https://example.com/feed", {
+      headers: {
+        "If-None-Match": '"v2"',
+        "If-Modified-Since": "Wed, 01 Oct 2025 12:00:00 GMT",
+      },
+    });
+
+    const options = jest.mocked(axios.get).mock.calls[0][1] as any;
+    expect(options.headers["If-None-Match"]).toBe('"v2"');
+    expect(options.headers["If-Modified-Since"]).toBe(
+      "Wed, 01 Oct 2025 12:00:00 GMT"
+    );
+    expect(options.headers["User-Agent"]).toContain("FeedWatcher");
+  });
+
+  test("forwards an AbortSignal to axios", async () => {
+    jest.mocked(axios.get).mockResolvedValue(okResponse());
+    const controller = new AbortController();
+
+    await ssrfHttp.fetchText("https://example.com/feed", {
+      signal: controller.signal,
+    });
+
+    const options = jest.mocked(axios.get).mock.calls[0][1] as any;
+    expect(options.signal).toBe(controller.signal);
+  });
+
   test("caps content length and timeout by default", async () => {
     jest.mocked(axios.get).mockResolvedValue(okResponse());
 

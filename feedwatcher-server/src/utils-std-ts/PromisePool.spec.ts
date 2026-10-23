@@ -1,7 +1,22 @@
 import { PromisePool } from "./PromisePool";
 
+jest.mock("../OTelContext", () => {
+  const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+  return {
+    OTelLogger: () => ({ createModuleLogger: () => logger }),
+  };
+});
+
+function moduleLogger(): any {
+  const { OTelLogger } = jest.requireMock("../OTelContext");
+  return OTelLogger().createModuleLogger("PromisePool");
+}
+
 describe("PromisePool", () => {
-  //
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   test("should start with empty queue and no in-flight tasks", () => {
     const pool = new PromisePool(3);
     expect(pool.getQueueLength()).toBe(0);
@@ -15,34 +30,32 @@ describe("PromisePool", () => {
   });
 
   test("should contain task rejection and resolve with undefined", async () => {
-    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const logger = moduleLogger();
     const pool = new PromisePool(3);
     const result = await pool.add(() =>
       Promise.reject(new Error("task failed")),
     );
     expect(result).toBeUndefined();
-    expect(errorSpy).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       expect.stringContaining("PromisePool task failed: task failed"),
     );
     expect(pool.getInFlightCount()).toBe(0);
-    errorSpy.mockRestore();
   });
 
   test("should contain synchronous throws and resolve with undefined", async () => {
-    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const logger = moduleLogger();
     const pool = new PromisePool(3);
     const result = await pool.add(() => {
       throw new Error("sync failure");
     });
     expect(result).toBeUndefined();
-    expect(errorSpy).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       expect.stringContaining("PromisePool task failed: sync failure"),
     );
-    errorSpy.mockRestore();
   });
 
   test("should abort the signal of a task that times out", async () => {
-    jest.spyOn(console, "error").mockImplementation(() => {});
+    const logger = moduleLogger();
     const pool = new PromisePool(2, 50);
     let observedAbort = false;
     const result = await pool.add(
@@ -57,8 +70,47 @@ describe("PromisePool", () => {
     );
     expect(result).toBeUndefined();
     expect(observedAbort).toBe(true);
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining("Promise cancelled due to timeout"),
+    );
+    // The task settled on abort, so its slot is released.
+    await new Promise((r) => setTimeout(r, 0));
     expect(pool.getInFlightCount()).toBe(0);
-    jest.restoreAllMocks();
+  });
+
+  test("should keep the concurrency bound until a timed-out task settles", async () => {
+    const pool = new PromisePool(1, 50);
+    let abortedSignal: AbortSignal;
+    let settleFirst: (value: string) => void;
+    let secondStarted = 0;
+
+    const first = pool.add(
+      (signal) =>
+        new Promise((resolve) => {
+          abortedSignal = signal;
+          settleFirst = resolve;
+        }),
+    );
+    const second = pool.add(() => {
+      secondStarted++;
+      return Promise.resolve("second");
+    });
+
+    const timeoutResult = await first;
+    expect(timeoutResult).toBeUndefined();
+    expect(abortedSignal.aborted).toBe(true);
+
+    // The underlying task ignores the abort: the slot must stay taken, so the
+    // queued task has not started even though the caller was released.
+    await new Promise((r) => setTimeout(r, 30));
+    expect(secondStarted).toBe(0);
+    expect(pool.getInFlightCount()).toBe(1);
+    expect(pool.getQueueLength()).toBe(1);
+
+    settleFirst("late result");
+    await expect(second).resolves.toBe("second");
+    expect(secondStarted).toBe(1);
+    expect(pool.getInFlightCount()).toBe(0);
   });
 
   test("should limit concurrency", async () => {
@@ -120,16 +172,18 @@ describe("PromisePool", () => {
   });
 
   test("should resolve with undefined when task exceeds timeout", async () => {
-    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const logger = moduleLogger();
     const pool = new PromisePool(2, 100);
     const result = await pool.add(
       () => new Promise((resolve) => setTimeout(resolve, 500)),
     );
     expect(result).toBeUndefined();
-    expect(errorSpy).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       expect.stringContaining("Promise cancelled due to timeout"),
     );
-    errorSpy.mockRestore();
+    // Wait for the underlying task to settle and free its slot.
+    await new Promise((r) => setTimeout(r, 450));
+    expect(pool.getInFlightCount()).toBe(0);
   });
 
   test("should track queue length correctly", async () => {

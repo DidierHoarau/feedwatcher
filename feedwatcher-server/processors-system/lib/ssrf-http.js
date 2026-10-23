@@ -166,6 +166,7 @@ async function fetchText(urlRaw, options = {}) {
       ? DEFAULT_MAX_REDIRECTS
       : options.maxRedirects;
   const allowedContentTypes = options.allowedContentTypes;
+  const signal = options.signal;
   const headers = Object.assign(
     { "User-Agent": USER_AGENT },
     options.headers || {},
@@ -191,6 +192,7 @@ async function fetchText(urlRaw, options = {}) {
         httpAgent: isHttps ? undefined : agent,
         httpsAgent: isHttps ? agent : undefined,
         headers,
+        signal,
       });
     } catch (err) {
       if (err && err.code === "ERR_FR_MAX_CONTENT_LENGTH_EXCEEDED") {
@@ -199,6 +201,13 @@ async function fetchText(urlRaw, options = {}) {
       throw new SsrfHttpError("Failed to fetch URL", 502);
     } finally {
       agent.destroy();
+    }
+    if (response.status === 304) {
+      return {
+        status: 304,
+        headers: response.headers,
+        data: response.data || "",
+      };
     }
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers && response.headers.location;

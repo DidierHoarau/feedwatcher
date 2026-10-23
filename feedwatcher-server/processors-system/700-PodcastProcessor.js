@@ -74,6 +74,24 @@ function isPodcastFeed(feed) {
   });
 }
 
+// The scheduler passes a per-cycle feed context so detection and fetching
+// share one HTTP request. Direct calls (user processors, tests) keep the
+// standalone fetch.
+async function loadFeed(source, context) {
+  if (context && typeof context.getFeed === "function") {
+    return context.getFeed(source.info.url, {
+      timeoutMs: FETCH_TIMEOUT_MS,
+      maxContentLength: MAX_FEED_BYTES,
+    });
+  }
+  const response = await fetchText(source.info.url, {
+    timeoutMs: FETCH_TIMEOUT_MS,
+    maxContentLength: MAX_FEED_BYTES,
+    allowedContentTypes: null,
+  });
+  return parseFeed(response.data);
+}
+
 // eslint-disable-next-line no-undef
 module.exports = {
   getInfo: () => {
@@ -85,17 +103,9 @@ module.exports = {
     };
   },
 
-  test: async (source) => {
+  test: async (source, context) => {
     try {
-      const feed = parseFeed(
-        (
-          await fetchText(source.info.url, {
-            timeoutMs: FETCH_TIMEOUT_MS,
-            maxContentLength: MAX_FEED_BYTES,
-            allowedContentTypes: null,
-          })
-        ).data,
-      );
+      const feed = await loadFeed(source, context);
       if (!isPodcastFeed(feed)) {
         return null;
       }
@@ -109,16 +119,8 @@ module.exports = {
     }
   },
 
-  fetchLatest: async (source, lastSourceItemSaved) => {
-    const feed = parseFeed(
-      (
-        await fetchText(source.info.url, {
-          timeoutMs: FETCH_TIMEOUT_MS,
-          maxContentLength: MAX_FEED_BYTES,
-          allowedContentTypes: null,
-        })
-      ).data,
-    );
+  fetchLatest: async (source, lastSourceItemSaved, context) => {
+    const feed = await loadFeed(source, context);
     const feedArtwork =
       getItunesImageUrl(feed.element) || (feed.image && feed.image.url) || null;
     const feedAuthor = getItunesValue(feed.element, "author");

@@ -19,9 +19,13 @@ import {
   SourcesDataUpdate,
 } from "../sources/SourcesData";
 import {
-  SourceItemsDataAdd,
+  SourceItemsDataAddMany,
   SourceItemsDataGetLastForSource,
 } from "../sources/SourceItemsData";
+import {
+  SourcesFetchStateDataGet,
+  SourcesFetchStateDataSave,
+} from "../sources/SourcesFetchStateData";
 import { OTelLogger, OTelTracer } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger("Processor");
@@ -29,6 +33,15 @@ let config: Config;
 let processorsFiles = [];
 const userProcessorInfoStatus: UserProcessorInfo[] = [];
 const sourcesInFlight = new Set<string>();
+
+const feedCacheLib = require(path.join(
+  __dirname,
+  "../../processors-system/lib/feed-cache.js",
+));
+
+function feedFetchContext(validators, signal) {
+  return feedCacheLib.createFeedFetchContext({ validators, signal });
+}
 
 export async function ProcessorsInit(
   context: Span,
@@ -94,12 +107,13 @@ export async function ProcessorsCheckSource(
   let lastError: Error = null;
   if (!source.info.processorPath) {
     userProcessorInfoStatusStart(span, source.userId);
+    const sourceContext = feedFetchContext(null, null);
     let processed = false;
     for (const processorsFile of processorsFiles) {
       if (!processed) {
         try {
           const processor = await ProcessorsLoadFile(processorsFile);
-          const sourceInfo = await processor.test(source);
+          const sourceInfo = await processor.test(source, sourceContext);
           if (sourceInfo) {
             sourceInfo.processorPath = processorsFile.path;
             source.name = sourceInfo.name;
@@ -153,6 +167,7 @@ export async function ProcessorsPreviewSource(
   const span = OTelTracer().startSpan("ProcessorsPreviewSource", context);
   let lastError: Error = null;
   let preview: ProcessorPreview | null = null;
+  const sourceContext = feedFetchContext(null, null);
   userProcessorInfoStatusStart(span, source.userId);
   try {
     for (const processorsFile of processorsFiles) {
@@ -161,7 +176,7 @@ export async function ProcessorsPreviewSource(
       }
       try {
         const processor = await ProcessorsLoadFile(processorsFile);
-        const sourceInfo = await processor.test(source);
+        const sourceInfo = await processor.test(source, sourceContext);
         if (sourceInfo) {
           sourceInfo.processorPath = processorsFile.path;
           source.name = sourceInfo.name;
@@ -169,7 +184,11 @@ export async function ProcessorsPreviewSource(
             source.info = {};
           }
           source.info = merge(source.info, sourceInfo);
-          const sourceItems = await processor.fetchLatest(source, null);
+          const sourceItems = await processor.fetchLatest(
+            source,
+            null,
+            sourceContext,
+          );
           preview = {
             processorTitle: processor.getInfo().title,
             processorIcon: sourceInfo.icon || "",
@@ -222,6 +241,7 @@ export async function ProcessorsFetchSourceItemsForUser(
 export async function ProcessorsFetchSourceItems(
   context: Span,
   source: Source,
+  signal?: AbortSignal,
 ): Promise<void> {
   if (sourcesInFlight.has(source.id)) {
     return;
@@ -238,17 +258,32 @@ export async function ProcessorsFetchSourceItems(
       context,
       source.id,
     );
+    // HTTP validators are only meaningful for a source whose processor was
+    // already detected: running a conditional GET before the initial import
+    // would answer 304 and never store the first items.
+    const fetchState =
+      source.info && source.info.processorPath
+        ? await SourcesFetchStateDataGet(context, source.id)
+        : null;
+    const sourceContext = feedFetchContext(
+      fetchState && source.info.url && fetchState.url === source.info.url
+        ? fetchState
+        : null,
+      signal,
+    );
     for (const processorsFile of processorsFiles) {
       if (!processed) {
         try {
           const processor = await ProcessorsLoadFile(processorsFile);
-          if (await processor.test(source)) {
+          if (await processor.test(source, sourceContext)) {
             let nbNewItem = 0;
             let lastItemDate: Date = null;
             const newSourceItems = await processor.fetchLatest(
               source,
               lastSourceItemSaved,
+              sourceContext,
             );
+            const sourceItemsToSave = [];
             for (const newSourceItem of newSourceItems) {
               try {
                 const itemDate = new Date(newSourceItem.datePublished);
@@ -273,7 +308,7 @@ export async function ProcessorsFetchSourceItems(
                   if (!newSourceItem.id) {
                     newSourceItem.id = uuidv4();
                   }
-                  await SourceItemsDataAdd(context, newSourceItem);
+                  sourceItemsToSave.push(newSourceItem);
                 }
               } catch (err) {
                 // One malformed item must not abort the whole fetch
@@ -282,6 +317,14 @@ export async function ProcessorsFetchSourceItems(
                   context,
                 );
               }
+            }
+            if (sourceItemsToSave.length > 0) {
+              await SourceItemsDataAddMany(
+                context,
+                source.id,
+                source.userId,
+                sourceItemsToSave,
+              );
             }
             logger.info(
               `Source ${source.id} has ${nbNewItem} new items`,
@@ -305,6 +348,10 @@ export async function ProcessorsFetchSourceItems(
             processed = true;
           }
         } catch (err) {
+          if (err && err.name === "FeedNotModifiedError") {
+            // HTTP 304 is a successful fetch, handled after the loop.
+            continue;
+          }
           lastErrorInfo = SourceFetchErrorClassify(err);
           // context can be undefined when the request span is not available
           context?.setAttributes({
@@ -322,6 +369,22 @@ export async function ProcessorsFetchSourceItems(
       source.info = {};
     }
     source.info.lastAttemptDate = new Date();
+    if (
+      !processed &&
+      source.info.processorPath &&
+      sourceContext.isNotModified(source.info.url)
+    ) {
+      // The feed answered 304: no new items, but the fetch succeeded.
+      logger.info(`Source ${source.id} has 0 new items`, context);
+      source.info.dateFetched = new Date();
+      source.info.fetchErrorCount = 0;
+      delete source.info.autoDisabled;
+      delete source.info.autoDisabledDate;
+      delete source.info.autoDisabledReason;
+      delete source.info.retryAfterUntil;
+      await SourcesDataUpdate(context, source);
+      processed = true;
+    }
     if (!processed) {
       const fetchErrorCount = (Number(source.info.fetchErrorCount) || 0) + 1;
       source.info.fetchErrorCount = fetchErrorCount;
@@ -363,6 +426,18 @@ export async function ProcessorsFetchSourceItems(
         `No processor found for ${source.id} (${source.name})`,
         context,
       );
+    } else {
+      const updatedState = sourceContext.getUpdatedState();
+      if (updatedState) {
+        try {
+          await SourcesFetchStateDataSave(context, source.id, updatedState);
+        } catch (err) {
+          logger.warn(
+            `Failed to save fetch state for source ${source.id}: ${err.message}`,
+            context,
+          );
+        }
+      }
     }
   } finally {
     sourcesInFlight.delete(source.id);
