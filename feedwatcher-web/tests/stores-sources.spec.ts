@@ -37,6 +37,90 @@ function newStore() {
   return SourcesStore();
 }
 
+// Sorted by (labelName, sourceName): "news" < "news/tech" < "newspaper".
+const BOUNDARY_SOURCES = [
+  { sourceId: "s-news", sourceName: "News", labelName: "news", sourceInfo: {} },
+  {
+    sourceId: "s-tech",
+    sourceName: "Tech",
+    labelName: "news/tech",
+    sourceInfo: {},
+  },
+  {
+    sourceId: "s-paper",
+    sourceName: "Paper",
+    labelName: "newspaper",
+    sourceInfo: {},
+  },
+];
+
+function mockBoundaryApi() {
+  vi.mocked(axios.get).mockImplementation((url: string) => {
+    if (url.endsWith("/sources/labels")) {
+      return Promise.resolve({ data: { sourceLabels: BOUNDARY_SOURCES } });
+    }
+    if (url.endsWith("/counts/unread")) {
+      return Promise.resolve({
+        data: {
+          counts: [
+            { sourceId: "s-news", unreadCount: 5 },
+            { sourceId: "s-tech", unreadCount: 2 },
+            { sourceId: "s-paper", unreadCount: 9 },
+          ],
+        },
+      });
+    }
+    if (url.endsWith("/counts/saved")) {
+      return Promise.resolve({ data: { counts: [] } });
+    }
+    return Promise.reject(new Error(`unexpected url ${url}`));
+  });
+}
+
+describe("SourcesStore hierarchical label boundaries", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(axios.get).mockReset();
+    mockBoundaryApi();
+  });
+
+  test("a label count includes its children but not prefix-sharing labels", async () => {
+    const store = newStore();
+    await store.fetch();
+
+    const byLabel = (name: string) =>
+      store.sources.find((s: any) => s.isLabel && s.labelName === name) as any;
+    const root = store.sources.find((s: any) => s.isRoot) as any;
+
+    expect(byLabel("news").unreadCount).toBe(7);
+    expect(byLabel("newspaper").unreadCount).toBe(9);
+    expect(root.unreadCount).toBe(16);
+  });
+
+  test("collapsing a label hides its children but keeps newspaper visible", async () => {
+    const store = newStore();
+    await store.fetch();
+
+    const newsIndex = store.sources.findIndex(
+      (s: any) => s.isLabel && s.labelName === "news",
+    );
+    expect(newsIndex).toBeGreaterThan(0);
+    store.toggleLabelCollapsed(newsIndex);
+
+    const byLabel = (name: string) =>
+      store.sources.find((s: any) => s.isLabel && s.labelName === name) as any;
+    const bySourceId = (id: string) =>
+      store.sources.find((s: any) => s.sourceId === id) as any;
+
+    expect(byLabel("news").isVisible).toBe(true);
+    expect(bySourceId("s-news").isVisible).toBe(false);
+    expect(byLabel("news/tech").isVisible).toBe(false);
+    expect(bySourceId("s-tech").isVisible).toBe(false);
+    expect(byLabel("newspaper").isVisible).toBe(true);
+    expect(bySourceId("s-paper").isVisible).toBe(true);
+  });
+});
+
 describe("SourcesStore count assignment (L7)", () => {
   beforeEach(() => {
     vi.mocked(axios.get).mockReset();

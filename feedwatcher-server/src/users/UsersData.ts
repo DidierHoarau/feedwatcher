@@ -59,8 +59,14 @@ export async function UsersDataAdd(context: Span, user: User): Promise<void> {
   const span = OTelTracer().startSpan("UsersDataAdd", context);
   await DbUtilsExecSQL(
     span,
-    "INSERT INTO users (id,name,passwordEncrypted,settings) VALUES (?, ?, ?, ?)",
-    [user.id, user.name, user.passwordEncrypted, UserSettingsToJson(user.settings)]
+    "INSERT INTO users (id,name,passwordEncrypted,settings,tokenVersion) VALUES (?, ?, ?, ?, ?)",
+    [
+      user.id,
+      user.name,
+      user.passwordEncrypted,
+      UserSettingsToJson(user.settings),
+      Number(user.tokenVersion) || 0,
+    ]
   );
   span.end();
 }
@@ -72,8 +78,8 @@ export async function UsersDataUpdate(
   const span = OTelTracer().startSpan("UsersDataUpdate", context);
   await DbUtilsExecSQL(
     span,
-    "UPDATE users SET passwordEncrypted = ? WHERE id = ? ",
-    [user.passwordEncrypted, user.id]
+    "UPDATE users SET passwordEncrypted = ?, tokenVersion = ? WHERE id = ? ",
+    [user.passwordEncrypted, Number(user.tokenVersion) || 0, user.id]
   );
   span.end();
 }
@@ -99,6 +105,7 @@ function fromRaw(userRaw: any): User {
   user.id = userRaw.id;
   user.name = userRaw.name;
   user.passwordEncrypted = userRaw.passwordEncrypted;
+  user.tokenVersion = Number(userRaw.tokenVersion ?? userRaw.tokenversion ?? 0) || 0;
   let settingsJson: any = null;
   try {
     settingsJson = userRaw.settings ? JSON.parse(userRaw.settings) : null;

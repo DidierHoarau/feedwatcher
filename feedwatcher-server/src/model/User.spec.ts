@@ -12,7 +12,18 @@ describe("User", () => {
     expect(user.id.length).toBeGreaterThan(0);
     expect(user.name).toBeUndefined();
     expect(user.passwordEncrypted).toBeUndefined();
+    expect(user.tokenVersion).toBe(0);
     expect(user.settings).toEqual(DEFAULT_USER_SETTINGS);
+  });
+
+  test("tokenVersion defaults to 0, parses from JSON and tolerates garbage", () => {
+    expect(User.fromJson({ name: "alice" }).tokenVersion).toBe(0);
+    expect(
+      User.fromJson({ name: "alice", tokenVersion: "3" }).tokenVersion,
+    ).toBe(3);
+    expect(
+      User.fromJson({ name: "alice", tokenVersion: "garbage" }).tokenVersion,
+    ).toBe(0);
   });
 
   test("should set properties correctly", () => {
@@ -27,11 +38,13 @@ describe("User", () => {
     const user = new User();
     user.name = "jdoe";
     user.passwordEncrypted = "hash123";
+    user.tokenVersion = 2;
     const json = user.toJson();
     expect(json).toEqual({
       id: user.id,
       name: "jdoe",
       passwordEncrypted: "hash123",
+      tokenVersion: 2,
       settings: UserSettingsToJson(DEFAULT_USER_SETTINGS),
     });
   });

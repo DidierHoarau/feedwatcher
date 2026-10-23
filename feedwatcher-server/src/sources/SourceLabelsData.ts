@@ -48,7 +48,7 @@ export async function SourceLabelsDataSetSourceLabels(
     [sourceId],
   );
   for (const label of labels) {
-    DbUtilsExecSQL(
+    await DbUtilsExecSQL(
       span,
       "INSERT INTO sources_labels (id,sourceId,name,info) VALUES (?,?,?,?)",
       [uuidv4(), sourceId, label.trim(), JSON.stringify({})],

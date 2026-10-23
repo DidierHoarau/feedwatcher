@@ -122,7 +122,8 @@ export async function SearchItemsDataListItemsForLabel(
       "    SELECT sources.id " +
       "    FROM sources, sources_labels " +
       "    WHERE sources.userId = ? " +
-      "          AND sources_labels.sourceId = sources.id AND sources_labels.name LIKE ? " +
+      "          AND sources_labels.sourceId = sources.id " +
+      "          AND (sources_labels.name = ? OR sources_labels.name LIKE ?) " +
       "  ) " +
       "  AND sources.userId = ? " +
       filterQuery +
@@ -131,7 +132,8 @@ export async function SearchItemsDataListItemsForLabel(
       getLimitQuery(),
     [
       userId,
-      `${label}%`,
+      label,
+      `${label}/%`,
       userId,
       ...filterParams,
       ...cursorParams,

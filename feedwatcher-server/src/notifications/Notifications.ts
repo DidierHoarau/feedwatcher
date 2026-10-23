@@ -17,7 +17,6 @@ const logger = OTelLogger().createModuleLogger("Notifications");
 
 const DIGEST_BODY_MAX_CHARS = 140;
 const NEW_ITEMS_BODY_MAX_CHARS = 100;
-const NEW_ITEMS_MAX = 20;
 
 export async function NotificationsInit(
   context: Span,
@@ -142,28 +141,34 @@ async function NotificationsCheckNewItemsForUser(
       "))";
     params.push(...watchedLabels);
   }
-  const itemsRaw = await DbUtilsQuerySQL(
+  const totalsRaw = await DbUtilsQuerySQL(
     span,
-    "SELECT si.id, si.title, si.datePublished FROM sources_items si " +
+    "SELECT COUNT(*) AS count, MAX(si.datePublished) AS newestAt FROM sources_items si " +
       "JOIN sources s ON si.sourceId = s.id " +
       "WHERE s.userId = ? AND si.status = 'unread' AND si.datePublished > ? " +
-      labelFilter +
-      " ORDER BY si.datePublished DESC LIMIT " + NEW_ITEMS_MAX,
+      labelFilter,
     params
   );
+  const newItemsCount = Number(totalsRaw?.[0]?.count ?? 0) || 0;
+  const newestAt = totalsRaw?.[0]?.newestAt;
 
-  if (itemsRaw.length > 0) {
-    const newest = itemsRaw
-      .map((item: any) => item.datePublished)
-      .sort()
-      .reverse()[0];
-    const firstTitle = String(itemsRaw[0].title || "").substring(
+  if (newItemsCount > 0 && newestAt) {
+    const titleRaw = await DbUtilsQuerySQL(
+      span,
+      "SELECT si.title FROM sources_items si " +
+        "JOIN sources s ON si.sourceId = s.id " +
+        "WHERE s.userId = ? AND si.status = 'unread' AND si.datePublished > ? " +
+        labelFilter +
+        " ORDER BY si.datePublished DESC, si.id DESC LIMIT 1",
+      params
+    );
+    const firstTitle = String(titleRaw?.[0]?.title || "").substring(
       0,
       NEW_ITEMS_BODY_MAX_CHARS
     );
     await PushSenderSendToUser(span, user.id, {
       title: "FeedWatcher",
-      body: `${itemsRaw.length} new item(s) — ${firstTitle}`,
+      body: `${newItemsCount} new item(s) — ${firstTitle}`,
       url: "/sources",
       tag: "fw-items",
     });
@@ -171,7 +176,7 @@ async function NotificationsCheckNewItemsForUser(
       span,
       "INSERT INTO notification_state (userId, lastNewItemsAt) VALUES (?, ?) " +
         "ON CONFLICT(userId) DO UPDATE SET lastNewItemsAt = excluded.lastNewItemsAt",
-      [user.id, newest]
+      [user.id, newestAt]
     );
   }
   span.end();

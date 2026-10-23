@@ -10,6 +10,7 @@ import {
   UsersDataGet,
   UsersDataGetByName,
   UsersDataList,
+  UsersDataUpdate,
   UsersDataUpdateSettings,
 } from "./UsersData";
 
@@ -310,6 +311,55 @@ describe("UsersRoutes", () => {
     });
     expect(response.statusCode).toBe(400);
     expect(UsersDataUpdateSettings).not.toHaveBeenCalled();
+  });
+
+  test("password change bumps the token version and returns a fresh token", async () => {
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: true,
+      userId: "user-1",
+    });
+    jest.mocked(UsersDataGet).mockResolvedValue({
+      id: "user-1",
+      name: "alice",
+      passwordEncrypted: "old-hash",
+      tokenVersion: 2,
+    } as any);
+    jest.mocked(UserPasswordCheckPassword).mockResolvedValue(true);
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/password",
+      payload: { password: "new-password", passwordOld: "old-password" },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(JSON.parse(response.body).token).toBe("jwt-token");
+    expect(UsersDataUpdate).toHaveBeenCalledTimes(1);
+    const updatedUser = jest.mocked(UsersDataUpdate).mock.calls[0][1] as any;
+    expect(updatedUser.tokenVersion).toBe(3);
+  });
+
+  test("a wrong old password does not update the user", async () => {
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: true,
+      userId: "user-1",
+    });
+    jest.mocked(UsersDataGet).mockResolvedValue({
+      id: "user-1",
+      name: "alice",
+      passwordEncrypted: "old-hash",
+      tokenVersion: 2,
+    } as any);
+    jest.mocked(UserPasswordCheckPassword).mockResolvedValue(false);
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/password",
+      payload: { password: "new-password", passwordOld: "wrong" },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(UsersDataUpdate).not.toHaveBeenCalled();
   });
 
   test("rejects a missing settings body with 400 (N1)", async () => {
