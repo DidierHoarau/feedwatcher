@@ -287,6 +287,16 @@ onMounted(async () => {
 .new-source-page {
   padding: var(--space-sm);
   max-width: 40em;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Header and mode tabs stay fixed above the scroll region */
+.new-source-page > h4,
+.mode-toggle {
+  flex: 0 0 auto;
 }
 
 .mode-toggle {
@@ -332,6 +342,11 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: var(--space-base);
 }
 
 .source-exists-warning {

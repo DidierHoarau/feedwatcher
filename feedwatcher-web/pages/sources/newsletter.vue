@@ -20,6 +20,8 @@ import NewsletterSourceRepair from "~~/components/NewsletterSourceRepair.vue";
 .newsletter-page {
   padding: var(--space-sm);
   max-width: 60em;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .newsletter-page-hint {
