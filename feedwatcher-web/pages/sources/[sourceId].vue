@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="source-edit-page">
     <h1>Update Source: {{ source.info.url }}</h1>
     <div
       v-if="isFromNewsletter"
@@ -313,6 +313,11 @@ export default {
 </script>
 
 <style scoped>
+.source-edit-page {
+  height: 100%;
+  overflow-y: auto;
+}
+
 h1 {
   word-break: break-all;
 }
