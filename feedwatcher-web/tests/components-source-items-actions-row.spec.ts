@@ -168,6 +168,16 @@ describe("SourceItemsActionsRow advanced filters", () => {
     wrapper.unmount();
   });
 
+  test("the grid modifier classes keep the date bounds side by side", () => {
+    const wrapper = mountRow();
+
+    expect(wrapper.find(".actions-row-field-from").exists()).toBe(true);
+    expect(wrapper.find(".actions-row-field-to").exists()).toBe(true);
+    expect(wrapper.find(".actions-row-field-from select, .actions-row-field-from input").exists()).toBe(true);
+    expect(wrapper.find(".actions-row-field-to select, .actions-row-field-to input").exists()).toBe(true);
+    wrapper.unmount();
+  });
+
   test("the funnel is highlighted while a filter is active", () => {
     const active = mountRow("unread", { searchTagName: "news" });
     expect(active.find(".bi-funnel").classes()).toContain("filters-active");

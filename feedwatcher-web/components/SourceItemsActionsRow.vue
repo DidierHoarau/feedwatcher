@@ -47,7 +47,7 @@
       @cancel="onCancelMarkAll"
     />
     <div v-show="filtersOpen" class="actions-row-advanced">
-      <label class="actions-row-field">
+      <label class="actions-row-field actions-row-field-sort">
         <span class="actions-row-label">Sort</span>
         <select
           v-model="sourceItemsStore.sort"
@@ -60,7 +60,7 @@
           <option value="relevance">Best match</option>
         </select>
       </label>
-      <label class="actions-row-field">
+      <label class="actions-row-field actions-row-field-from">
         <span class="actions-row-label">From</span>
         <input
           class="actions-row-date"
@@ -71,7 +71,7 @@
           v-on:change="sourceItemsStore.fetch()"
         />
       </label>
-      <label class="actions-row-field">
+      <label class="actions-row-field actions-row-field-to">
         <span class="actions-row-label">To</span>
         <input
           class="actions-row-date"
@@ -84,7 +84,7 @@
       </label>
       <label
         v-if="sourceItemsStore.availableTags.length > 0"
-        class="actions-row-field"
+        class="actions-row-field actions-row-field-tag"
       >
         <span class="actions-row-label">Tag</span>
         <select

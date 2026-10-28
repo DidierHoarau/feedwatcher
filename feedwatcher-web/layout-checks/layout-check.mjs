@@ -13,7 +13,8 @@
  * above and below the search input in the item actions bar, and a single-line
  * actions bar while the advanced filters are closed. It also opens those
  * advanced filters and asserts every labeled field stays inside the bar, keeps
- * a readable width on mobile and shares one control height.
+ * a readable width on mobile, shares one control height and keeps the From/To
+ * date bounds side by side on one row.
  *
  * The new-source-page and newsletter-page states cover the scrollable pages:
  * `/sources/new` must keep its header and mode tabs fixed while only the
@@ -618,6 +619,27 @@ async function runFilterLayoutState(page, viewport, tmpDir) {
       caseName,
       `advanced filter controls have inconsistent heights: ${heights.map((h) => h.toFixed(0)).join(", ")}px`,
     );
+  }
+
+  // The two date bounds form one range: they must stay side by side on the
+  // same row (on mobile they get a dedicated row under the sort control).
+  const fromField = data.fields.find((entry) => entry.label === "From");
+  const toField = data.fields.find((entry) => entry.label === "To");
+  if (!fromField?.field || !toField?.field) {
+    fail(caseName, 'the "From" or "To" date field is missing');
+  } else {
+    if (Math.abs(fromField.field.top - toField.field.top) > 1) {
+      fail(
+        caseName,
+        `From and To date fields are on different rows: tops ${fromField.field.top.toFixed(0)}px vs ${toField.field.top.toFixed(0)}px`,
+      );
+    }
+    if (toField.field.left <= fromField.field.left) {
+      fail(
+        caseName,
+        `From is not left of To: lefts ${fromField.field.left.toFixed(0)}px vs ${toField.field.left.toFixed(0)}px`,
+      );
+    }
   }
 
   if (hasFailure()) {

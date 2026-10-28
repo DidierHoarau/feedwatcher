@@ -361,11 +361,29 @@
   #sources-items-actions #sources-items-search-filter {
     height: 44px;
   }
-  /* Two columns keep every labeled control wide enough to show its value
-     (a narrow native date input collapses to just the calendar icon) */
+  /* Sort and the tag filter span the full width while the two date bounds
+     share one row, so "From" and "To" read as a single range. Two columns
+     also keep each date input wide enough to show its value (a narrow
+     native date input collapses to just the calendar icon). */
   .actions-row-advanced {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "sort sort"
+      "from to"
+      "tag tag";
+  }
+  .actions-row-field-sort {
+    grid-area: sort;
+  }
+  .actions-row-field-from {
+    grid-area: from;
+  }
+  .actions-row-field-to {
+    grid-area: to;
+  }
+  .actions-row-field-tag {
+    grid-area: tag;
   }
 }
 
