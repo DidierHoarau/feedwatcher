@@ -13,6 +13,15 @@
  * above and below the search input in the item actions bar, and a single-line
  * actions bar while the advanced filters are closed.
  *
+ * The new-source-page and newsletter-page states cover the scrollable pages:
+ * `/sources/new` must keep its header and mode tabs fixed while only the
+ * active mode scrolls (add-by-url, 25 podcast search results, 25 newsletter
+ * feeds), and `/sources/newsletter` must scroll down to the source-health
+ * panel. They run on a dedicated page with request interception mocking
+ * `/api/status`, `/api/sources/search` and `/api/sources/newsletter`; the
+ * service worker is bypassed there because it serves the unauthenticated
+ * `/api/status` stale-while-revalidate and would hide the mocked flags.
+ *
  * Prerequisites:
  *   - feedwatcher-server: npm ci
  *   - feedwatcher-web:    npm ci && npm run generate
@@ -83,6 +92,26 @@ const STATES = [
     buttons: ["Close", "Play Episode", "Open", "Reader view", "Load Full"],
   },
 ];
+
+// Synthetic API payloads for the new-source-page / newsletter-page states.
+// 25 rows exceed every checked viewport height, so each list must scroll.
+const SEARCH_FEEDS = Array.from({ length: 25 }, (_, i) => ({
+  title: `Synthetic Podcast ${i + 1}`,
+  url: `https://example.com/podcast-${i + 1}.xml`,
+  description: "Synthetic search result used by the layout check.",
+  author: `Author ${i + 1}`,
+  image: "",
+}));
+
+const NEWSLETTER_FEEDS = Array.from({ length: 25 }, (_, i) => ({
+  providerFeedId: `synthetic-feed-${i + 1}`,
+  title: `Synthetic Newsletter ${i + 1}`,
+  senderName: `Sender ${i + 1}`,
+  senderEmail: `sender${i + 1}@example.com`,
+  itemCount: 10 + i,
+  latestDate: "2026-10-01T00:00:00.000Z",
+  state: "available",
+}));
 
 const failures = [];
 
@@ -231,6 +260,50 @@ async function main() {
       }
     }, token);
 
+    // Dedicated page for the scrollable-page states: mocked API responses
+    // need request interception, and the service worker is bypassed first
+    // (it serves /api/status stale-while-revalidate and would hide the mocks).
+    const newSourcePage = await browser.newPage();
+    newSourcePage.setDefaultTimeout(WAIT_TIMEOUT_MS);
+    await newSourcePage.setBypassServiceWorker(true);
+    await newSourcePage.setRequestInterception(true);
+    await newSourcePage.evaluateOnNewDocument((authToken) => {
+      try {
+        localStorage.setItem("auth_token", authToken);
+      } catch {
+        // Sandboxed iframes cannot touch localStorage; ignore.
+      }
+    }, token);
+    newSourcePage.on("request", (request) => {
+      try {
+        const pathname = new URL(request.url()).pathname;
+        const respond = (body) =>
+          request.respond({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(body),
+          });
+        if (pathname === "/api/status") {
+          return respond({
+            started: true,
+            podcastSearchEnabled: true,
+            newsletterEnabled: true,
+            notificationsEnabled: false,
+          });
+        }
+        if (pathname === "/api/sources/search") {
+          return respond({ feeds: SEARCH_FEEDS });
+        }
+        if (pathname === "/api/sources/newsletter") {
+          return respond({ enabled: true, feeds: NEWSLETTER_FEEDS });
+        }
+        return request.continue();
+      } catch (error) {
+        console.error(`    request interception error: ${error}`);
+        request.continue().catch(() => {});
+      }
+    });
+
     for (const viewport of VIEWPORTS) {
       await page.setViewport({
         width: viewport.width,
@@ -243,6 +316,16 @@ async function main() {
       for (const state of STATES) {
         await runState(page, base, authHeaders, seedItems, state, viewport, tmpDir);
       }
+
+      await newSourcePage.setViewport({
+        width: viewport.width,
+        height: viewport.height,
+        deviceScaleFactor: 1,
+        isMobile: viewport.isMobile,
+        hasTouch: viewport.isMobile,
+      });
+      await runNewSourceStates(newSourcePage, base, viewport, tmpDir);
+      await runNewsletterPageState(newSourcePage, base, viewport, tmpDir);
     }
   } catch (error) {
     fail("setup", error?.stack || String(error));
@@ -470,6 +553,623 @@ async function runListPageState(page, base, authHeaders, seedItems, viewport, tm
     await page.screenshot({ path: shot }).catch(() => {});
     console.error(`    Screenshot: ${shot}`);
   }
+}
+
+// --------------------------------------------------------------------------
+// Scrollable pages: /sources/new (fixed header + tabs, per-mode scroller) and
+// /sources/newsletter (single page scroller down to the source-health panel).
+// --------------------------------------------------------------------------
+
+// Runs in the page. `main` is the app shell's clipping grid child; every page
+// must stay inside its content box and provide its own scroll container.
+function collectScrollMetrics({
+  rootSelector,
+  scrollerSelector,
+  rowSelector,
+  toggleSelector,
+}) {
+  const rectOf = (el) => {
+    if (!el) {
+      return null;
+    }
+    const r = el.getBoundingClientRect();
+    return {
+      top: r.top,
+      bottom: r.bottom,
+      left: r.left,
+      right: r.right,
+      width: r.width,
+      height: r.height,
+    };
+  };
+  const main = document.querySelector("main");
+  const root = document.querySelector(rootSelector);
+  const scroller = document.querySelector(scrollerSelector);
+  const toggle = toggleSelector
+    ? document.querySelector(toggleSelector)
+    : null;
+  const rows = rowSelector ? [...document.querySelectorAll(rowSelector)] : [];
+  const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
+  const mainStyle = main ? getComputedStyle(main) : null;
+  const scrollerStyle = scroller ? getComputedStyle(scroller) : null;
+  return {
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+    docScrollWidth: document.documentElement.scrollWidth,
+    main: rectOf(main),
+    mainPaddingTop: mainStyle ? parseFloat(mainStyle.paddingTop) : 0,
+    mainPaddingBottom: mainStyle ? parseFloat(mainStyle.paddingBottom) : 0,
+    root: rectOf(root),
+    scroller: scroller
+      ? {
+          rect: rectOf(scroller),
+          clientHeight: scroller.clientHeight,
+          clientWidth: scroller.clientWidth,
+          scrollHeight: scroller.scrollHeight,
+          scrollWidth: scroller.scrollWidth,
+          scrollTop: scroller.scrollTop,
+          overflowY: scrollerStyle ? scrollerStyle.overflowY : "",
+        }
+      : null,
+    toggle: rectOf(toggle),
+    rowCount: rows.length,
+    lastRow: rectOf(lastRow),
+    lastRowButtons:
+      lastRow === null
+        ? []
+        : [...lastRow.querySelectorAll("button")].map((button) => ({
+            label: (button.textContent || "").trim().replace(/\s+/g, " "),
+            ...rectOf(button),
+          })),
+  };
+}
+
+function assertPageBoundedInMain(caseName, data) {
+  if (!data.main || !data.root) {
+    fail(caseName, "page root or app shell main box is missing");
+    return;
+  }
+  const contentTop = data.main.top + data.mainPaddingTop;
+  const contentBottom = data.main.bottom - data.mainPaddingBottom;
+  if (data.root.top < contentTop - 1) {
+    fail(
+      caseName,
+      `page root top ${data.root.top.toFixed(1)}px is above main content top ${contentTop.toFixed(1)}px`,
+    );
+  }
+  if (data.root.bottom > contentBottom + 1) {
+    fail(
+      caseName,
+      `page root bottom ${data.root.bottom.toFixed(1)}px exceeds main content bottom ${contentBottom.toFixed(1)}px (main clips overflow)`,
+    );
+  }
+}
+
+function assertNoHorizontalOverflow(caseName, data) {
+  if (data.docScrollWidth > data.viewportWidth) {
+    fail(
+      caseName,
+      `horizontal overflow: document scrollWidth ${data.docScrollWidth}px > viewport ${data.viewportWidth}px`,
+    );
+  }
+  if (data.scroller && data.scroller.scrollWidth > data.scroller.clientWidth + 1) {
+    fail(
+      caseName,
+      `horizontal overflow in scroll container: scrollWidth ${data.scroller.scrollWidth}px > clientWidth ${data.scroller.clientWidth}px`,
+    );
+  }
+}
+
+function assertToggleInViewport(caseName, data, modeLabel) {
+  if (!data.toggle) {
+    fail(caseName, "mode toggle box is missing");
+    return;
+  }
+  if (data.toggle.top < -1 || data.toggle.bottom > data.viewportHeight + 1) {
+    fail(
+      caseName,
+      `mode toggle [${data.toggle.top.toFixed(0)}-${data.toggle.bottom.toFixed(0)}] is outside the viewport [0-${data.viewportHeight}] in the ${modeLabel} mode`,
+    );
+  }
+}
+
+function assertToggleFixed(caseName, before, after) {
+  if (!before.toggle || !after.toggle) {
+    fail(caseName, "mode toggle box is missing");
+    return;
+  }
+  if (Math.abs(after.toggle.top - before.toggle.top) > 1) {
+    fail(
+      caseName,
+      `mode toggle moved from top ${before.toggle.top.toFixed(1)}px to ${after.toggle.top.toFixed(1)}px while the content scrolled`,
+    );
+  }
+}
+
+function assertLastRowReachable(caseName, data, ...buttonLabels) {
+  if (!data.scroller || !data.lastRow) {
+    fail(caseName, "last row or scroll container is missing after scrolling");
+    return;
+  }
+  const { rect } = data.scroller;
+  if (data.lastRow.bottom > rect.bottom + 2) {
+    fail(
+      caseName,
+      `last row bottom ${data.lastRow.bottom.toFixed(1)}px is below the scroll viewport bottom ${rect.bottom.toFixed(1)}px`,
+    );
+  }
+  if (data.lastRow.top < rect.top - 2) {
+    fail(
+      caseName,
+      `last row top ${data.lastRow.top.toFixed(1)}px is above the scroll viewport top ${rect.top.toFixed(1)}px`,
+    );
+  }
+  for (const label of buttonLabels) {
+    const button = data.lastRowButtons.find((entry) => entry.label === label);
+    if (!button) {
+      fail(caseName, `last row has no "${label}" button`);
+      continue;
+    }
+    if (button.width <= 0 || button.height <= 0) {
+      fail(caseName, `last row "${label}" button has no box`);
+    } else if (button.top < rect.top - 2 || button.bottom > rect.bottom + 2) {
+      fail(
+        caseName,
+        `last row "${label}" button [${button.top.toFixed(0)}-${button.bottom.toFixed(0)}] is outside the scroll viewport [${rect.top.toFixed(0)}-${rect.bottom.toFixed(0)}]`,
+      );
+    }
+  }
+}
+
+async function scrollToBottom(page, scrollerSelector) {
+  await page.evaluate((selector) => {
+    const container = document.querySelector(selector);
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, scrollerSelector);
+  await new Promise((resolve) => setTimeout(resolve, 150));
+}
+
+// Focuses a control inside the scroller and presses PageDown; returns the
+// resulting scrollTop (Chrome scrolls the focused element's scrollable
+// ancestor with PageDown).
+async function scrollAndPageDown(page, scrollerSelector, focusSelector) {
+  await page.evaluate(([selector, focus]) => {
+    const container = document.querySelector(selector);
+    if (container) {
+      container.scrollTop = 0;
+    }
+    const target = document.querySelector(focus);
+    if (target) {
+      target.focus();
+    }
+  }, [scrollerSelector, focusSelector]);
+  await page.keyboard.press("PageDown");
+  await new Promise((resolve) => setTimeout(resolve, 350));
+  return page.evaluate((selector) => {
+    const container = document.querySelector(selector);
+    return container ? container.scrollTop : -1;
+  }, scrollerSelector);
+}
+
+async function waitForModeButton(page, label) {
+  await page.waitForFunction(
+    (buttonLabel) =>
+      [...document.querySelectorAll(".mode-btn")].some((button) =>
+        (button.textContent || "").includes(buttonLabel),
+      ),
+    { polling: 250, timeout: WAIT_TIMEOUT_MS },
+    label,
+  );
+}
+
+async function clickModeButton(page, label) {
+  const clicked = await page.evaluate((buttonLabel) => {
+    const button = [...document.querySelectorAll(".mode-btn")].find((entry) =>
+      (entry.textContent || "").includes(buttonLabel),
+    );
+    if (!button) {
+      return false;
+    }
+    button.click();
+    return true;
+  }, label);
+  if (!clicked) {
+    throw new Error(`Mode button not found: ${label}`);
+  }
+}
+
+async function saveScrollArtifacts(page, prefix, tmpDir) {
+  if (!failures.some((entry) => entry.caseName.startsWith(prefix))) {
+    return;
+  }
+  const shot = path.join(tmpDir, `${prefix.replace(/[^\w.-]+/g, "_")}.png`);
+  await page.screenshot({ path: shot }).catch(() => {});
+  console.error(`    Screenshot: ${shot}`);
+}
+
+async function runNewSourceStates(page, base, viewport, tmpDir) {
+  const prefix = `${viewport.name}/new-source-page`;
+  console.log(`  ${viewport.name} / new-source-page`);
+
+  const selectors = {
+    rootSelector: ".new-source-page",
+    scrollerSelector: ".mode-section",
+    toggleSelector: ".mode-toggle",
+  };
+
+  // 1. Add by URL: default, short mode — regression guard.
+  const urlCase = `${prefix}/add-by-url`;
+  await page.goto(`${base}/sources/new`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(
+    '.mode-section input[placeholder="https://example.com/feed.xml"]',
+    { timeout: WAIT_TIMEOUT_MS },
+  );
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll(".mode-section button")].some((button) =>
+        (button.textContent || "").includes("Find feeds"),
+      ),
+    { polling: 250, timeout: WAIT_TIMEOUT_MS },
+  );
+  const urlData = await page.evaluate(collectScrollMetrics, {
+    ...selectors,
+    rowSelector: null,
+  });
+  assertPageBoundedInMain(urlCase, urlData);
+  assertNoHorizontalOverflow(urlCase, urlData);
+  assertToggleInViewport(urlCase, urlData, "add-by-url");
+  if (
+    !urlData.scroller ||
+    urlData.scroller.overflowY !== "auto"
+  ) {
+    fail(
+      urlCase,
+      `mode content overflow-y is "${urlData.scroller?.overflowY}", expected "auto"`,
+    );
+  } else if (
+    urlData.scroller.scrollHeight >
+    urlData.scroller.clientHeight + 2
+  ) {
+    fail(
+      urlCase,
+      `add-by-url content unexpectedly scrolls: scrollHeight ${urlData.scroller.scrollHeight}px > clientHeight ${urlData.scroller.clientHeight}px`,
+    );
+  }
+  await saveScrollArtifacts(page, prefix, tmpDir);
+
+  // 2. Search Podcasts with 25 mocked results.
+  const searchCase = `${prefix}/search`;
+  await waitForModeButton(page, "Search Podcasts");
+  await clickModeButton(page, "Search Podcasts");
+  await page.waitForSelector('.mode-section input[type="search"]', {
+    timeout: WAIT_TIMEOUT_MS,
+  });
+  await page.type('.mode-section input[type="search"]', "layout");
+  await page.waitForFunction(
+    () => document.querySelectorAll(".search-result-item").length === 25,
+    { polling: 250, timeout: WAIT_TIMEOUT_MS },
+  );
+
+  const searchSelectors = {
+    ...selectors,
+    rowSelector: ".search-result-item",
+  };
+  const searchBefore = await page.evaluate(
+    collectScrollMetrics,
+    searchSelectors,
+  );
+  assertPageBoundedInMain(searchCase, searchBefore);
+  assertNoHorizontalOverflow(searchCase, searchBefore);
+  assertToggleInViewport(searchCase, searchBefore, "search");
+  if (!searchBefore.scroller) {
+    fail(searchCase, "mode content container is missing");
+  } else {
+    if (searchBefore.scroller.overflowY !== "auto") {
+      fail(
+        searchCase,
+        `mode content overflow-y is "${searchBefore.scroller.overflowY}", expected "auto"`,
+      );
+    }
+    if (
+      searchBefore.scroller.scrollHeight <
+      searchBefore.scroller.clientHeight + 10
+    ) {
+      fail(
+        searchCase,
+        `search results do not overflow the mode content: scrollHeight ${searchBefore.scroller.scrollHeight}px vs clientHeight ${searchBefore.scroller.clientHeight}px`,
+      );
+    }
+  }
+
+  await scrollToBottom(page, ".mode-section");
+  const searchAfter = await page.evaluate(
+    collectScrollMetrics,
+    searchSelectors,
+  );
+  if (!searchAfter.scroller || searchAfter.scroller.scrollTop <= 0) {
+    fail(
+      searchCase,
+      `programmatic scroll did not move the mode content (scrollTop ${searchAfter.scroller?.scrollTop})`,
+    );
+  }
+  assertLastRowReachable(searchCase, searchAfter, "Add");
+  assertToggleFixed(searchCase, searchBefore, searchAfter);
+
+  const searchKeyCase = `${prefix}/search/keyboard`;
+  const searchKeyTop = await scrollAndPageDown(
+    page,
+    ".mode-section",
+    '.mode-section input[type="search"]',
+  );
+  if (!(searchKeyTop > 0)) {
+    fail(
+      searchKeyCase,
+      `PageDown did not scroll the search results (scrollTop ${searchKeyTop})`,
+    );
+  }
+  await saveScrollArtifacts(page, prefix, tmpDir);
+
+  // 3. Newsletters, switched from the scrolled search results (the fixed tabs
+  // must stay clickable while a list is scrolled).
+  const newsCase = `${prefix}/newsletter`;
+  await waitForModeButton(page, "Newsletters");
+  await clickModeButton(page, "Newsletters");
+  await page.waitForFunction(
+    () => document.querySelectorAll(".catalogue-row").length === 25,
+    { polling: 250, timeout: WAIT_TIMEOUT_MS },
+  );
+  const switchedTop = await page.evaluate(
+    () => document.querySelector(".mode-section")?.scrollTop ?? null,
+  );
+  if (switchedTop !== 0) {
+    fail(
+      newsCase,
+      `switching to the newsletter mode kept scrollTop ${switchedTop}, expected 0`,
+    );
+  }
+
+  const toolbar = await page.evaluate(() => {
+    const input = document.querySelector(".catalogue-toolbar input");
+    const select = document.querySelector(".catalogue-toolbar select");
+    const bulk = [...document.querySelectorAll(".catalogue-bulk button")].find(
+      (button) => (button.textContent || "").includes("Add selected"),
+    );
+    return {
+      hasSearch: !!input,
+      hasSelect: !!select,
+      bulkLabel: bulk
+        ? (bulk.textContent || "").trim().replace(/\s+/g, " ")
+        : null,
+    };
+  });
+  if (!toolbar.hasSearch || !toolbar.hasSelect) {
+    fail(
+      newsCase,
+      "catalogue toolbar search input or filter select is missing",
+    );
+  }
+  if (toolbar.bulkLabel !== "Add selected (0)") {
+    fail(
+      newsCase,
+      `bulk action label is "${toolbar.bulkLabel}", expected "Add selected (0)"`,
+    );
+  }
+
+  // Search/filter still work with the mocked catalogue.
+  await page.type(".catalogue-toolbar input", "Synthetic Newsletter 25");
+  await page.waitForFunction(
+    () => document.querySelectorAll(".catalogue-row").length === 1,
+    { polling: 250, timeout: WAIT_TIMEOUT_MS },
+  );
+  await page.evaluate(() => {
+    const input = document.querySelector(".catalogue-toolbar input");
+    input.value = "";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForFunction(
+    () => document.querySelectorAll(".catalogue-row").length === 25,
+    { polling: 250, timeout: WAIT_TIMEOUT_MS },
+  );
+
+  // Bulk bar reachable at the top of the catalogue.
+  await page.evaluate(() => {
+    const container = document.querySelector(".mode-section");
+    if (container) {
+      container.scrollTop = 0;
+    }
+  });
+  const newsSelectors = { ...selectors, rowSelector: ".catalogue-row" };
+  const newsTop = await page.evaluate(collectScrollMetrics, newsSelectors);
+  assertPageBoundedInMain(newsCase, newsTop);
+  assertNoHorizontalOverflow(newsCase, newsTop);
+  assertToggleInViewport(newsCase, newsTop, "newsletter");
+  if (!newsTop.scroller) {
+    fail(newsCase, "mode content container is missing");
+  } else {
+    if (newsTop.scroller.overflowY !== "auto") {
+      fail(
+        newsCase,
+        `mode content overflow-y is "${newsTop.scroller.overflowY}", expected "auto"`,
+      );
+    }
+    if (
+      newsTop.scroller.scrollHeight <
+      newsTop.scroller.clientHeight + 10
+    ) {
+      fail(
+        newsCase,
+        `newsletter catalogue does not overflow the mode content: scrollHeight ${newsTop.scroller.scrollHeight}px vs clientHeight ${newsTop.scroller.clientHeight}px`,
+      );
+    }
+  }
+  const bulkRect = await page.evaluate(() => {
+    const bulk = document.querySelector(".catalogue-bulk");
+    if (!bulk) {
+      return null;
+    }
+    const rect = bulk.getBoundingClientRect();
+    return { top: rect.top, bottom: rect.bottom };
+  });
+  if (!bulkRect) {
+    fail(newsCase, "catalogue bulk bar is missing");
+  } else if (newsTop.scroller) {
+    const { rect } = newsTop.scroller;
+    if (bulkRect.top < rect.top - 2 || bulkRect.bottom > rect.bottom + 2) {
+      fail(
+        newsCase,
+        `bulk bar [${bulkRect.top.toFixed(0)}-${bulkRect.bottom.toFixed(0)}] is not reachable at the top of the catalogue viewport [${rect.top.toFixed(0)}-${rect.bottom.toFixed(0)}]`,
+      );
+    }
+  }
+
+  await scrollToBottom(page, ".mode-section");
+  const newsAfter = await page.evaluate(collectScrollMetrics, newsSelectors);
+  if (!newsAfter.scroller || newsAfter.scroller.scrollTop <= 0) {
+    fail(
+      newsCase,
+      `programmatic scroll did not move the newsletter catalogue (scrollTop ${newsAfter.scroller?.scrollTop})`,
+    );
+  }
+  assertLastRowReachable(newsCase, newsAfter, "Add", "Ignore");
+  assertToggleFixed(newsCase, newsTop, newsAfter);
+
+  const newsKeyCase = `${prefix}/newsletter/keyboard`;
+  const newsKeyTop = await scrollAndPageDown(
+    page,
+    ".mode-section",
+    '.catalogue-row input[type="checkbox"]',
+  );
+  if (!(newsKeyTop > 0)) {
+    fail(
+      newsKeyCase,
+      `PageDown did not scroll the newsletter catalogue (scrollTop ${newsKeyTop})`,
+    );
+  }
+  await saveScrollArtifacts(page, prefix, tmpDir);
+}
+
+async function runNewsletterPageState(page, base, viewport, tmpDir) {
+  const prefix = `${viewport.name}/newsletter-page`;
+  console.log(`  ${viewport.name} / newsletter-page`);
+
+  const selectors = {
+    rootSelector: ".newsletter-page",
+    scrollerSelector: ".newsletter-page",
+    rowSelector: ".catalogue-row",
+    toggleSelector: null,
+  };
+
+  await page.goto(`${base}/sources/newsletter`, {
+    waitUntil: "domcontentloaded",
+  });
+  await page.waitForFunction(
+    () => document.querySelectorAll(".catalogue-row").length === 25,
+    { polling: 250, timeout: WAIT_TIMEOUT_MS },
+  );
+  await page.waitForSelector(".newsletter-repair", {
+    timeout: WAIT_TIMEOUT_MS,
+  });
+
+  const data = await page.evaluate(collectScrollMetrics, selectors);
+  assertPageBoundedInMain(prefix, data);
+  assertNoHorizontalOverflow(prefix, data);
+  if (!data.scroller) {
+    fail(prefix, "newsletter page scroll container is missing");
+    await saveScrollArtifacts(page, prefix, tmpDir);
+    return;
+  }
+  if (data.scroller.overflowY !== "auto") {
+    fail(
+      prefix,
+      `newsletter page overflow-y is "${data.scroller.overflowY}", expected "auto"`,
+    );
+  }
+  if (data.scroller.scrollHeight < data.scroller.clientHeight + 10) {
+    fail(
+      prefix,
+      `newsletter page does not scroll: scrollHeight ${data.scroller.scrollHeight}px vs clientHeight ${data.scroller.clientHeight}px`,
+    );
+  }
+
+  // The last catalogue row must be reachable.
+  await page.evaluate(() => {
+    const rows = document.querySelectorAll(".catalogue-row");
+    const last = rows[rows.length - 1];
+    if (last) {
+      last.scrollIntoView({ block: "end" });
+    }
+  });
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  const rowData = await page.evaluate(collectScrollMetrics, selectors);
+  assertLastRowReachable(prefix, rowData, "Add", "Ignore");
+
+  // The source-health panel must be reachable at the bottom.
+  await scrollToBottom(page, ".newsletter-page");
+  const bottomData = await page.evaluate(collectScrollMetrics, selectors);
+  if (!bottomData.scroller || bottomData.scroller.scrollTop <= 0) {
+    fail(
+      prefix,
+      `page did not scroll to the source-health panel (scrollTop ${bottomData.scroller?.scrollTop})`,
+    );
+  }
+  const repair = await page.evaluate(() => {
+    const rectOf = (el) => {
+      if (!el) {
+        return null;
+      }
+      const r = el.getBoundingClientRect();
+      return {
+        top: r.top,
+        bottom: r.bottom,
+        width: r.width,
+        height: r.height,
+      };
+    };
+    const panel = document.querySelector(".newsletter-repair");
+    return {
+      panel: rectOf(panel),
+      actions: panel
+        ? [...panel.querySelectorAll("button")].map((button) => ({
+            label: (button.textContent || "").trim().replace(/\s+/g, " "),
+            ...rectOf(button),
+          }))
+        : [],
+    };
+  });
+  if (!repair.panel) {
+    fail(prefix, "source-health panel is missing");
+  } else {
+    const { rect } = bottomData.scroller;
+    if (repair.panel.top < rect.top - 2 || repair.panel.bottom > rect.bottom + 2) {
+      fail(
+        prefix,
+        `source-health panel [${repair.panel.top.toFixed(0)}-${repair.panel.bottom.toFixed(0)}] is not visible in the scroll viewport [${rect.top.toFixed(0)}-${rect.bottom.toFixed(0)}]`,
+      );
+    }
+    for (const label of ["Check sources", "Repair now"]) {
+      const button = repair.actions.find((entry) => entry.label === label);
+      if (!button) {
+        fail(prefix, `source-health panel has no "${label}" button`);
+      } else if (button.width <= 0 || button.height <= 0) {
+        fail(prefix, `source-health panel "${label}" button has no box`);
+      }
+    }
+  }
+
+  const keyTop = await scrollAndPageDown(
+    page,
+    ".newsletter-page",
+    '.catalogue-row input[type="checkbox"]',
+  );
+  if (!(keyTop > 0)) {
+    fail(
+      `${prefix}/keyboard`,
+      `PageDown did not scroll the newsletter page (scrollTop ${keyTop})`,
+    );
+  }
+  await saveScrollArtifacts(page, prefix, tmpDir);
 }
 
 async function runState(page, base, authHeaders, seed, state, viewport, tmpDir) {
