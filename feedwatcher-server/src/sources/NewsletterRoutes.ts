@@ -20,6 +20,10 @@ import {
   newsletterCatalogueStates,
   newsletterFindSourceIds,
 } from "./NewsletterMatching";
+import {
+  NewsletterBackfillProviders,
+  NewsletterRepairProviderSources,
+} from "./NewsletterProvider";
 import { SourceLabelsDataSetSourceLabels } from "./SourceLabelsData";
 import { SourcesDataAdd, SourcesDataListForUser } from "./SourcesData";
 
@@ -356,6 +360,52 @@ export class NewsletterRoutes {
       }
 
       return res.status(200).send({ added, existing, failed, ignored });
+    });
+
+    interface PostRepair extends RequestGenericInterface {
+      Body: {
+        dryRun?: boolean;
+      };
+    }
+    fastify.post<PostRepair>("/repair", async (req, res) => {
+      const userSession = await AuthGetUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      const config = ConfigGet();
+      if (!String(config.NEWSLETTER_URL ?? "").trim()) {
+        return res.status(503).send({
+          error: "The newsletter integration is not configured.",
+          code: "newsletter_disabled",
+        });
+      }
+      const body: any = req.body || {};
+      if (body.dryRun !== undefined && typeof body.dryRun !== "boolean") {
+        return res.status(400).send({ error: "Invalid: dryRun" });
+      }
+      const dryRun = body.dryRun !== false;
+      try {
+        const backfill = await NewsletterBackfillProviders(
+          OTelRequestSpan(req),
+          { useCatalogue: true, userId: userSession.userId },
+        );
+        const report = await NewsletterRepairProviderSources(
+          OTelRequestSpan(req),
+          {
+            userId: userSession.userId,
+            dryRun,
+            backfilled: backfill.tagged,
+          },
+        );
+        return res.status(200).send(report);
+      } catch (err) {
+        if (err instanceof NewsletterError) {
+          return res
+            .status(err.statusCode)
+            .send({ error: err.message, code: err.code });
+        }
+        throw err;
+      }
     });
   }
 }

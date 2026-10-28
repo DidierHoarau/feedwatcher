@@ -345,6 +345,123 @@ describe("ssrf-http fetchText", () => {
   });
 });
 
+describe("ssrf-http trusted origins", () => {
+  const trusted = "http://127.0.0.1:8080";
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    ssrfHttp.configure({ allowPrivateNetwork: false });
+    jest.mocked(dns.promises.lookup).mockResolvedValue(publicLookup);
+  });
+
+  afterAll(() => {
+    ssrfHttp.configure({ allowPrivateNetwork: false });
+  });
+
+  test("permits a private address for the exact trusted origin", async () => {
+    await expect(
+      ssrfHttp.validateUrl("http://127.0.0.1:8080/feed", {
+        trustedOrigins: [trusted],
+      }),
+    ).resolves.toMatchObject({ address: "127.0.0.1", family: 4 });
+  });
+
+  test.each([
+    ["http://127.0.0.1:9090/feed", "a different port"],
+    ["https://127.0.0.1:8080/feed", "a different scheme"],
+    ["http://10.0.0.5:8080/feed", "a different host"],
+  ])("rejects a private address on %s (%s)", async (url) => {
+    await expect(
+      ssrfHttp.validateUrl(url, { trustedOrigins: [trusted] }),
+    ).rejects.toThrow("URL not allowed");
+  });
+
+  test("rejects userinfo even for a trusted origin", async () => {
+    await expect(
+      ssrfHttp.validateUrl("http://user:pass@127.0.0.1:8080/feed", {
+        trustedOrigins: [trusted],
+      }),
+    ).rejects.toThrow("Invalid URL");
+  });
+
+  test("keeps other private hostnames blocked", async () => {
+    jest
+      .mocked(dns.promises.lookup)
+      .mockResolvedValue([{ address: "10.0.0.5", family: 4 }] as any);
+    await expect(
+      ssrfHttp.validateUrl(
+        "http://feedwatcher-newsletter.feedwatcher.svc.cluster.local:8080/api/feeds",
+        { trustedOrigins: [trusted] },
+      ),
+    ).rejects.toThrow("URL not allowed");
+  });
+
+  test("pins the private address of a trusted hostname", async () => {
+    jest
+      .mocked(dns.promises.lookup)
+      .mockResolvedValue([{ address: "10.0.0.5", family: 4 }] as any);
+    const validated = await ssrfHttp.validateUrl(
+      "http://feedwatcher-newsletter.feedwatcher.svc.cluster.local:8080/api/feeds",
+      {
+        trustedOrigins: [
+          "http://feedwatcher-newsletter.feedwatcher.svc.cluster.local:8080",
+        ],
+      },
+    );
+    expect(validated.address).toBe("10.0.0.5");
+    expect(dns.promises.lookup).toHaveBeenCalledTimes(1);
+  });
+
+  test("rejects a redirect to another origin for a trusted fetch", async () => {
+    jest
+      .mocked(axios.get)
+      .mockResolvedValueOnce({
+        status: 302,
+        headers: { location: "http://169.254.169.254/latest/meta-data/" },
+        data: "",
+      } as any);
+
+    await expect(
+      ssrfHttp.fetchText("http://127.0.0.1:8080/feed", {
+        trustedOrigins: [trusted],
+        allowedContentTypes: null,
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(axios.get).toHaveBeenCalledTimes(1);
+  });
+
+  test("follows a same-origin redirect for a trusted fetch", async () => {
+    jest
+      .mocked(axios.get)
+      .mockResolvedValueOnce({
+        status: 302,
+        headers: { location: "/feed.xml" },
+        data: "",
+      } as any)
+      .mockResolvedValueOnce(okResponse("feed", "text/xml"));
+
+    const response = await ssrfHttp.fetchText("http://127.0.0.1:8080/start", {
+      trustedOrigins: [trusted],
+      allowedContentTypes: null,
+    });
+
+    expect(response.data).toBe("feed");
+    expect(jest.mocked(axios.get).mock.calls[1][0]).toBe(
+      "http://127.0.0.1:8080/feed.xml",
+    );
+  });
+
+  test("leaves the global private-network flag untouched", async () => {
+    jest.mocked(axios.get).mockResolvedValue(okResponse());
+    await ssrfHttp.fetchText("http://127.0.0.1:8080/feed", {
+      trustedOrigins: [trusted],
+    });
+    await expect(
+      ssrfHttp.validateUrl("http://127.0.0.1:8080/feed"),
+    ).rejects.toThrow("URL not allowed");
+  });
+});
+
 describe("ssrf-http private-network opt-in", () => {
   afterAll(() => {
     ssrfHttp.configure({ allowPrivateNetwork: false });

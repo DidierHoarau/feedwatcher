@@ -112,8 +112,14 @@ export default {
               labels += label;
             }
             source.labels = labels;
+            // The server already matched newsletter feeds by stable feed id,
+            // so a bare/tokenized duplicate is skipped too.
             let imported = false;
-            if (find(sourcesExisting, { info: { url: source.info.url } })) {
+            if (source.existingSourceId) {
+              imported = true;
+            } else if (
+              find(sourcesExisting, { info: { url: source.info.url } })
+            ) {
               imported = true;
             }
             sourcesImportTmp.push({

@@ -4,6 +4,12 @@ import { find } from "lodash";
 import { Source } from "../model/Source";
 import { Span } from "@opentelemetry/sdk-trace-base";
 import { SourceLabelsDataListForUser } from "./SourceLabelsData";
+import { SourcesDataListForUser } from "./SourcesData";
+import { ConfigGet } from "../Config";
+import {
+  NewsletterMatchExistingSourceByUrl,
+  NewsletterResolveProviderForUrl,
+} from "./NewsletterProvider";
 import { AuthGetUserSession } from "../users/Auth";
 import { OTelLogger, OTelRequestSpan } from "../OTelContext";
 
@@ -47,6 +53,13 @@ export class SourcesImportRoutes {
           sourcesOpml,
           userSession.userId
         );
+        if (String(ConfigGet().NEWSLETTER_URL ?? "").trim()) {
+          await opmlTagNewsletterSources(
+            OTelRequestSpan(req),
+            sourcesOpml,
+            userSession.userId
+          );
+        }
         return res.status(200).send({ sources: sourcesOpml });
       } catch (err) {
         logger.error("Error Importing OPML", err, OTelRequestSpan(req));
@@ -129,6 +142,35 @@ async function opmlProcessSub(
         sourcesOpml,
         userId
       );
+    }
+  }
+}
+
+// Tags newsletter feeds with provider metadata and reports the source the
+// feed would already map to (by normalized URL or stable feed id), so the
+// importer can skip a bare/tokenized duplicate instead of creating one.
+async function opmlTagNewsletterSources(
+  context: Span,
+  sourcesOpml: any[],
+  userId: string
+): Promise<void> {
+  const existingSources = await SourcesDataListForUser(context, userId);
+  for (const source of sourcesOpml) {
+    const providerMeta = await NewsletterResolveProviderForUrl(
+      source.info.url
+    );
+    if (providerMeta) {
+      source.info.provider = providerMeta.provider;
+      source.info.providerFeedId = providerMeta.providerFeedId;
+      source.info.providerUrl = providerMeta.providerUrl;
+    }
+    const existing = NewsletterMatchExistingSourceByUrl(
+      existingSources,
+      source.info.url,
+      providerMeta
+    );
+    if (existing) {
+      source.existingSourceId = existing.id;
     }
   }
 }

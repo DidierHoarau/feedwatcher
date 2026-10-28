@@ -58,23 +58,31 @@ export function NewsletterResetCacheForTests(): void {
   cache = null;
 }
 
-function newsletterBaseUrl(): string {
+export function NewsletterBaseUrl(): string {
   return String(ConfigGet().NEWSLETTER_URL ?? "")
     .trim()
     .replace(/\/+$/, "");
 }
 
-function buildHeaders(conditional: boolean): Record<string, string> {
+// Basic Authorization value for the newsletter, or null when no password is
+// configured. Credentials live in configuration/secrets only.
+export function NewsletterAuthHeader(): string | null {
   const config = ConfigGet();
+  const password = String(config.NEWSLETTER_AUTH_PASSWORD ?? "");
+  if (password === "") {
+    return null;
+  }
+  const username = String(config.NEWSLETTER_AUTH_USERNAME ?? "");
+  return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
+}
+
+function buildHeaders(conditional: boolean): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: "application/json",
   };
-  const password = String(config.NEWSLETTER_AUTH_PASSWORD ?? "");
-  if (password !== "") {
-    const username = String(config.NEWSLETTER_AUTH_USERNAME ?? "");
-    headers.Authorization = `Basic ${Buffer.from(
-      `${username}:${password}`,
-    ).toString("base64")}`;
+  const authorization = NewsletterAuthHeader();
+  if (authorization) {
+    headers.Authorization = authorization;
   }
   if (conditional && cache) {
     if (cache.etag) {
@@ -269,7 +277,7 @@ async function fetchNewsletter(
 export async function NewsletterGetFeeds(
   options: { force?: boolean } = {},
 ): Promise<NewsletterFeed[]> {
-  const baseUrl = newsletterBaseUrl();
+  const baseUrl = NewsletterBaseUrl();
   if (baseUrl === "") {
     throw new NewsletterError(
       "newsletter_disabled",

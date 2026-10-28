@@ -9,6 +9,12 @@ import {
 } from "../procesors/Processors";
 import { AuthGetUserSession } from "../users/Auth";
 import { UrlSafetyError, UrlSafetyFetchText } from "../utils-std-ts/UrlSafety";
+import { NewsletterResolveProviderForUrl } from "./NewsletterProvider";
+
+jest.mock("./NewsletterProvider", () => ({
+  ...jest.requireActual("./NewsletterProvider"),
+  NewsletterResolveProviderForUrl: jest.fn(),
+}));
 
 jest.mock("../OTelContext", () => ({
   OTelRequestSpan: jest.fn(() => ({})),
@@ -65,6 +71,7 @@ describe("SourcesRoutes", () => {
     });
     jest.mocked(SourcesDataListForUser).mockResolvedValue([]);
     jest.mocked(SourcesDataAdd).mockResolvedValue(undefined);
+    jest.mocked(NewsletterResolveProviderForUrl).mockResolvedValue(null);
     jest.mocked(ProcessorsFetchSourceItems).mockResolvedValue(undefined);
     jest.mocked(ProcessorsFetchSourceItemsForUser).mockResolvedValue(undefined);
     jest.mocked(ProcessorsCheckSource).mockImplementation(async (_span, source: any) => {
@@ -147,6 +154,72 @@ describe("SourcesRoutes", () => {
     expect(response.statusCode).toBe(201);
   });
 
+  test("tags a newsletter source with provider metadata on add", async () => {
+    jest.mocked(NewsletterResolveProviderForUrl).mockResolvedValue({
+      provider: "feedwatcher-newsletter",
+      providerFeedId: "alpha",
+      providerUrl: "https://newsletter.example/rss/alpha.token",
+    });
+
+    const response = await fastify.inject({
+      method: "POST",
+      url: "/",
+      payload: { url: "https://newsletter.example/rss/alpha.token" },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const added = jest.mocked(SourcesDataAdd).mock.calls[0][1] as any;
+    expect(added.info).toEqual({
+      url: "https://newsletter.example/rss/alpha.token",
+      provider: "feedwatcher-newsletter",
+      providerFeedId: "alpha",
+      providerUrl: "https://newsletter.example/rss/alpha.token",
+      processorPath: "/processors/800-RssProcessor.js",
+    });
+  });
+
+  test("rejects a rotated token for an existing newsletter feed with 409", async () => {
+    jest.mocked(NewsletterResolveProviderForUrl).mockResolvedValue({
+      provider: "feedwatcher-newsletter",
+      providerFeedId: "alpha",
+      providerUrl: "https://newsletter.example/rss/alpha.rotated",
+    });
+    jest.mocked(SourcesDataListForUser).mockResolvedValue([
+      {
+        id: "source-1",
+        info: {
+          url: "https://newsletter.example/rss/alpha",
+          provider: "feedwatcher-newsletter",
+          providerFeedId: "alpha",
+        },
+      },
+    ] as any);
+
+    const response = await fastify.inject({
+      method: "POST",
+      url: "/",
+      payload: { url: "https://newsletter.example/rss/alpha.rotated" },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(SourcesDataAdd).not.toHaveBeenCalled();
+  });
+
+  test("does not tag a non-newsletter source", async () => {
+    const response = await fastify.inject({
+      method: "POST",
+      url: "/",
+      payload: { url: "https://example.com/feed.xml" },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const added = jest.mocked(SourcesDataAdd).mock.calls[0][1] as any;
+    expect(added.info).toEqual({
+      url: "https://example.com/feed.xml",
+      processorPath: "/processors/800-RssProcessor.js",
+    });
+  });
+
   test("responds 403 when unauthenticated", async () => {
     jest.mocked(AuthGetUserSession).mockResolvedValue({
       isAuthenticated: false,
@@ -197,6 +270,7 @@ describe("SourcesRoutes", () => {
       expect(UrlSafetyFetchText).toHaveBeenCalledWith(
         "https://example.com/blog/",
         expect.arrayContaining(["application/rss+xml", "text/html"]),
+        { trustedOrigins: [], headers: {}, rewriteBase: null },
       );
       expect(response.json()).toEqual({
         feeds: [
@@ -242,6 +316,31 @@ describe("SourcesRoutes", () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.json()).toEqual({ feeds: [] });
+    });
+
+    test("passes trusted fetch options when the url resolves to a newsletter feed", async () => {
+      jest.mocked(NewsletterResolveProviderForUrl).mockResolvedValue({
+        provider: "feedwatcher-newsletter",
+        providerFeedId: "alpha",
+        providerUrl: "https://newsletter.example/rss/alpha.token",
+      });
+      jest
+        .mocked(UrlSafetyFetchText)
+        .mockResolvedValue('<rss version="2.0"></rss>');
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/discover?url=https://newsletter.example/rss/alpha.token",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const call = jest.mocked(UrlSafetyFetchText).mock.calls[0];
+      expect(call[0]).toBe("https://newsletter.example/rss/alpha.token");
+      const options = call[2] as any;
+      expect(options.rewriteBase).toBeNull();
+      expect(options.trustedOrigins).toEqual(
+        expect.arrayContaining(["https://newsletter.example"]),
+      );
     });
 
     test("maps the UrlSafety error status code onto the response", async () => {

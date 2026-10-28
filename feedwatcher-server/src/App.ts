@@ -30,6 +30,7 @@ import { SourcesIdRoutes } from "./sources/SourcesIdRoutes";
 import { SourcesImportRoutes } from "./sources/SourcesImportRoutes";
 import { SourcesLabelsRoutes } from "./sources/SourcesLabelsRoutes";
 import { NewsletterRoutes } from "./sources/NewsletterRoutes";
+import { NewsletterBackfillProviders } from "./sources/NewsletterProvider";
 import { SourcesRoutes } from "./sources/SourcesRoutes";
 import { SummaryInit } from "./summary/Summary";
 import { SummaryRoutes } from "./summary/SummaryRoutes";
@@ -66,11 +67,27 @@ Promise.resolve().then(async () => {
   await DbUtilsInit(span, config, `${__dirname}/../sql`);
   await AuthInit(span, config);
   await ProcessorsInit(span, config);
+  // Tag legacy newsletter sources reachable on the configured origin before
+  // the scheduler runs; the catalogue-backed pass follows once startup is done.
+  await NewsletterBackfillProviders(span, { useCatalogue: false }).catch(
+    (err) =>
+      logger.warn(
+        `Newsletter provider backfill skipped: ${err?.message ?? err}`,
+        span,
+      ),
+  );
   await NotificationsInit(span, config);
   await SummaryInit(span, config);
   await SourcesSchedulerInit(span, config);
 
   span.end();
+
+  const backfillSpan = OTelTracer().startSpan("NewsletterProviderBackfill");
+  NewsletterBackfillProviders(backfillSpan, { useCatalogue: true })
+    .catch((err) =>
+      logger.warn(`Newsletter provider backfill skipped: ${err?.message ?? err}`),
+    )
+    .finally(() => backfillSpan.end());
 
   // API
 
