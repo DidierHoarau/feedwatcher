@@ -264,8 +264,62 @@ describe("UsersRoutes", () => {
     expect(settings.summaryPrompt).toBe("Custom prompt");
   });
 
-  test("rejects an invalid newItems mode with 400 (N1)", async () => {
+  test("persists a valid newsletter ignore list", async () => {
     jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: true,
+      userId: "user-1",
+    });
+    jest.mocked(UsersDataGet).mockResolvedValue({
+      id: "user-1",
+      name: "alice",
+    } as any);
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/settings",
+      payload: {
+        settings: {
+          newsletter: { ignoredFeedIds: ["morningbrew", "morningbrew", "tech"] },
+        },
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const [_span, _userId, settings] = jest.mocked(UsersDataUpdateSettings).mock
+      .calls[0];
+    expect(settings.newsletter.ignoredFeedIds).toEqual([
+      "morningbrew",
+      "tech",
+    ]);
+  });
+
+  test.each([
+    [{ newsletter: null }, "null newsletter"],
+    [{ newsletter: "nope" }, "string newsletter"],
+    [{ newsletter: [] }, "array newsletter"],
+    [{ newsletter: { ignoredFeedIds: "nope" } }, "non-array ignore list"],
+    [{ newsletter: { ignoredFeedIds: { a: 1 } } }, "object ignore list"],
+  ])("rejects an invalid newsletter setting with 400 (%s)", async (settings, description) => {
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: true,
+      userId: "user-1",
+    });
+    jest.mocked(UsersDataGet).mockResolvedValue({
+      id: "user-1",
+      name: "alice",
+    } as any);
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/settings",
+      payload: { settings },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(UsersDataUpdateSettings).not.toHaveBeenCalled();
+  });
+
+  test("rejects an invalid newItems mode with 400 (N1)", async () => {    jest.mocked(AuthGetUserSession).mockResolvedValue({
       isAuthenticated: true,
       userId: "user-1",
     });

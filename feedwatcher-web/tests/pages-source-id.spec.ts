@@ -158,6 +158,52 @@ describe("Update Source page URL handling", () => {
   });
 });
 
+describe("Update Source page newsletter badge", () => {
+  function mockSource(source: any) {
+    vi.mocked(axios.get).mockReset();
+    vi.mocked(axios.get).mockImplementation((url: string) => {
+      if (url.endsWith("/sources/source-1/labels")) {
+        return Promise.resolve({ data: { labels: [] } });
+      }
+      if (url.endsWith("/sources/source-1")) {
+        return Promise.resolve({ data: source });
+      }
+      return Promise.reject(new Error(`unexpected url ${url}`));
+    });
+  }
+
+  test("shows a From newsletter badge for provider-tagged sources", async () => {
+    mockSource({
+      id: "source-1",
+      name: "Morning Brew",
+      info: {
+        url: "https://newsletter.example/rss/morningbrew.token",
+        provider: "feedwatcher-newsletter",
+        providerFeedId: "morningbrew",
+      },
+    });
+
+    const wrapper = await mountPage();
+
+    expect(wrapper.text()).toContain("From newsletter");
+    expect(wrapper.find(".source-newsletter-badge").attributes("title")).toBe(
+      "Newsletter feed: morningbrew",
+    );
+  });
+
+  test("hides the badge for regular sources", async () => {
+    mockSource({
+      id: "source-1",
+      name: "Regular",
+      info: { url: "https://example.com/feed" },
+    });
+
+    const wrapper = await mountPage();
+
+    expect(wrapper.text()).not.toContain("From newsletter");
+  });
+});
+
 describe("Update Source page: guided recovery", () => {
   const FAILING_SOURCE = {
     id: "source-1",

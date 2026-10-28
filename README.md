@@ -161,6 +161,26 @@ The application supports searching for podcasts via the [Podcast Index](https://
 | `PODCAST_INDEX_API_KEY`    | Podcast Index API key    |         |
 | `PODCAST_INDEX_API_SECRET` | Podcast Index API secret |         |
 
+## Newsletter Integration
+
+FeedWatcher can list the newsletters offered by a [feedwatcher-newsletter](../feedwatcher-newsletter) service (an IMAP → RSS bridge), show which ones are already sources and subscribe to a selection in one idempotent action. The integration is enabled when `NEWSLETTER_URL` is set; the UI then shows a **Newsletters** mode on the New Source page and a dedicated `/sources/newsletter` page.
+
+| Variable                    | Description                                                       | Default       |
+| --------------------------- | ----------------------------------------------------------------- | ------------- |
+| `NEWSLETTER_URL`            | Base URL of the newsletter service (e.g. `https://news.example`)  | (disabled)    |
+| `NEWSLETTER_AUTH_USERNAME`  | HTTP Basic username used when the newsletter requires a password  | `feedwatcher` |
+| `NEWSLETTER_AUTH_PASSWORD`  | HTTP Basic password; when empty no `Authorization` header is sent |               |
+
+The server reads the newsletter's versioned catalogue at `GET <NEWSLETTER_URL>/api/feeds` (falling back to the legacy `/rss/` JSON listing when the catalogue is unavailable). `GET /api/sources/newsletter` returns every offered feed with its state — `added`, `available` or `ignored` — plus `itemCount`, `latestDate` and, for added feeds, the existing source id. `POST /api/sources/newsletter/subscribe` with `{ "feedIds": [...], "label": "Newsletters" }` resolves each feed id to its current URL server-side and creates the sources idempotently; repeating the request reports them as `existing`. Feed ids the user ignored are skipped unless the request sets `"includeIgnored": true`.
+
+Matching is read-only: existing sources carrying `info.provider = "feedwatcher-newsletter"` and `info.providerFeedId` are reported as added, and legacy subscriptions using `/rss/<feedId>` or `/rss/<feedId>.<token>` URLs are matched by feed id (never by full URL, which changes when private-URL tokens rotate). Nothing is ever subscribed automatically — every source is user-selected.
+
+Per-user "not interested" state is stored in the user's settings (`newsletter.ignoredFeedIds`) through `PUT /api/users/settings`; ignored feeds stay listed so they can be restored. The catalogue is cached in memory for 30 seconds and revalidated with `ETag`/`Last-Modified`; `/api/status` only exposes a boolean `newsletterEnabled` (never the internal URL). Private feed tokens are part of the stored source URL: they are never rendered in the UI or written to logs.
+
+Notes:
+- A newsletter reachable only on a private network is not supported here: internal-URL access requires `SOURCE_ALLOW_PRIVATE_NETWORK`, which this integration does not enable.
+- Newsletter credentials are configuration only — they are never stored in the database or embedded in source URLs.
+
 ## LLM (News Summary)
 
 The application can generate daily news summaries using any OpenAI-compatible chat completions API. Summary generation is enabled when `LLM_API_KEY` is set.

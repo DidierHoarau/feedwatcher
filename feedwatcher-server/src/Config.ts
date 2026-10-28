@@ -31,6 +31,9 @@ export class Config extends ConfigBase {
   public PROCESSOR_CONCURRENCY = 2;
   public PODCAST_INDEX_API_KEY = "";
   public PODCAST_INDEX_API_SECRET = "";
+  public NEWSLETTER_URL = "";
+  public NEWSLETTER_AUTH_USERNAME = "feedwatcher";
+  public NEWSLETTER_AUTH_PASSWORD = "";
   public VAPID_PUBLIC_KEY = "";
   public VAPID_PRIVATE_KEY = "";
   public VAPID_SUBJECT = "";
@@ -53,6 +56,9 @@ export class Config extends ConfigBase {
     this.addConfigField({ field: "PROCESSOR_CONCURRENCY" });
     this.addConfigField({ field: "PODCAST_INDEX_API_KEY" });
     this.addConfigField({ field: "PODCAST_INDEX_API_SECRET", sensitive: true });
+    this.addConfigField({ field: "NEWSLETTER_URL" });
+    this.addConfigField({ field: "NEWSLETTER_AUTH_USERNAME" });
+    this.addConfigField({ field: "NEWSLETTER_AUTH_PASSWORD", sensitive: true });
     this.addConfigField({ field: "VAPID_PUBLIC_KEY" });
     this.addConfigField({ field: "VAPID_PRIVATE_KEY", sensitive: true });
     this.addConfigField({ field: "VAPID_SUBJECT" });

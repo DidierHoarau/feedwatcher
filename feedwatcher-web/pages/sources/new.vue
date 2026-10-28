@@ -16,6 +16,13 @@
       >
         <i class="bi bi-search"></i> Search Podcasts
       </button>
+      <button
+        v-if="newsletterEnabled"
+        :class="['mode-btn', { active: mode === 'newsletter' }]"
+        v-on:click="mode = 'newsletter'"
+      >
+        <i class="bi bi-envelope-paper"></i> Newsletters
+      </button>
     </div>
 
     <!-- Mode A: Add by URL -->
@@ -120,6 +127,10 @@
         No podcasts found for "{{ lastSearchTerm }}"
       </div>
     </div>
+    <!-- Mode C: Newsletters -->
+    <div v-if="mode === 'newsletter'" class="mode-section">
+      <NewsletterCatalogue />
+    </div>
   </div>
 </template>
 
@@ -128,6 +139,7 @@ import axios from "axios";
 import { debounce } from "lodash";
 import { ref } from "vue";
 import SourceUrlFinder from "~~/components/SourceUrlFinder.vue";
+import NewsletterCatalogue from "~~/components/NewsletterCatalogue.vue";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
@@ -137,6 +149,7 @@ const sourcesStore = SourcesStore();
 
 const mode = ref("url");
 const podcastSearchEnabled = ref(false);
+const newsletterEnabled = ref(false);
 
 // --- Mode A: Add by URL ---
 const sourceUrl = ref("");
@@ -262,8 +275,10 @@ onMounted(async () => {
   try {
     const res = await axios.get(`${(await Config.get()).SERVER_URL}/status`);
     podcastSearchEnabled.value = !!res.data.podcastSearchEnabled;
+    newsletterEnabled.value = !!res.data.newsletterEnabled;
   } catch {
     podcastSearchEnabled.value = false;
+    newsletterEnabled.value = false;
   }
 });
 </script>
