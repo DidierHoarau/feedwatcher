@@ -11,7 +11,9 @@
  * grotesquely). The list-page state additionally asserts no horizontal
  * overflow, item actions that do not cover the title text, a symmetric gap
  * above and below the search input in the item actions bar, and a single-line
- * actions bar while the advanced filters are closed.
+ * actions bar while the advanced filters are closed. It also opens those
+ * advanced filters and asserts every labeled field stays inside the bar, keeps
+ * a readable width on mobile and shares one control height.
  *
  * The new-source-page and newsletter-page states cover the scrollable pages:
  * `/sources/new` must keep its header and mode tabs fixed while only the
@@ -506,6 +508,125 @@ function collectListGeometry() {
   };
 }
 
+// Advanced filters (sort, dates, tags) are collapsed on a fresh store. Once
+// opened, every labeled field must stay inside the actions bar, keep a
+// readable width (a narrow date input collapses to just its calendar icon)
+// and share the controls' height.
+function collectFilterBarGeometry() {
+  const rectOf = (el) => {
+    if (!el) {
+      return null;
+    }
+    const r = el.getBoundingClientRect();
+    return {
+      top: r.top,
+      bottom: r.bottom,
+      left: r.left,
+      right: r.right,
+      width: r.width,
+      height: r.height,
+    };
+  };
+  return {
+    viewportWidth: window.innerWidth,
+    docScrollWidth: document.documentElement.scrollWidth,
+    bar: rectOf(document.querySelector("#sources-items-actions")),
+    advanced: rectOf(document.querySelector(".actions-row-advanced")),
+    fields: [...document.querySelectorAll(".actions-row-field")].map((field) => ({
+      label: (field.querySelector(".actions-row-label")?.textContent || "").trim(),
+      field: rectOf(field),
+      control: rectOf(field.querySelector("select, input")),
+    })),
+  };
+}
+
+async function runFilterLayoutState(page, viewport, tmpDir) {
+  const caseName = `${viewport.name}/filters-open`;
+  const hasFailure = () => failures.some((f) => f.caseName === caseName);
+
+  await page.evaluate(() => {
+    document.querySelector('[aria-label="More filters"]')?.click();
+  });
+  await page.waitForFunction(
+    () => {
+      const advanced = document.querySelector(".actions-row-advanced");
+      return !!advanced && getComputedStyle(advanced).display !== "none";
+    },
+    { polling: 250, timeout: WAIT_TIMEOUT_MS },
+  );
+  await new Promise((resolve) => setTimeout(resolve, 150));
+
+  const data = await page.evaluate(collectFilterBarGeometry);
+
+  if (data.docScrollWidth > data.viewportWidth) {
+    fail(
+      caseName,
+      `horizontal overflow: document scrollWidth ${data.docScrollWidth}px > viewport ${data.viewportWidth}px`,
+    );
+  }
+  if (!data.bar || !data.advanced) {
+    fail(caseName, "actions bar or advanced filters box is missing");
+  } else if (
+    data.advanced.top < data.bar.top - 1 ||
+    data.advanced.bottom > data.bar.bottom + 1
+  ) {
+    fail(
+      caseName,
+      `advanced filters [${data.advanced.top.toFixed(0)}-${data.advanced.bottom.toFixed(0)}] escape the actions bar [${data.bar.top.toFixed(0)}-${data.bar.bottom.toFixed(0)}]`,
+    );
+  }
+  if (data.fields.length < 3) {
+    fail(
+      caseName,
+      `advanced filters render ${data.fields.length} fields, expected at least 3 (sort, from, to)`,
+    );
+  }
+  const heights = [];
+  for (const entry of data.fields) {
+    if (!entry.label) {
+      fail(caseName, "an advanced filter field has no visible label");
+    }
+    if (!entry.control || !entry.field) {
+      fail(caseName, `field "${entry.label || "?"}" has no control box`);
+      continue;
+    }
+    if (entry.control.width <= 0 || entry.control.height <= 0) {
+      fail(caseName, `field "${entry.label}" control has no box`);
+      continue;
+    }
+    if (data.advanced) {
+      if (
+        entry.field.left < data.advanced.left - 1 ||
+        entry.field.right > data.advanced.right + 1
+      ) {
+        fail(
+          caseName,
+          `field "${entry.label}" [${entry.field.left.toFixed(0)}-${entry.field.right.toFixed(0)}] escapes the advanced filters box [${data.advanced.left.toFixed(0)}-${data.advanced.right.toFixed(0)}]`,
+        );
+      }
+    }
+    if (viewport.isMobile && entry.control.width < 110) {
+      fail(
+        caseName,
+        `field "${entry.label}" control width ${entry.control.width.toFixed(0)}px < 110px on mobile (date values would be hidden)`,
+      );
+    }
+    heights.push(entry.control.height);
+  }
+  if (heights.length > 1 && Math.max(...heights) - Math.min(...heights) > 1) {
+    fail(
+      caseName,
+      `advanced filter controls have inconsistent heights: ${heights.map((h) => h.toFixed(0)).join(", ")}px`,
+    );
+  }
+
+  if (hasFailure()) {
+    const shot = path.join(tmpDir, `${caseName.replace(/[^\w.-]+/g, "_")}.png`);
+    await page.screenshot({ path: shot }).catch(() => {});
+    console.error(`    Screenshot: ${shot}`);
+  }
+}
+
 async function runListPageState(page, base, authHeaders, seedItems, viewport, tmpDir) {
   const caseName = `${viewport.name}/list-page`;
   console.log(`  ${viewport.name} / list-page`);
@@ -587,6 +708,8 @@ async function runListPageState(page, base, authHeaders, seedItems, viewport, tm
     await page.screenshot({ path: shot }).catch(() => {});
     console.error(`    Screenshot: ${shot}`);
   }
+
+  await runFilterLayoutState(page, viewport, tmpDir);
 }
 
 // --------------------------------------------------------------------------

@@ -236,26 +236,42 @@
   flex-wrap: wrap;
   gap: var(--space-xs);
 }
-/* Compact sort/date/tag controls in the items actions row */
-#sources-items-actions .actions-row-select,
-#sources-items-actions .actions-row-date {
-  width: auto;
-  min-height: 0;
-  margin: 0;
-  padding: 0.25rem 0.5rem;
-  font-size: var(--font-sm);
-}
-#sources-items-actions .actions-row-date {
-  max-width: 9.5em;
-}
 /* Collapsible advanced filters (sort, dates, tags) behind the funnel toggle */
 .actions-row-advanced {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-xs);
+  align-items: flex-end;
+  gap: var(--space-sm);
   flex-basis: 100%;
-  align-items: center;
-  justify-content: flex-start;
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--color-border-light);
+}
+/* Each control gets a visible label so the icon-only date fields stay
+   understandable, and a shared height/width so the row reads as one grid */
+.actions-row-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 0 1 11em;
+  min-width: 0;
+  margin: 0;
+}
+.actions-row-label {
+  font-size: var(--font-xs);
+  line-height: 1;
+  color: var(--color-text-muted);
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+#sources-items-actions .actions-row-select,
+#sources-items-actions .actions-row-date {
+  width: 100%;
+  min-width: 0;
+  height: 2.4rem;
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  font-size: var(--font-sm);
 }
 #sources-items-actions .filters-active {
   color: var(--color-primary);
@@ -345,6 +361,12 @@
   #sources-items-actions #sources-items-search-filter {
     height: 44px;
   }
+  /* Two columns keep every labeled control wide enough to show its value
+     (a narrow native date input collapses to just the calendar icon) */
+  .actions-row-advanced {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 701px) {
@@ -408,7 +430,7 @@
   /* Pico gives inputs a 1rem bottom margin; it inflates this flex row below the controls */
   margin-bottom: 0;
 }
-#sources-items-search-filter::placeholder::placeholder {
+#sources-items-search-filter::placeholder {
   color: var(--color-text-placeholder);
 }
 
