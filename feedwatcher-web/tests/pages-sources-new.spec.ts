@@ -25,10 +25,12 @@ async function mountPage() {
   return wrapper;
 }
 
-function mockStatusApi() {
+function mockStatusApi(overrides: Record<string, any> = {}) {
   vi.mocked(axios.get).mockImplementation((url: string) => {
     if (url.endsWith("/status")) {
-      return Promise.resolve({ data: { podcastSearchEnabled: false } });
+      return Promise.resolve({
+        data: { podcastSearchEnabled: false, newsletterEnabled: false, ...overrides },
+      });
     }
     if (url.endsWith("/sources/labels")) {
       return Promise.resolve({ data: { sourceLabels: [] } });
@@ -87,6 +89,35 @@ describe("New Source page: add by URL", () => {
     await wrapper.find("input").setValue("https://example.com/feed.xml");
 
     expect(wrapper.html()).toContain("This source already exists");
+  });
+});
+
+describe("New Source page: newsletter mode", () => {
+  beforeEach(() => {
+    vi.mocked(axios.get).mockReset();
+    vi.mocked(axios.post).mockReset();
+    pushSpy.mockReset();
+  });
+
+  test("hides the Newsletters mode when the integration is disabled", async () => {
+    mockStatusApi({ newsletterEnabled: false });
+
+    const wrapper = await mountPage();
+
+    expect(
+      wrapper.findAll("button").some((b) => b.text().includes("Newsletters")),
+    ).toBe(false);
+  });
+
+  test("shows the Newsletters mode when the integration is enabled", async () => {
+    mockStatusApi({ newsletterEnabled: true });
+
+    const wrapper = await mountPage();
+
+    const newsletterButton = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("Newsletters"));
+    expect(newsletterButton).toBeDefined();
   });
 });
 

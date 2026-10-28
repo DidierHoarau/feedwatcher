@@ -29,6 +29,7 @@ import { ListsItemsRoutes } from "./sources/ListsItemsRoutes";
 import { SourcesIdRoutes } from "./sources/SourcesIdRoutes";
 import { SourcesImportRoutes } from "./sources/SourcesImportRoutes";
 import { SourcesLabelsRoutes } from "./sources/SourcesLabelsRoutes";
+import { NewsletterRoutes } from "./sources/NewsletterRoutes";
 import { SourcesRoutes } from "./sources/SourcesRoutes";
 import { SummaryInit } from "./summary/Summary";
 import { SummaryRoutes } from "./summary/SummaryRoutes";
@@ -93,6 +94,11 @@ Promise.resolve().then(async () => {
   fastify.register(new SourcesRoutes().getRoutes, {
     prefix: "/api/sources",
   });
+  // Registered before the "/api/sources/:sourceId" routes so the static
+  // newsletter paths always win over the parameterised source route.
+  fastify.register(new NewsletterRoutes().getRoutes, {
+    prefix: "/api/sources/newsletter",
+  });
   fastify.register(new ItemsRoutes().getRoutes, {
     prefix: "/api/items",
   });
@@ -128,6 +134,7 @@ Promise.resolve().then(async () => {
       ),
       notificationsEnabled: PushSenderIsEnabled(),
       vapidPublicKey: PushSenderGetPublicKey(),
+      newsletterEnabled: !!String(config.NEWSLETTER_URL ?? "").trim(),
     };
   });
 

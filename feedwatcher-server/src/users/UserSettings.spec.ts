@@ -33,6 +33,7 @@ describe("UserSettings", () => {
         newItemsLabels: ["news", "tech"],
       },
       summaryPrompt: "Summarize like a pirate",
+      newsletter: { ignoredFeedIds: [] },
     });
   });
 
@@ -96,5 +97,53 @@ describe("UserSettings", () => {
     });
     const json = UserSettingsToJson(settings);
     expect(JSON.parse(json)).toEqual(settings);
+  });
+
+  test("normalizes the newsletter ignore list", () => {
+    const settings = UserSettingsFromJson({
+      newsletter: {
+        ignoredFeedIds: [" morningbrew ", "", "morningbrew", 42, null, "tech"],
+      },
+    });
+    expect(settings.newsletter.ignoredFeedIds).toEqual([
+      "morningbrew",
+      "tech",
+    ]);
+  });
+
+  test("drops ignored feed ids that are not strings or are too long", () => {
+    const settings = UserSettingsFromJson({
+      newsletter: {
+        ignoredFeedIds: [{}, "a".repeat(129), "ok"],
+      },
+    });
+    expect(settings.newsletter.ignoredFeedIds).toEqual(["ok"]);
+  });
+
+  test("caps the ignore list at 200 entries", () => {
+    const ignoredFeedIds = [];
+    for (let i = 0; i < 250; i++) {
+      ignoredFeedIds.push(`feed-${i}`);
+    }
+    const settings = UserSettingsFromJson({ newsletter: { ignoredFeedIds } });
+    expect(settings.newsletter.ignoredFeedIds).toHaveLength(200);
+  });
+
+  test("falls back to an empty ignore list for malformed input", () => {
+    expect(
+      UserSettingsFromJson({ newsletter: "nope" }).newsletter.ignoredFeedIds,
+    ).toEqual([]);
+    expect(
+      UserSettingsFromJson({ newsletter: { ignoredFeedIds: "nope" } })
+        .newsletter.ignoredFeedIds,
+    ).toEqual([]);
+  });
+
+  test("builds independent default arrays per call", () => {
+    const first = UserSettingsFromJson({});
+    const second = UserSettingsFromJson({});
+    first.newsletter.ignoredFeedIds.push("feed");
+    expect(second.newsletter.ignoredFeedIds).toEqual([]);
+    expect(DEFAULT_USER_SETTINGS.newsletter.ignoredFeedIds).toEqual([]);
   });
 });

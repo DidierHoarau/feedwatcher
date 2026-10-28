@@ -254,6 +254,22 @@ export class UsersRoutes {
       ) {
         return res.status(400).send({ error: "Invalid: Settings" });
       }
+      if (input.newsletter !== undefined) {
+        const newsletter = input.newsletter;
+        if (
+          !newsletter ||
+          typeof newsletter !== "object" ||
+          Array.isArray(newsletter)
+        ) {
+          return res.status(400).send({ error: "Invalid: Settings" });
+        }
+        if (
+          newsletter.ignoredFeedIds !== undefined &&
+          !Array.isArray(newsletter.ignoredFeedIds)
+        ) {
+          return res.status(400).send({ error: "Invalid: Settings" });
+        }
+      }
       await UsersDataUpdateSettings(
         OTelRequestSpan(req),
         userSession.userId,

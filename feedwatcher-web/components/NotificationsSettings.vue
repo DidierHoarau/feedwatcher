@@ -99,6 +99,7 @@
 import axios from "axios";
 import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
+import { UserSettingsService } from "~~/services/UserSettingsService";
 import { NotificationsService } from "~~/services/NotificationsService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 
@@ -109,6 +110,9 @@ const DEFAULT_SETTINGS = () => ({
     newItemsLabels: [],
   },
   summaryPrompt: "",
+  newsletter: {
+    ignoredFeedIds: [],
+  },
 });
 
 export default {
@@ -138,20 +142,20 @@ export default {
       }
     }
     try {
-      const res = await axios.get(
-        `${(await Config.get()).SERVER_URL}/users/settings`,
-        await AuthService.getAuthHeader()
-      );
-      if (res.data && res.data.settings) {
-        this.settings = {
-          notifications: {
-            digest: !!res.data.settings.notifications?.digest,
-            newItems: res.data.settings.notifications?.newItems || "off",
-            newItemsLabels: res.data.settings.notifications?.newItemsLabels || [],
-          },
-          summaryPrompt: res.data.settings.summaryPrompt || "",
-        };
-      }
+      const loaded = await UserSettingsService.getSettings();
+      this.settings = {
+        notifications: {
+          digest: !!loaded.notifications?.digest,
+          newItems: loaded.notifications?.newItems || "off",
+          newItemsLabels: loaded.notifications?.newItemsLabels || [],
+        },
+        summaryPrompt: loaded.summaryPrompt || "",
+        newsletter: {
+          ignoredFeedIds: Array.isArray(loaded.newsletter?.ignoredFeedIds)
+            ? loaded.newsletter.ignoredFeedIds
+            : [],
+        },
+      };
     } catch (err) {
       handleError(err);
     }
@@ -206,11 +210,12 @@ export default {
     },
     async saveSettings() {
       try {
-        await axios.put(
-          `${(await Config.get()).SERVER_URL}/users/settings`,
-          { settings: this.settings },
-          await AuthService.getAuthHeader()
-        );
+        // Only the keys this card owns: the service merges them over the
+        // current settings, so the newsletter ignore list is never erased.
+        await UserSettingsService.updateSettings({
+          notifications: this.settings.notifications,
+          summaryPrompt: this.settings.summaryPrompt,
+        });
         EventBus.emit(EventTypes.ALERT_MESSAGE, {
           type: "info",
           text: "Notification settings saved",

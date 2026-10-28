@@ -1,6 +1,13 @@
 <template>
   <div>
     <h1>Update Source: {{ source.info.url }}</h1>
+    <div
+      v-if="isFromNewsletter"
+      class="source-newsletter-badge"
+      :title="'Newsletter feed: ' + (source.info.providerFeedId || '')"
+    >
+      <i class="bi bi-envelope-paper"></i> From newsletter
+    </div>
     <div v-if="hasHealthInfo" class="source-health-details">
       <div
         v-if="source.health && source.health !== 'ok'"
@@ -123,6 +130,13 @@ export default {
     };
   },
   computed: {
+    isFromNewsletter() {
+      return (
+        this.source &&
+        this.source.info &&
+        this.source.info.provider === "feedwatcher-newsletter"
+      );
+    },
     hasHealthInfo() {
       const info = this.source.info || {};
       return Boolean(
@@ -306,6 +320,18 @@ h1 {
   margin-bottom: var(--space-2xl);
   font-size: 0.9em;
   color: var(--color-text-secondary, inherit);
+}
+.source-newsletter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 0 var(--space-sm);
+  margin-bottom: var(--space-base);
+  border-radius: var(--radius-full);
+  background: var(--color-primary-light);
+  color: var(--color-primary-text);
+  font-size: var(--font-sm);
+  font-weight: 600;
 }
 .source-health-status {
   margin-bottom: var(--space-xs);

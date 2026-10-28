@@ -40,6 +40,9 @@ const SERVER_SETTINGS = {
       newItemsLabels: ["tech"],
     },
     summaryPrompt: "Custom prompt",
+    newsletter: {
+      ignoredFeedIds: ["morningbrew"],
+    },
   },
 };
 
@@ -115,6 +118,7 @@ describe("NotificationsSettings", () => {
     expect(payload.settings.notifications.digest).toBe(true);
     expect(payload.settings.notifications.newItems).toBe("labels");
     expect(payload.settings.notifications.newItemsLabels).toEqual(["tech"]);
+    expect(payload.settings.newsletter.ignoredFeedIds).toEqual(["morningbrew"]);
     expect(alerts.some((a) => a.type === "info")).toBe(true);
     EventBus.off(EventTypes.ALERT_MESSAGE);
   });

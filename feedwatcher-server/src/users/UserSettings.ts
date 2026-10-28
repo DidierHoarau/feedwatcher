@@ -4,9 +4,14 @@ export interface UserNotificationSettings {
   newItemsLabels: string[];
 }
 
+export interface UserNewsletterSettings {
+  ignoredFeedIds: string[];
+}
+
 export interface UserSettings {
   notifications: UserNotificationSettings;
   summaryPrompt: string;
+  newsletter: UserNewsletterSettings;
 }
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
@@ -16,11 +21,16 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
     newItemsLabels: [],
   },
   summaryPrompt: "",
+  newsletter: {
+    ignoredFeedIds: [],
+  },
 };
 
 const SUMMARY_PROMPT_MAX_CHARS = 5000;
 const LABELS_MAX_COUNT = 50;
 const LABEL_MAX_CHARS = 200;
+const IGNORED_FEED_IDS_MAX_COUNT = 200;
+const FEED_ID_MAX_CHARS = 128;
 
 function normalizeLabel(label: any): string | null {
   if (typeof label !== "string") {
@@ -33,12 +43,38 @@ function normalizeLabel(label: any): string | null {
   return trimmed;
 }
 
+function normalizeIgnoredFeedIds(input: any): string[] {
+  const feedIds: string[] = [];
+  if (!Array.isArray(input)) {
+    return feedIds;
+  }
+  for (const feedId of input) {
+    if (typeof feedId !== "string") {
+      continue;
+    }
+    const trimmed = feedId.trim();
+    if (
+      trimmed.length === 0 ||
+      trimmed.length > FEED_ID_MAX_CHARS ||
+      feedIds.includes(trimmed)
+    ) {
+      continue;
+    }
+    feedIds.push(trimmed);
+    if (feedIds.length >= IGNORED_FEED_IDS_MAX_COUNT) {
+      break;
+    }
+  }
+  return feedIds;
+}
+
 // Merges arbitrary input over the defaults; anything missing, malformed or
 // out of bounds silently falls back to its default value.
 export function UserSettingsFromJson(json: any): UserSettings {
   const settings: UserSettings = {
     notifications: { ...DEFAULT_USER_SETTINGS.notifications },
     summaryPrompt: DEFAULT_USER_SETTINGS.summaryPrompt,
+    newsletter: { ignoredFeedIds: [] },
   };
   if (!json || typeof json !== "object") {
     return settings;
@@ -73,6 +109,11 @@ export function UserSettingsFromJson(json: any): UserSettings {
     settings.summaryPrompt = json.summaryPrompt.substring(
       0,
       SUMMARY_PROMPT_MAX_CHARS,
+    );
+  }
+  if (json.newsletter && typeof json.newsletter === "object") {
+    settings.newsletter.ignoredFeedIds = normalizeIgnoredFeedIds(
+      json.newsletter.ignoredFeedIds,
     );
   }
   return settings;
