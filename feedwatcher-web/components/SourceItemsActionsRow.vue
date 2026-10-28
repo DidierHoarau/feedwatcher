@@ -47,44 +47,58 @@
       @cancel="onCancelMarkAll"
     />
     <div v-show="filtersOpen" class="actions-row-advanced">
-      <select
-        v-model="sourceItemsStore.sort"
-        class="actions-row-select"
-        aria-label="Sort items"
-        v-on:change="sourceItemsStore.fetch()"
-      >
-        <option value="date_desc">Newest</option>
-        <option value="date_asc">Oldest</option>
-        <option value="relevance">Best match</option>
-      </select>
-      <input
-        class="actions-row-date"
-        type="date"
-        v-model="sourceItemsStore.minDate"
-        aria-label="Show items from date"
-        title="Show items from date"
-        v-on:change="sourceItemsStore.fetch()"
-      />
-      <input
-        class="actions-row-date"
-        type="date"
-        v-model="sourceItemsStore.maxDate"
-        aria-label="Show items until date"
-        title="Show items until date"
-        v-on:change="sourceItemsStore.fetch()"
-      />
-      <select
+      <label class="actions-row-field actions-row-field-sort">
+        <span class="actions-row-label">Sort</span>
+        <select
+          v-model="sourceItemsStore.sort"
+          class="actions-row-select"
+          aria-label="Sort items"
+          v-on:change="sourceItemsStore.fetch()"
+        >
+          <option value="date_desc">Newest</option>
+          <option value="date_asc">Oldest</option>
+          <option value="relevance">Best match</option>
+        </select>
+      </label>
+      <label class="actions-row-field actions-row-field-from">
+        <span class="actions-row-label">From</span>
+        <input
+          class="actions-row-date"
+          type="date"
+          v-model="sourceItemsStore.minDate"
+          aria-label="Show items from date"
+          title="Show items from date"
+          v-on:change="sourceItemsStore.fetch()"
+        />
+      </label>
+      <label class="actions-row-field actions-row-field-to">
+        <span class="actions-row-label">To</span>
+        <input
+          class="actions-row-date"
+          type="date"
+          v-model="sourceItemsStore.maxDate"
+          aria-label="Show items until date"
+          title="Show items until date"
+          v-on:change="sourceItemsStore.fetch()"
+        />
+      </label>
+      <label
         v-if="sourceItemsStore.availableTags.length > 0"
-        v-model="sourceItemsStore.searchTagName"
-        class="actions-row-select"
-        aria-label="Filter by tag"
-        v-on:change="sourceItemsStore.fetch()"
+        class="actions-row-field actions-row-field-tag"
       >
-        <option value="">All tags</option>
-        <option v-for="tag in sourceItemsStore.availableTags" :key="tag" :value="tag">
-          {{ tag }}
-        </option>
-      </select>
+        <span class="actions-row-label">Tag</span>
+        <select
+          v-model="sourceItemsStore.searchTagName"
+          class="actions-row-select"
+          aria-label="Filter by tag"
+          v-on:change="sourceItemsStore.fetch()"
+        >
+          <option value="">All tags</option>
+          <option v-for="tag in sourceItemsStore.availableTags" :key="tag" :value="tag">
+            {{ tag }}
+          </option>
+        </select>
+      </label>
     </div>
   </div>
 </template>
