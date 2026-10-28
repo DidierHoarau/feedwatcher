@@ -17,10 +17,13 @@
  * `/sources/new` must keep its header and mode tabs fixed while only the
  * active mode scrolls (add-by-url, 25 podcast search results, 25 newsletter
  * feeds), and `/sources/newsletter` must scroll down to the source-health
- * panel. They run on a dedicated page with request interception mocking
- * `/api/status`, `/api/sources/search` and `/api/sources/newsletter`; the
- * service worker is bypassed there because it serves the unauthenticated
- * `/api/status` stale-while-revalidate and would hide the mocked flags.
+ * panel. The edit-source-page state covers `/sources/:sourceId`: a long health
+ * header plus 25 podcast search results must scroll down to the Labels field
+ * and the Update/Delete buttons. They run on a dedicated page with request
+ * interception mocking `/api/status`, `/api/sources/search`,
+ * `/api/sources/newsletter` and the edited source + labels; the service
+ * worker is bypassed there because it serves the unauthenticated `/api/status`
+ * stale-while-revalidate and would hide the mocked flags.
  *
  * Prerequisites:
  *   - feedwatcher-server: npm ci
@@ -112,6 +115,30 @@ const NEWSLETTER_FEEDS = Array.from({ length: 25 }, (_, i) => ({
   latestDate: "2026-10-01T00:00:00.000Z",
   state: "available",
 }));
+
+// Edited source: a long URL plus the health block and the URL finder with 25
+// podcast results push the Labels field and the Update/Delete buttons below
+// the fold at every checked viewport.
+const EDIT_SOURCE_ID = "synthetic-edit-source";
+const EDIT_SOURCE = {
+  id: EDIT_SOURCE_ID,
+  name: "Synthetic newsletter source",
+  info: {
+    url: "http://feedwatcher-newsletter:8080/rss/synthetic-newsletter-feed-with-a-rather-long-name",
+    provider: "feedwatcher-newsletter",
+    providerFeedId: "synthetic-feed-1",
+    fetchErrorCount: 9,
+    lastFetchError: "No processor found for this source",
+    lastFetchErrorDate: "2026-10-27T19:20:39.000Z",
+    dateFetched: "2026-10-23T10:15:36.000Z",
+    lastItemDate: "2026-08-18T12:47:27.000Z",
+  },
+  health: "failing",
+};
+
+const EDIT_SOURCE_LABELS = {
+  labels: [{ name: "newsletters" }, { name: "daily" }],
+};
 
 const failures = [];
 
@@ -297,6 +324,12 @@ async function main() {
         if (pathname === "/api/sources/newsletter") {
           return respond({ enabled: true, feeds: NEWSLETTER_FEEDS });
         }
+        if (pathname === `/api/sources/${EDIT_SOURCE_ID}/labels`) {
+          return respond(EDIT_SOURCE_LABELS);
+        }
+        if (pathname === `/api/sources/${EDIT_SOURCE_ID}`) {
+          return respond(EDIT_SOURCE);
+        }
         return request.continue();
       } catch (error) {
         console.error(`    request interception error: ${error}`);
@@ -326,6 +359,7 @@ async function main() {
       });
       await runNewSourceStates(newSourcePage, base, viewport, tmpDir);
       await runNewsletterPageState(newSourcePage, base, viewport, tmpDir);
+      await runEditSourcePageState(newSourcePage, base, viewport, tmpDir);
     }
   } catch (error) {
     fail("setup", error?.stack || String(error));
@@ -1167,6 +1201,146 @@ async function runNewsletterPageState(page, base, viewport, tmpDir) {
     fail(
       `${prefix}/keyboard`,
       `PageDown did not scroll the newsletter page (scrollTop ${keyTop})`,
+    );
+  }
+  await saveScrollArtifacts(page, prefix, tmpDir);
+}
+
+// Source edit page: long health block, URL finder and 25 podcast results must
+// stay inside `<main>` and scroll down to the Labels field and Update/Delete.
+async function runEditSourcePageState(page, base, viewport, tmpDir) {
+  const prefix = `${viewport.name}/edit-source-page`;
+  console.log(`  ${viewport.name} / edit-source-page`);
+
+  const selectors = {
+    rootSelector: ".source-edit-page",
+    scrollerSelector: ".source-edit-page",
+    rowSelector: ".finder-candidate",
+    toggleSelector: null,
+  };
+
+  await page.goto(`${base}/sources/${EDIT_SOURCE_ID}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await page.waitForSelector(".finder-podcast-search input[type='search']", {
+    timeout: WAIT_TIMEOUT_MS,
+  });
+  await page.type(".finder-podcast-search input[type='search']", "layout");
+  await page.waitForFunction(
+    () => document.querySelectorAll(".finder-candidate").length === 25,
+    { polling: 250, timeout: WAIT_TIMEOUT_MS },
+  );
+
+  const data = await page.evaluate(collectScrollMetrics, selectors);
+  assertPageBoundedInMain(prefix, data);
+  assertNoHorizontalOverflow(prefix, data);
+  if (!data.scroller) {
+    fail(prefix, "source edit page scroll container is missing");
+    await saveScrollArtifacts(page, prefix, tmpDir);
+    return;
+  }
+  if (data.scroller.overflowY !== "auto") {
+    fail(
+      prefix,
+      `source edit page overflow-y is "${data.scroller.overflowY}", expected "auto"`,
+    );
+  }
+  if (data.scroller.scrollHeight < data.scroller.clientHeight + 10) {
+    fail(
+      prefix,
+      `source edit page does not scroll: scrollHeight ${data.scroller.scrollHeight}px vs clientHeight ${data.scroller.clientHeight}px`,
+    );
+  }
+
+  // The last podcast result must be reachable.
+  await page.evaluate(() => {
+    const rows = document.querySelectorAll(".finder-candidate");
+    const last = rows[rows.length - 1];
+    if (last) {
+      last.scrollIntoView({ block: "end" });
+    }
+  });
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  const rowData = await page.evaluate(collectScrollMetrics, selectors);
+  assertLastRowReachable(prefix, rowData);
+
+  // The Labels field and the Update/Delete actions must be reachable at the
+  // bottom of the page.
+  await scrollToBottom(page, ".source-edit-page");
+  const bottomData = await page.evaluate(collectScrollMetrics, selectors);
+  if (!bottomData.scroller || bottomData.scroller.scrollTop <= 0) {
+    fail(
+      prefix,
+      `page did not scroll to the Labels/actions section (scrollTop ${bottomData.scroller?.scrollTop})`,
+    );
+  }
+  const actions = await page.evaluate(() => {
+    const root = document.querySelector(".source-edit-page");
+    const container = root ? root.getBoundingClientRect() : null;
+    const rectOf = (el) => {
+      if (!el) {
+        return null;
+      }
+      const r = el.getBoundingClientRect();
+      return {
+        top: r.top,
+        bottom: r.bottom,
+        width: r.width,
+        height: r.height,
+      };
+    };
+    const buttons = [...(root?.querySelectorAll("button") ?? [])]
+      .filter((button) =>
+        ["Update", "Delete"].includes((button.textContent || "").trim()),
+      )
+      .map((button) => ({
+        label: (button.textContent || "").trim(),
+        ...rectOf(button),
+      }));
+    const labels = [...(root?.querySelectorAll("label") ?? [])].some(
+      (label) => (label.textContent || "").trim() === "Labels",
+    );
+    return {
+      container: container
+        ? {
+            top: container.top,
+            bottom: container.bottom,
+          }
+        : null,
+      buttons,
+      hasLabelsField: labels,
+    };
+  });
+  if (!actions.hasLabelsField) {
+    fail(prefix, "Labels field is missing");
+  }
+  for (const label of ["Update", "Delete"]) {
+    const button = actions.buttons.find((entry) => entry.label === label);
+    if (!button) {
+      fail(prefix, `"${label}" button is missing`);
+    } else if (button.width <= 0 || button.height <= 0) {
+      fail(prefix, `"${label}" button has no box`);
+    } else if (
+      actions.container &&
+      (button.top < actions.container.top - 2 ||
+        button.bottom > actions.container.bottom + 2)
+    ) {
+      fail(
+        prefix,
+        `"${label}" button [${button.top.toFixed(0)}-${button.bottom.toFixed(0)}] is outside the page viewport [${actions.container.top.toFixed(0)}-${actions.container.bottom.toFixed(0)}]`,
+      );
+    }
+  }
+
+  const keyTop = await scrollAndPageDown(
+    page,
+    ".source-edit-page",
+    ".finder-podcast-search input[type='search']",
+  );
+  if (!(keyTop > 0)) {
+    fail(
+      `${prefix}/keyboard`,
+      `PageDown did not scroll the source edit page (scrollTop ${keyTop})`,
     );
   }
   await saveScrollArtifacts(page, prefix, tmpDir);
