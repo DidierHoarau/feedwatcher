@@ -4,6 +4,9 @@ import { XMLParser } from "fast-xml-parser";
 import { SourcesImportRoutes } from "./SourcesImportRoutes";
 import { SourceLabelsDataListForUser } from "./SourceLabelsData";
 import { AuthGetUserSession } from "../users/Auth";
+import { ConfigGet } from "../Config";
+import { SourcesDataListForUser } from "./SourcesData";
+import { NewsletterResolveProviderForUrl } from "./NewsletterProvider";
 
 jest.mock("../OTelContext", () => ({
   OTelRequestSpan: jest.fn(() => ({})),
@@ -22,6 +25,19 @@ jest.mock("../users/Auth", () => ({
 
 jest.mock("./SourceLabelsData", () => ({
   SourceLabelsDataListForUser: jest.fn(),
+}));
+
+jest.mock("../Config", () => ({
+  ConfigGet: jest.fn(),
+}));
+
+jest.mock("./SourcesData", () => ({
+  SourcesDataListForUser: jest.fn(),
+}));
+
+jest.mock("./NewsletterProvider", () => ({
+  ...jest.requireActual("./NewsletterProvider"),
+  NewsletterResolveProviderForUrl: jest.fn(),
 }));
 
 const OPML_INPUT = `<?xml version="1.0" encoding="UTF-8"?>
@@ -50,7 +66,36 @@ describe("SourcesImportRoutes", () => {
       isAuthenticated: true,
       userId: "user-1",
     });
+    jest.mocked(ConfigGet).mockReturnValue({ NEWSLETTER_URL: "" } as any);
+    jest.mocked(SourcesDataListForUser).mockResolvedValue([]);
+    jest.mocked(NewsletterResolveProviderForUrl).mockResolvedValue(null);
   });
+
+  function opmlPayload(opmlText: string): Buffer {
+    const boundary = "----test-boundary";
+    return Buffer.concat([
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="image"; filename="feeds.opml"\r\nContent-Type: text/xml\r\n\r\n`
+      ),
+      Buffer.from(opmlText),
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+  }
+
+  async function importOpml(
+    fastify: FastifyInstance,
+    opmlText: string
+  ): Promise<any> {
+    const response = await fastify.inject({
+      method: "POST",
+      url: "/analyze/opml",
+      headers: {
+        "content-type": "multipart/form-data; boundary=----test-boundary",
+      },
+      payload: opmlPayload(opmlText),
+    });
+    return response;
+  }
 
   test("analyzes an OPML document with nested folders (M12)", async () => {
     const fastify = await buildFastify();
@@ -156,6 +201,75 @@ describe("SourcesImportRoutes", () => {
       url: "/export/opml",
     });
     expect(response.statusCode).toBe(403);
+    await fastify.close();
+  });
+
+  test("tags newsletter feeds and flags existing sources by feed id", async () => {
+    jest.mocked(ConfigGet).mockReturnValue({
+      NEWSLETTER_URL: "https://newsletter.example",
+    } as any);
+    jest
+      .mocked(NewsletterResolveProviderForUrl)
+      .mockImplementation(async (url: string) =>
+        url.includes("newsletter.example")
+          ? {
+              provider: "feedwatcher-newsletter",
+              providerFeedId: "alpha",
+              providerUrl: "https://newsletter.example/rss/alpha.token",
+            }
+          : null
+      );
+    jest.mocked(SourcesDataListForUser).mockResolvedValue([
+      {
+        id: "source-1",
+        info: {
+          url: "https://newsletter.example/rss/alpha",
+          provider: "feedwatcher-newsletter",
+          providerFeedId: "alpha",
+        },
+      },
+    ] as any);
+
+    const fastify = await buildFastify();
+    const response = await importOpml(
+      fastify,
+      `<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <body>
+    <outline text="Alpha" type="rss" xmlUrl="https://newsletter.example/rss/alpha.rotated"/>
+    <outline text="Feed B" type="rss" xmlUrl="https://b.example/feed.xml"/>
+  </body>
+</opml>`
+    );
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    const newsletter = body.sources.find((source: any) =>
+      source.info.url.includes("newsletter.example")
+    );
+    expect(newsletter.info.provider).toBe("feedwatcher-newsletter");
+    expect(newsletter.info.providerFeedId).toBe("alpha");
+    expect(newsletter.existingSourceId).toBe("source-1");
+    const other = body.sources.find(
+      (source: any) => source.info.url === "https://b.example/feed.xml"
+    );
+    expect(other.info.provider).toBeUndefined();
+    expect(other.existingSourceId).toBeUndefined();
+    await fastify.close();
+  });
+
+  test("leaves OPML sources untouched when the newsletter integration is disabled", async () => {
+    const fastify = await buildFastify();
+    const response = await importOpml(fastify, OPML_INPUT);
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.sources.every((source: any) => !source.info.provider)).toBe(true);
+    expect(
+      body.sources.every((source: any) => source.existingSourceId === undefined)
+    ).toBe(true);
+    expect(NewsletterResolveProviderForUrl).not.toHaveBeenCalled();
+    expect(SourcesDataListForUser).not.toHaveBeenCalled();
     await fastify.close();
   });
 });

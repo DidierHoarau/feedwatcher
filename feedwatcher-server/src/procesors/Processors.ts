@@ -27,6 +27,11 @@ import {
   SourcesFetchStateDataSave,
 } from "../sources/SourcesFetchStateData";
 import { OTelLogger, OTelTracer } from "../OTelContext";
+import { NewsletterFetchOptionsForSource } from "../sources/NewsletterFetch";
+import {
+  newsletterRedactText,
+  newsletterRedactUrl,
+} from "../sources/NewsletterMatching";
 
 const logger = OTelLogger().createModuleLogger("Processor");
 let config: Config;
@@ -39,8 +44,12 @@ const feedCacheLib = require(path.join(
   "../../processors-system/lib/feed-cache.js",
 ));
 
-function feedFetchContext(validators, signal) {
-  return feedCacheLib.createFeedFetchContext({ validators, signal });
+function feedFetchContext(validators, signal, info) {
+  return feedCacheLib.createFeedFetchContext({
+    validators,
+    signal,
+    ...NewsletterFetchOptionsForSource(info),
+  });
 }
 
 export async function ProcessorsInit(
@@ -107,7 +116,7 @@ export async function ProcessorsCheckSource(
   let lastError: Error = null;
   if (!source.info.processorPath) {
     userProcessorInfoStatusStart(span, source.userId);
-    const sourceContext = feedFetchContext(null, null);
+    const sourceContext = feedFetchContext(null, null, source.info);
     let processed = false;
     for (const processorsFile of processorsFiles) {
       if (!processed) {
@@ -126,7 +135,7 @@ export async function ProcessorsCheckSource(
           }
         } catch (err) {
           logger.warn(
-            `Processor ${processorsFile.name} failed to test source ${source.id} (${source.info.url}): ${err.message}`,
+            `Processor ${processorsFile.name} failed to test source ${source.id} (${newsletterRedactUrl(source.info.url)}): ${err.message}`,
             span,
           );
           lastError = err;
@@ -137,9 +146,9 @@ export async function ProcessorsCheckSource(
   }
   span.end();
   return lastError
-    ? lastError.message
-      ? lastError.message
-      : String(lastError)
+    ? newsletterRedactText(
+        lastError.message ? lastError.message : String(lastError),
+      )
     : null;
 }
 
@@ -167,7 +176,7 @@ export async function ProcessorsPreviewSource(
   const span = OTelTracer().startSpan("ProcessorsPreviewSource", context);
   let lastError: Error = null;
   let preview: ProcessorPreview | null = null;
-  const sourceContext = feedFetchContext(null, null);
+  const sourceContext = feedFetchContext(null, null, source.info);
   userProcessorInfoStatusStart(span, source.userId);
   try {
     for (const processorsFile of processorsFiles) {
@@ -203,7 +212,7 @@ export async function ProcessorsPreviewSource(
         }
       } catch (err) {
         logger.warn(
-          `Processor ${processorsFile.name} failed to preview source ${source.info.url}: ${err.message}`,
+          `Processor ${processorsFile.name} failed to preview source ${newsletterRedactUrl(source.info.url)}: ${err.message}`,
           span,
         );
         lastError = err;
@@ -216,9 +225,9 @@ export async function ProcessorsPreviewSource(
   return {
     preview,
     error: lastError
-      ? lastError.message
-        ? lastError.message
-        : String(lastError)
+      ? newsletterRedactText(
+          lastError.message ? lastError.message : String(lastError),
+        )
       : null,
   };
 }
@@ -270,6 +279,7 @@ export async function ProcessorsFetchSourceItems(
         ? fetchState
         : null,
       signal,
+      source.info,
     );
     for (const processorsFile of processorsFiles) {
       if (!processed) {
@@ -388,11 +398,13 @@ export async function ProcessorsFetchSourceItems(
     if (!processed) {
       const fetchErrorCount = (Number(source.info.fetchErrorCount) || 0) + 1;
       source.info.fetchErrorCount = fetchErrorCount;
-      source.info.lastFetchError = lastError
-        ? lastError.message
+      source.info.lastFetchError = newsletterRedactText(
+        lastError
           ? lastError.message
-          : String(lastError)
-        : "No processor found for this source";
+            ? lastError.message
+            : String(lastError)
+          : "No processor found for this source",
+      );
       source.info.lastFetchErrorDate = new Date();
       source.info.lastFetchErrorStatus = lastErrorInfo
         ? lastErrorInfo.status

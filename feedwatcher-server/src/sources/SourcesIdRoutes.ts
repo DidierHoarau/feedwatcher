@@ -14,6 +14,10 @@ import {
   SourceLabelsDataSetSourceLabels,
 } from "./SourceLabelsData";
 import { normalizeSourceUrl } from "./SourceUrl";
+import {
+  NewsletterMatchExistingSourceByUrl,
+  NewsletterResolveProviderForUrl,
+} from "./NewsletterProvider";
 import { AuthGetUserSession } from "../users/Auth";
 import { OTelLogger, OTelRequestSpan } from "../OTelContext";
 import { SourceGetHealth } from "../model/SourceHealth";
@@ -116,21 +120,29 @@ export class SourcesIdRoutes {
           return res.status(400).send({ error: "Missing: url" });
         }
         if (normalizeSourceUrl(url) !== normalizeSourceUrl(source.info?.url)) {
+          const providerMeta = await NewsletterResolveProviderForUrl(url);
           const existingSources = await SourcesDataListForUser(
             OTelRequestSpan(req),
             userSession.userId,
           );
-          const normalizedUrl = normalizeSourceUrl(url);
-          if (
-            existingSources.some(
-              (existing) =>
-                existing.id !== source.id &&
-                normalizeSourceUrl(existing.info?.url) === normalizedUrl,
-            )
-          ) {
+          const duplicate = NewsletterMatchExistingSourceByUrl(
+            existingSources.filter((existing) => existing.id !== source.id),
+            url,
+            providerMeta,
+          );
+          if (duplicate) {
             return res.status(409).send({ error: "Source Already Exists" });
           }
           source.info.url = url;
+          if (providerMeta) {
+            source.info.provider = providerMeta.provider;
+            source.info.providerFeedId = providerMeta.providerFeedId;
+            source.info.providerUrl = providerMeta.providerUrl;
+          } else {
+            delete source.info.provider;
+            delete source.info.providerFeedId;
+            delete source.info.providerUrl;
+          }
           // The processor must be re-detected against the new URL and the
           // fetch/health state of the old URL is no longer meaningful.
           delete source.info.processorPath;

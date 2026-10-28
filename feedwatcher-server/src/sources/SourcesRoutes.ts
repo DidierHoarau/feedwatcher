@@ -17,7 +17,11 @@ import { SourcesDataAdd, SourcesDataListForUser } from "./SourcesData";
 import { SourceGetHealth } from "../model/SourceHealth";
 import { ConfigGet } from "../Config";
 import { UrlSafetyError, UrlSafetyFetchText } from "../utils-std-ts/UrlSafety";
-import { normalizeSourceUrl } from "./SourceUrl";
+import { NewsletterFetchOptionsForUrl } from "./NewsletterFetch";
+import {
+  NewsletterMatchExistingSourceByUrl,
+  NewsletterResolveProviderForUrl,
+} from "./NewsletterProvider";
 
 const logger = OTelLogger().createModuleLogger("SourcesRoutes");
 
@@ -147,11 +151,12 @@ export class SourcesRoutes {
         OTelRequestSpan(req),
         userSession.userId,
       );
-      const normalizedUrl = normalizeSourceUrl(req.body.url);
+      const providerMeta = await NewsletterResolveProviderForUrl(req.body.url);
       if (
-        existingSources.some(
-          (existing) =>
-            normalizeSourceUrl(existing.info?.url) === normalizedUrl,
+        NewsletterMatchExistingSourceByUrl(
+          existingSources,
+          req.body.url,
+          providerMeta,
         )
       ) {
         return res.status(409).send({ error: "Source Already Exists" });
@@ -159,6 +164,11 @@ export class SourcesRoutes {
       const source = new Source();
       source.name = req.body.url;
       source.info = { url: req.body.url };
+      if (providerMeta) {
+        source.info.provider = providerMeta.provider;
+        source.info.providerFeedId = providerMeta.providerFeedId;
+        source.info.providerUrl = providerMeta.providerUrl;
+      }
       source.userId = userSession.userId;
       const checkError = await ProcessorsCheckSource(
         OTelRequestSpan(req),
@@ -206,7 +216,12 @@ export class SourcesRoutes {
       }
       let body: string;
       try {
-        body = await UrlSafetyFetchText(requestedUrl, FEED_FETCH_CONTENT_TYPES);
+        const providerMeta = await NewsletterResolveProviderForUrl(requestedUrl);
+        body = await UrlSafetyFetchText(
+          requestedUrl,
+          FEED_FETCH_CONTENT_TYPES,
+          NewsletterFetchOptionsForUrl(requestedUrl, providerMeta),
+        );
       } catch (err: any) {
         const status =
           err instanceof UrlSafetyError ? err.statusCode : 502;
@@ -239,6 +254,12 @@ export class SourcesRoutes {
       const source = new Source();
       source.name = req.body.url;
       source.info = { url: req.body.url };
+      const providerMeta = await NewsletterResolveProviderForUrl(req.body.url);
+      if (providerMeta) {
+        source.info.provider = providerMeta.provider;
+        source.info.providerFeedId = providerMeta.providerFeedId;
+        source.info.providerUrl = providerMeta.providerUrl;
+      }
       source.userId = userSession.userId;
       const { preview, error } = await ProcessorsPreviewSource(
         OTelRequestSpan(req),

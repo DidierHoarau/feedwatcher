@@ -167,7 +167,7 @@ FeedWatcher can list the newsletters offered by a [feedwatcher-newsletter](../fe
 
 | Variable                    | Description                                                       | Default       |
 | --------------------------- | ----------------------------------------------------------------- | ------------- |
-| `NEWSLETTER_URL`            | Base URL of the newsletter service (e.g. `https://news.example`)  | (disabled)    |
+| `NEWSLETTER_URL`            | Base URL of the newsletter service, ideally the internal service URL (e.g. `http://feedwatcher-newsletter.feedwatcher.svc.cluster.local:8080`) | (disabled)    |
 | `NEWSLETTER_AUTH_USERNAME`  | HTTP Basic username used when the newsletter requires a password  | `feedwatcher` |
 | `NEWSLETTER_AUTH_PASSWORD`  | HTTP Basic password; when empty no `Authorization` header is sent |               |
 
@@ -175,11 +175,39 @@ The server reads the newsletter's versioned catalogue at `GET <NEWSLETTER_URL>/a
 
 Matching is read-only: existing sources carrying `info.provider = "feedwatcher-newsletter"` and `info.providerFeedId` are reported as added, and legacy subscriptions using `/rss/<feedId>` or `/rss/<feedId>.<token>` URLs are matched by feed id (never by full URL, which changes when private-URL tokens rotate). Nothing is ever subscribed automatically — every source is user-selected.
 
-Per-user "not interested" state is stored in the user's settings (`newsletter.ignoredFeedIds`) through `PUT /api/users/settings`; ignored feeds stay listed so they can be restored. The catalogue is cached in memory for 30 seconds and revalidated with `ETag`/`Last-Modified`; `/api/status` only exposes a boolean `newsletterEnabled` (never the internal URL). Private feed tokens are part of the stored source URL: they are never rendered in the UI or written to logs.
+Per-user "not interested" state is stored in the user's settings (`newsletter.ignoredFeedIds`) through `PUT /api/users/settings`; ignored feeds stay listed so they can be restored. The catalogue is cached in memory for 30 seconds and revalidated with `ETag`/`Last-Modified`; `/api/status` only exposes a boolean `newsletterEnabled` (never the internal URL). Private feed tokens are part of the stored source URL: they appear in the source editor but are stripped from logs and stored fetch errors.
 
-Notes:
-- A newsletter reachable only on a private network is not supported here: internal-URL access requires `SOURCE_ALLOW_PRIVATE_NETWORK`, which this integration does not enable.
-- Newsletter credentials are configuration only — they are never stored in the database or embedded in source URLs.
+### Trusted internal access
+
+FeedWatcher reaches the newsletter over `NEWSLETTER_URL`; when that URL is the in-cluster service, only that exact origin — plus the newsletter's advertised feed-URL origin when the catalogue confirms it — may resolve to a private or reserved address. Every other host is still blocked by the SSRF guard, and `SOURCE_ALLOW_PRIVATE_NETWORK` stays `false`. Trusted fetches keep DNS pinning, cap redirects (same origin only), response size and time. The same-namespace Kubernetes `NetworkPolicy` already permits pod-to-pod traffic.
+
+Newsletter Basic auth (`NEWSLETTER_AUTH_USERNAME`/`NEWSLETTER_AUTH_PASSWORD`) is sent to the catalogue request and only to feeds whose source carries the `feedwatcher-newsletter` provider metadata; no other source receives the header. Credentials live in configuration/secrets, never in the database or in source URLs.
+
+### Provider metadata and URL repair
+
+Provider sources store the advertised catalogue URL in `info.url`/`info.providerUrl`; the fetch itself is rewritten to `NEWSLETTER_URL`, so traffic stays in-cluster while the advertised URL remains the identity used for repair. Legacy newsletter sources are backfilled with `provider`, `providerFeedId` and `providerUrl` at startup (idempotent) and again during a repair; URLs outside a verified newsletter origin are never tagged.
+
+Private tokens rotate: when the catalogue advertises a new URL for a known `providerFeedId`, the source is rewritten in place, keeping its id, items, labels and user state — no duplicate is created. A source whose feed disappeared from the catalogue is reported as **orphaned**, never deleted.
+
+- `POST /api/sources/newsletter/repair` with `{ "dryRun": true }` (the default) reports what would change; `{ "dryRun": false }` applies the repairs. The response contains `dryRun`, `catalogueAvailable`, `backfilled`, `repaired`, `orphaned`, `unchanged` and `unverified`, and never includes URLs or tokens.
+- The scheduler runs the same repair before each fetch cycle, with a 15-minute backoff after a catalogue failure. A source without provider metadata is never rewritten.
+- The `/sources/newsletter` page shows **Check sources** and **Repair now** actions with the repairable and orphaned lists.
+
+### OPML import
+
+Importing a newsletter OPML matches existing sources by stable feed id as well as by normalized URL, so a feed subscribed as `/rss/<feedId>` is not duplicated when the list uses `/rss/<feedId>.<token>` (and vice versa). Other feeds keep normalized-URL matching.
+
+### Fallback order
+
+1. Internal `NEWSLETTER_URL` (in-cluster service URL) with the scoped allowlist above.
+2. Public `NEWSLETTER_URL` in environments without internal access.
+3. OPML or manual URL subscription.
+
+Set the newsletter's `PUBLIC_URL` so advertised feed URLs (and therefore their origins) are stable and verifiable.
+
+### Deployment note (GitOps)
+
+Set `NEWSLETTER_URL` to the internal service URL and `NEWSLETTER_AUTH_USERNAME`/`NEWSLETTER_AUTH_PASSWORD` from the existing secret; keep `SOURCE_ALLOW_PRIVATE_NETWORK=false`. Enable the newsletter's `AUTH_PASSWORD` only after FeedWatcher has the matching credentials, otherwise the catalogue returns 401.
 
 ## LLM (News Summary)
 

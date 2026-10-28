@@ -2,6 +2,9 @@ import {
   newsletterCatalogueStates,
   newsletterFeedIdFromUrl,
   newsletterFindSourceIds,
+  newsletterRedactText,
+  newsletterRedactUrl,
+  newsletterUrlOrigin,
 } from "./NewsletterMatching";
 import { NewsletterFeed, NEWSLETTER_PROVIDER } from "./NewsletterClient";
 
@@ -76,6 +79,71 @@ describe("newsletterFeedIdFromUrl", () => {
         `https://newsletter.example/rss/${"a".repeat(129)}`,
       ),
     ).toBeNull();
+  });
+});
+
+describe("newsletterUrlOrigin", () => {
+  test("returns the exact scheme+host+port origin", () => {
+    expect(newsletterUrlOrigin("http://host:8080/rss/a.token")).toBe(
+      "http://host:8080"
+    );
+    expect(newsletterUrlOrigin("https://host/rss/a")).toBe("https://host");
+  });
+
+  test("returns null for invalid or unsupported urls", () => {
+    expect(newsletterUrlOrigin("")).toBeNull();
+    expect(newsletterUrlOrigin("not a url")).toBeNull();
+    expect(newsletterUrlOrigin("ftp://host/rss/a")).toBeNull();
+    expect(newsletterUrlOrigin("https://user:pass@host/rss/a")).toBeNull();
+    expect(newsletterUrlOrigin(null as any)).toBeNull();
+  });
+});
+
+describe("newsletterRedactUrl", () => {
+  test("strips a dotted token suffix", () => {
+    expect(
+      newsletterRedactUrl("https://newsletter.example/rss/morningbrew.0123abcd")
+    ).toBe("https://newsletter.example/rss/morningbrew");
+  });
+
+  test("keeps a bare id and the origin/port/query", () => {
+    expect(
+      newsletterRedactUrl("http://host:8080/rss/morningbrew?utm=1")
+    ).toBe("http://host:8080/rss/morningbrew?utm=1");
+    expect(newsletterRedactUrl("https://host/rss/morningbrew")).toBe(
+      "https://host/rss/morningbrew"
+    );
+  });
+
+  test("leaves non-newsletter paths and invalid urls unchanged", () => {
+    expect(newsletterRedactUrl("https://example.com/feed.xml")).toBe(
+      "https://example.com/feed.xml"
+    );
+    expect(newsletterRedactUrl("not a url")).toBe("not a url");
+    expect(newsletterRedactUrl("")).toBe("");
+  });
+
+  test("does not treat a leading dot as a token", () => {
+    expect(newsletterRedactUrl("https://host/rss/.hidden")).toBe(
+      "https://host/rss/.hidden"
+    );
+  });
+});
+
+describe("newsletterRedactText", () => {
+  test("redacts tokens inside log messages", () => {
+    expect(
+      newsletterRedactText(
+        "Failed https://newsletter.example/rss/morningbrew.deadbeef while fetching"
+      )
+    ).toBe("Failed https://newsletter.example/rss/morningbrew while fetching");
+  });
+
+  test("leaves text without newsletter tokens untouched", () => {
+    expect(newsletterRedactText("Failed to fetch URL (HTTP 404)")).toBe(
+      "Failed to fetch URL (HTTP 404)"
+    );
+    expect(newsletterRedactText("")).toBe("");
   });
 });
 

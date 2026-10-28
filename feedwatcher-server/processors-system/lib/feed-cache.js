@@ -6,10 +6,20 @@ const { fetchText } = require("./ssrf-http");
 
 class FeedNotModifiedError extends Error {
   constructor(url) {
-    super(`Feed not modified: ${url}`);
+    // The URL can carry a private feed token: never put it in the message,
+    // which ends up in logs and stored fetch errors.
+    super("Feed not modified");
     this.name = "FeedNotModifiedError";
     this.url = url;
     this.statusCode = 304;
+  }
+}
+
+function safeOrigin(urlRaw) {
+  try {
+    return new URL(String(urlRaw)).origin;
+  } catch {
+    return null;
   }
 }
 
@@ -20,10 +30,21 @@ class FeedNotModifiedError extends Error {
  * fetches, so the processors that detect and then read a source reuse the
  * same download. The cache lives only for one source cycle: conditional GET
  * avoids re-downloading unchanged feeds across cycles.
+ *
+ * Optional settings keep the newsletter integration working over an internal
+ * service URL: `trustedOrigins` are the only origins allowed to resolve to
+ * private addresses, `headers` are sent on every request (Basic auth), and
+ * `rewriteBase` switches a trusted advertised URL to the configured base
+ * while the advertised URL stays the cache/validator identity.
  */
 function createFeedFetchContext(options = {}) {
   const validators = options.validators || null;
   const signal = options.signal;
+  const trustedOrigins = Array.isArray(options.trustedOrigins)
+    ? options.trustedOrigins
+    : [];
+  const baseHeaders = options.headers || {};
+  const rewriteBase = options.rewriteBase || null;
   const cache = new Map();
   const notModifiedUrls = new Set();
   let updatedState = null;
@@ -41,6 +62,25 @@ function createFeedFetchContext(options = {}) {
     return headers;
   }
 
+  // Provider sources keep the advertised URL as identity but fetch the same
+  // path through the configured newsletter base so traffic stays in-cluster.
+  function fetchUrlFor(url) {
+    if (!rewriteBase) {
+      return url;
+    }
+    const origin = safeOrigin(url);
+    if (!origin || !trustedOrigins.includes(origin)) {
+      return url;
+    }
+    let parsed;
+    try {
+      parsed = new URL(String(url));
+    } catch {
+      return url;
+    }
+    return `${String(rewriteBase).replace(/\/+$/, "")}${parsed.pathname}${parsed.search}`;
+  }
+
   async function getFeed(url, fetchOptions = {}) {
     const cached = cache.get(url);
     if (cached) {
@@ -52,11 +92,12 @@ function createFeedFetchContext(options = {}) {
 
     let response;
     try {
-      response = await fetchText(url, {
+      response = await fetchText(fetchUrlFor(url), {
         timeoutMs: fetchOptions.timeoutMs,
         maxContentLength: fetchOptions.maxContentLength,
         allowedContentTypes: null,
-        headers: conditionalHeaders(url),
+        headers: Object.assign({}, baseHeaders, conditionalHeaders(url)),
+        trustedOrigins,
         signal,
       });
     } catch (err) {

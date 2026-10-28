@@ -7,11 +7,13 @@
       action; ignored feeds stay listed so you can restore them.
     </p>
     <NewsletterCatalogue />
+    <NewsletterSourceRepair />
   </div>
 </template>
 
 <script setup>
 import NewsletterCatalogue from "~~/components/NewsletterCatalogue.vue";
+import NewsletterSourceRepair from "~~/components/NewsletterSourceRepair.vue";
 </script>
 
 <style scoped>

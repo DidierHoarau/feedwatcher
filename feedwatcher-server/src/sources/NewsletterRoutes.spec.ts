@@ -12,6 +12,10 @@ import {
   NewsletterGetFeeds,
 } from "./NewsletterClient";
 import { NewsletterRoutes } from "./NewsletterRoutes";
+import {
+  NewsletterBackfillProviders,
+  NewsletterRepairProviderSources,
+} from "./NewsletterProvider";
 import { SourceLabelsDataSetSourceLabels } from "./SourceLabelsData";
 import { SourcesDataAdd, SourcesDataListForUser } from "./SourcesData";
 
@@ -64,6 +68,11 @@ jest.mock("./NewsletterClient", () => {
 jest.mock("./SourcesData", () => ({
   SourcesDataAdd: jest.fn(),
   SourcesDataListForUser: jest.fn(),
+}));
+
+jest.mock("./NewsletterProvider", () => ({
+  NewsletterBackfillProviders: jest.fn(),
+  NewsletterRepairProviderSources: jest.fn(),
 }));
 
 jest.mock("./SourceLabelsData", () => ({
@@ -127,6 +136,19 @@ describe("NewsletterRoutes", () => {
       .mocked(SourceLabelsDataSetSourceLabels)
       .mockResolvedValue(undefined);
     jest.mocked(ProcessorsFetchSourceItems).mockResolvedValue(undefined);
+    jest.mocked(NewsletterBackfillProviders).mockResolvedValue({
+      scanned: 0,
+      tagged: 0,
+    });
+    jest.mocked(NewsletterRepairProviderSources).mockResolvedValue({
+      dryRun: true,
+      catalogueAvailable: true,
+      backfilled: 0,
+      repaired: [],
+      orphaned: [],
+      unchanged: 0,
+      unverified: 0,
+    });
     jest
       .mocked(ProcessorsCheckSource)
       .mockImplementation(async (_span: any, source: any) => {
@@ -464,6 +486,138 @@ describe("NewsletterRoutes", () => {
       expect(response.statusCode).toBe(502);
       expect(JSON.parse(response.body).code).toBe("newsletter_unreachable");
       expect(SourcesDataAdd).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("POST /repair", () => {
+    test("returns 403 when unauthenticated", async () => {
+      jest
+        .mocked(AuthGetUserSession)
+        .mockResolvedValue({ isAuthenticated: false } as any);
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/repair",
+        payload: {},
+      });
+      expect(response.statusCode).toBe(403);
+      expect(NewsletterRepairProviderSources).not.toHaveBeenCalled();
+    });
+
+    test("returns 503 when the integration is disabled", async () => {
+      jest
+        .mocked(ConfigGet)
+        .mockReturnValue({ NEWSLETTER_URL: "" } as any);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/repair",
+        payload: {},
+      });
+
+      expect(response.statusCode).toBe(503);
+      expect(JSON.parse(response.body).code).toBe("newsletter_disabled");
+      expect(NewsletterBackfillProviders).not.toHaveBeenCalled();
+      expect(NewsletterRepairProviderSources).not.toHaveBeenCalled();
+    });
+
+    test("rejects a non-boolean dryRun with 400", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/repair",
+        payload: { dryRun: "yes" },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).error).toBe("Invalid: dryRun");
+      expect(NewsletterRepairProviderSources).not.toHaveBeenCalled();
+    });
+
+    test("defaults to a dry run and reports the backfill result", async () => {
+      jest.mocked(NewsletterBackfillProviders).mockResolvedValue({
+        scanned: 4,
+        tagged: 2,
+      });
+      jest.mocked(NewsletterRepairProviderSources).mockResolvedValue({
+        dryRun: true,
+        catalogueAvailable: true,
+        backfilled: 2,
+        repaired: [{ sourceId: "source-1", sourceName: "Alpha", feedId: "alpha" }],
+        orphaned: [],
+        unchanged: 1,
+        unverified: 0,
+      });
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/repair",
+        payload: {},
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toMatchObject({
+        dryRun: true,
+        backfilled: 2,
+        repaired: [{ sourceId: "source-1", feedId: "alpha" }],
+      });
+      expect(NewsletterBackfillProviders).toHaveBeenCalledWith(expect.anything(), {
+        useCatalogue: true,
+        userId: "user-1",
+      });
+      expect(NewsletterRepairProviderSources).toHaveBeenCalledWith(
+        expect.anything(),
+        { userId: "user-1", dryRun: true, backfilled: 2 },
+      );
+    });
+
+    test("applies the repair when dryRun is false", async () => {
+      jest.mocked(NewsletterRepairProviderSources).mockResolvedValue({
+        dryRun: false,
+        catalogueAvailable: true,
+        backfilled: 0,
+        repaired: [{ sourceId: "source-1", sourceName: "Alpha", feedId: "alpha" }],
+        orphaned: [{ sourceId: "source-2", sourceName: "Beta", feedId: "beta" }],
+        unchanged: 0,
+        unverified: 0,
+      });
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/repair",
+        payload: { dryRun: false },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body).orphaned).toEqual([
+        { sourceId: "source-2", sourceName: "Beta", feedId: "beta" },
+      ]);
+      expect(NewsletterRepairProviderSources).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ dryRun: false }),
+      );
+    });
+
+    test("maps an upstream failure to its status and code", async () => {
+      jest
+        .mocked(NewsletterBackfillProviders)
+        .mockRejectedValue(
+          new NewsletterError(
+            "newsletter_unreachable",
+            502,
+            "The newsletter service is unreachable.",
+          ),
+        );
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/repair",
+        payload: {},
+      });
+
+      expect(response.statusCode).toBe(502);
+      expect(JSON.parse(response.body)).toEqual({
+        error: "The newsletter service is unreachable.",
+        code: "newsletter_unreachable",
+      });
+      expect(NewsletterRepairProviderSources).not.toHaveBeenCalled();
     });
   });
 });

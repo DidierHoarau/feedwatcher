@@ -16,6 +16,12 @@ import {
   ProcessorsCheckSource,
   ProcessorsFetchSourceItems,
 } from "../procesors/Processors";
+import { NewsletterResolveProviderForUrl } from "./NewsletterProvider";
+
+jest.mock("./NewsletterProvider", () => ({
+  ...jest.requireActual("./NewsletterProvider"),
+  NewsletterResolveProviderForUrl: jest.fn(),
+}));
 
 jest.mock("../OTelContext", () => ({
   OTelRequestSpan: jest.fn(() => ({})),
@@ -70,6 +76,7 @@ describe("SourcesIdRoutes (M1/L3)", () => {
     jest.mocked(ProcessorsCheckSource).mockResolvedValue(undefined);
     jest.mocked(ProcessorsFetchSourceItems).mockResolvedValue(undefined);
     jest.mocked(SourcesDataListForUser).mockResolvedValue([]);
+    jest.mocked(NewsletterResolveProviderForUrl).mockResolvedValue(null);
     fastify = Fastify();
     await fastify.register(new SourcesIdRoutes().getRoutes, {
       prefix: "/api/sources/:sourceId",
@@ -262,6 +269,103 @@ describe("SourcesIdRoutes (M1/L3)", () => {
     expect(JSON.parse(response.body).error).toBe("Source Already Exists");
     expect(SourcesDataUpdate).not.toHaveBeenCalled();
   });
+
+  test("PUT tags provider metadata when the new URL is a newsletter feed", async () => {
+    const source = newSource("user-1");
+    jest.mocked(SourcesDataGet).mockResolvedValue(source);
+    jest.mocked(NewsletterResolveProviderForUrl).mockResolvedValue({
+      provider: "feedwatcher-newsletter",
+      providerFeedId: "alpha",
+      providerUrl: "https://newsletter.example/rss/alpha.token",
+    });
+    jest
+      .mocked(ProcessorsCheckSource)
+      .mockImplementation(async (_span, checkedSource: any) => {
+        checkedSource.info.processorPath = "/processors/800-RssProcessor.js";
+        return null;
+      });
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/api/sources/source-1",
+      payload: {
+        name: "Renamed",
+        url: "https://newsletter.example/rss/alpha.token",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(source.info.provider).toBe("feedwatcher-newsletter");
+    expect(source.info.providerFeedId).toBe("alpha");
+    expect(source.info.providerUrl).toBe(
+      "https://newsletter.example/rss/alpha.token",
+    );
+    expect(
+      jest.mocked(SourcesDataUpdate).mock.calls[0][1].info.providerFeedId,
+    ).toBe("alpha");
+  });
+
+  test("PUT drops provider metadata when the new URL is no longer a newsletter feed", async () => {
+    const source = newSource("user-1");
+    source.info = {
+      url: "https://newsletter.example/rss/alpha.token",
+      provider: "feedwatcher-newsletter",
+      providerFeedId: "alpha",
+      providerUrl: "https://newsletter.example/rss/alpha.token",
+    };
+    jest.mocked(SourcesDataGet).mockResolvedValue(source);
+    jest
+      .mocked(ProcessorsCheckSource)
+      .mockImplementation(async (_span, checkedSource: any) => {
+        checkedSource.info.processorPath = "/processors/800-RssProcessor.js";
+        return null;
+      });
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/api/sources/source-1",
+      payload: { name: "Renamed", url: "https://example.com/other" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(source.info.provider).toBeUndefined();
+    expect(source.info.providerFeedId).toBeUndefined();
+    expect(source.info.providerUrl).toBeUndefined();
+    expect(source.info.url).toBe("https://example.com/other");
+  });
+
+  test("PUT rejects a rotated token matching another newsletter feed by id", async () => {
+    jest.mocked(SourcesDataGet).mockResolvedValue(newSource("user-1"));
+    jest.mocked(NewsletterResolveProviderForUrl).mockResolvedValue({
+      provider: "feedwatcher-newsletter",
+      providerFeedId: "alpha",
+      providerUrl: "https://newsletter.example/rss/alpha.rotated",
+    });
+    jest.mocked(SourcesDataListForUser).mockResolvedValue([
+      {
+        id: "source-2",
+        info: {
+          url: "https://newsletter.example/rss/alpha",
+          provider: "feedwatcher-newsletter",
+          providerFeedId: "alpha",
+        },
+      },
+    ] as any);
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/api/sources/source-1",
+      payload: {
+        name: "Renamed",
+        url: "https://newsletter.example/rss/alpha.rotated",
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(SourcesDataUpdate).not.toHaveBeenCalled();
+    expect(ProcessorsCheckSource).not.toHaveBeenCalled();
+  });
+
 
   test("PUT with an empty url returns 400", async () => {
     jest.mocked(SourcesDataGet).mockResolvedValue(newSource("user-1"));

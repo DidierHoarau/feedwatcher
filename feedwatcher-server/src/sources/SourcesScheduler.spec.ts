@@ -7,6 +7,11 @@ import {
   SourceItemsDataGetCount,
 } from "./SourceItemsData";
 import { ProcessorsFetchSourceItems } from "../procesors/Processors";
+import { NewsletterAutoRepair } from "./NewsletterProvider";
+
+jest.mock("./NewsletterProvider", () => ({
+  NewsletterAutoRepair: jest.fn(),
+}));
 
 const mockPoolTasks: Array<() => Promise<any>> = [];
 
@@ -84,6 +89,7 @@ describe("SourcesSchedulerCycle", () => {
     jest.mocked(SourceItemsDataCleanupOrphans).mockResolvedValue(undefined);
     jest.mocked(RulesExecutionExecuteUserRules).mockResolvedValue(undefined);
     jest.mocked(NotificationsCheckNewItems).mockResolvedValue(undefined);
+    jest.mocked(NewsletterAutoRepair).mockResolvedValue(undefined);
   });
 
   test("swallows a failing cycle so the loop can keep iterating (H3)", async () => {
@@ -144,5 +150,25 @@ describe("SourcesSchedulerCycle", () => {
       .mockRejectedValue(new Error("notification subsystem down"));
 
     await expect(SourcesSchedulerCycle()).resolves.toBeUndefined();
+  });
+
+  test("runs the newsletter source auto-repair each cycle", async () => {
+    await SourcesSchedulerCycle();
+
+    expect(NewsletterAutoRepair).toHaveBeenCalledTimes(1);
+  });
+
+  test("continues fetching when the newsletter auto-repair fails", async () => {
+    jest
+      .mocked(NewsletterAutoRepair)
+      .mockRejectedValue(new Error("catalogue unavailable"));
+    jest.mocked(SourcesDataListAll).mockResolvedValue([
+      { id: "source-1", info: {} },
+    ] as any);
+
+    await expect(SourcesSchedulerCycle()).resolves.toBeUndefined();
+    await runQueuedTasks();
+
+    expect(ProcessorsFetchSourceItems).toHaveBeenCalledTimes(1);
   });
 });

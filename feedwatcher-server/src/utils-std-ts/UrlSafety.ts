@@ -24,11 +24,20 @@ export function isPrivateAddress(ip: string): boolean {
   return ssrfHttp.isPrivateAddress(ip);
 }
 
+export interface UrlSafetyFetchOptions {
+  trustedOrigins?: string[];
+  headers?: Record<string, string>;
+  maxRedirects?: number;
+}
+
 // Validates a URL for outbound fetching: http(s) only, hostname must resolve
-// exclusively to public addresses.
-export async function UrlSafetyValidate(urlRaw: string): Promise<void> {
+// exclusively to public addresses unless its exact origin is trusted.
+export async function UrlSafetyValidate(
+  urlRaw: string,
+  options: UrlSafetyFetchOptions = {},
+): Promise<void> {
   try {
-    await ssrfHttp.validateUrl(urlRaw);
+    await ssrfHttp.validateUrl(urlRaw, options);
   } catch (err: any) {
     throw new UrlSafetyError(err.message, err.statusCode);
   }
@@ -39,12 +48,14 @@ export async function UrlSafetyValidate(urlRaw: string): Promise<void> {
 export async function UrlSafetyFetchText(
   urlRaw: string,
   allowedContentTypes: string[] = URL_SAFETY_DEFAULT_CONTENT_TYPES,
+  options: UrlSafetyFetchOptions = {},
 ): Promise<string> {
   try {
     const response = await ssrfHttp.fetchText(urlRaw, {
       timeoutMs: 10000,
       maxContentLength: 2 * 1024 * 1024,
       allowedContentTypes,
+      ...options,
     });
     return response.data;
   } catch (err: any) {

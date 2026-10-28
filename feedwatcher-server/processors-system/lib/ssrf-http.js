@@ -60,6 +60,31 @@ function configure(options) {
   allowPrivateNetwork = !!(options && options.allowPrivateNetwork === true);
 }
 
+// Normalizes the per-call trusted origins to exact `URL.origin` values
+// (scheme + host + port). Invalid entries are ignored.
+function trustedOriginSet(trustedOrigins) {
+  const origins = new Set();
+  if (!Array.isArray(trustedOrigins)) {
+    return origins;
+  }
+  for (const candidate of trustedOrigins) {
+    try {
+      origins.add(new URL(String(candidate)).origin);
+    } catch {
+      // Ignore malformed trusted origins.
+    }
+  }
+  return origins;
+}
+
+function safeOrigin(urlRaw) {
+  try {
+    return new URL(String(urlRaw)).origin;
+  } catch {
+    return null;
+  }
+}
+
 function ipv4FromMapped(ip) {
   // ::ffff:a.b.c.d
   const lower = ip.toLowerCase();
@@ -98,7 +123,9 @@ function isPrivateAddress(ip) {
 }
 
 // Resolves a URL and returns the validated address to pin for the connection.
-async function validateUrl(urlRaw) {
+// A private/reserved address is accepted only for a URL whose exact origin is
+// listed in `options.trustedOrigins`; DNS is still resolved and pinned.
+async function validateUrl(urlRaw, options = {}) {
   let url;
   try {
     url = new URL(String(urlRaw));
@@ -115,8 +142,9 @@ async function validateUrl(urlRaw) {
   if (!hostname || hostname.includes("%")) {
     throw new SsrfHttpError("Invalid URL", 400);
   }
+  const trusted = trustedOriginSet(options.trustedOrigins).has(url.origin);
   if (net.isIP(hostname)) {
-    if (!allowPrivateNetwork && isPrivateAddress(hostname)) {
+    if (!allowPrivateNetwork && !trusted && isPrivateAddress(hostname)) {
       throw new SsrfHttpError("URL not allowed", 400);
     }
     return { url, address: hostname, family: net.isIP(hostname) };
@@ -130,7 +158,7 @@ async function validateUrl(urlRaw) {
   if (!addresses || addresses.length === 0) {
     throw new SsrfHttpError("Unable to resolve hostname", 502);
   }
-  if (!allowPrivateNetwork) {
+  if (!allowPrivateNetwork && !trusted) {
     for (const address of addresses) {
       if (isPrivateAddress(address.address)) {
         throw new SsrfHttpError("URL not allowed", 400);
@@ -167,13 +195,19 @@ async function fetchText(urlRaw, options = {}) {
       : options.maxRedirects;
   const allowedContentTypes = options.allowedContentTypes;
   const signal = options.signal;
+  const trustedOrigins = options.trustedOrigins;
   const headers = Object.assign(
     { "User-Agent": USER_AGENT },
     options.headers || {},
   );
+  // A trusted fetch keeps private-network access scoped to the initial origin
+  // and must not follow a redirect to any other origin.
+  const trustedFetch = trustedOriginSet(trustedOrigins).has(
+    safeOrigin(urlRaw),
+  );
   let currentUrl = String(urlRaw);
   for (let hop = 0; hop <= maxRedirects; hop++) {
-    const validated = await validateUrl(currentUrl);
+    const validated = await validateUrl(currentUrl, { trustedOrigins });
     const isHttps = validated.url.protocol === "https:";
     const Agent = isHttps ? https.Agent : http.Agent;
     const agent = new Agent({
@@ -214,7 +248,11 @@ async function fetchText(urlRaw, options = {}) {
       if (!location) {
         throw new SsrfHttpError("Failed to fetch URL", 502);
       }
-      currentUrl = new URL(String(location), validated.url).toString();
+      const nextUrl = new URL(String(location), validated.url);
+      if (trustedFetch && nextUrl.origin !== safeOrigin(urlRaw)) {
+        throw new SsrfHttpError("URL not allowed", 400);
+      }
+      currentUrl = nextUrl.toString();
       continue;
     }
     if (response.status < 200 || response.status >= 300) {

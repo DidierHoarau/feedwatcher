@@ -179,3 +179,119 @@ describe("feed-cache createFeedFetchContext", () => {
     });
   });
 });
+
+describe("feed-cache newsletter rewrite", () => {
+  const INTERNAL =
+    "http://feedwatcher-newsletter.feedwatcher.svc.cluster.local:8080";
+  const ADVERTISED = "https://newsletter.example/rss/morningbrew.0123456789abcdef";
+  const TRUSTED = [INTERNAL, "https://newsletter.example"];
+
+  function newsletterContext(validators: any = null) {
+    return createFeedFetchContext({
+      validators,
+      trustedOrigins: TRUSTED,
+      headers: { Authorization: "Basic dXNlcjpwYXNz" },
+      rewriteBase: INTERNAL,
+    });
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    ssrfHttp.configure({ allowPrivateNetwork: false });
+    jest.mocked(dns.promises.lookup).mockImplementation(
+      async (hostname: string) =>
+        String(hostname).includes("feedwatcher-newsletter")
+          ? ([{ address: "10.0.0.5", family: 4 }] as any)
+          : publicLookup
+    );
+  });
+
+  test("rewrites a trusted advertised URL to the internal base", async () => {
+    jest.mocked(axios.get).mockResolvedValue(response(200, {}, "<rss/>"));
+
+    const context = newsletterContext();
+    await context.getFeed(ADVERTISED);
+
+    expect(jest.mocked(axios.get).mock.calls[0][0]).toBe(
+      `${INTERNAL}/rss/morningbrew.0123456789abcdef`
+    );
+    const options = jest.mocked(axios.get).mock.calls[0][1] as any;
+    expect(options.headers.Authorization).toBe("Basic dXNlcjpwYXNz");
+    // The private internal host was accepted because it is a trusted origin.
+    expect(dns.promises.lookup).toHaveBeenCalledWith(
+      "feedwatcher-newsletter.feedwatcher.svc.cluster.local",
+      { all: true }
+    );
+    expect(context.getUpdatedState().url).toBe(ADVERTISED);
+  });
+
+  test("does not rewrite an origin outside the trusted list", async () => {
+    jest.mocked(axios.get).mockResolvedValue(response(200, {}, "<rss/>"));
+
+    const context = newsletterContext();
+    await context.getFeed("https://example.com/feed");
+
+    expect(jest.mocked(axios.get).mock.calls[0][0]).toBe(
+      "https://example.com/feed"
+    );
+  });
+
+  test("keys conditional headers on the advertised URL while fetching the rewrite", async () => {
+    jest.mocked(axios.get).mockResolvedValue(response(200, {}, "<rss/>"));
+
+    const context = newsletterContext({
+      url: ADVERTISED,
+      etag: '"v1"',
+      lastModified: "Wed, 01 Oct 2025 12:00:00 GMT",
+    });
+    await context.getFeed(ADVERTISED);
+
+    expect(jest.mocked(axios.get).mock.calls[0][0]).toBe(
+      `${INTERNAL}/rss/morningbrew.0123456789abcdef`
+    );
+    const options = jest.mocked(axios.get).mock.calls[0][1] as any;
+    expect(options.headers["If-None-Match"]).toBe('"v1"');
+    expect(options.headers["If-Modified-Since"]).toBe(
+      "Wed, 01 Oct 2025 12:00:00 GMT"
+    );
+  });
+
+  test("keeps the advertised URL in state after a 304 and hides the token", async () => {
+    jest
+      .mocked(axios.get)
+      .mockResolvedValue(response(304, { etag: '"v2"' }, ""));
+
+    const context = newsletterContext({
+      url: ADVERTISED,
+      etag: '"v1"',
+      lastModified: null,
+    });
+    await expect(context.getFeed(ADVERTISED)).rejects.toMatchObject({
+      name: "FeedNotModifiedError",
+      message: "Feed not modified",
+    });
+    expect(context.isNotModified(ADVERTISED)).toBe(true);
+    expect(context.getUpdatedState()).toEqual({
+      url: ADVERTISED,
+      etag: '"v2"',
+      lastModified: null,
+    });
+
+    const error = await context.getFeed(ADVERTISED).catch((err) => err);
+    expect(error.message).not.toContain("0123456789abcdef");
+  });
+
+  test("keeps the default behaviour without newsletter options", async () => {
+    jest.mocked(axios.get).mockResolvedValue(response(200, {}, "<rss/>"));
+
+    const context = createFeedFetchContext();
+    await context.getFeed("https://example.com/feed");
+
+    expect(jest.mocked(axios.get).mock.calls[0][0]).toBe(
+      "https://example.com/feed"
+    );
+    const options = jest.mocked(axios.get).mock.calls[0][1] as any;
+    expect(options.headers.Authorization).toBeUndefined();
+    expect(options.headers["User-Agent"]).toContain("FeedWatcher");
+  });
+});

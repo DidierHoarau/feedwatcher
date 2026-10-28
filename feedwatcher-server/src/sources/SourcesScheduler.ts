@@ -13,6 +13,7 @@ import { PromisePool } from "../utils-std-ts/PromisePool";
 import { SourceIsDueForFetch } from "../model/SourceHealth";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { NotificationsCheckNewItems } from "../notifications/Notifications";
+import { NewsletterAutoRepair } from "./NewsletterProvider";
 import { OTelLogger, OTelMeter, OTelTracer } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger("Scheduler");
@@ -113,6 +114,14 @@ export async function SourcesSchedulerCycle(): Promise<void> {
 // Visible for tests: the body of one scheduler cycle.
 export async function SourcesSchedulerRunCycle(span0: Span): Promise<void> {
   const now = new Date().getTime();
+
+  // Repair newsletter sources before fetching so a rotated token is fixed
+  // instead of failing; a catalogue outage must never block fetching.
+  try {
+    await NewsletterAutoRepair(span0);
+  } catch {
+    logger.warn("Newsletter source auto-repair failed", span0);
+  }
 
   for (const source of await SourcesDataListAll(span0)) {
     if (
