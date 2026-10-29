@@ -87,14 +87,16 @@ describe("SourceList tree indentation", () => {
     mockLabelsApi();
   });
 
-  test("the root scope starts at the left edge without tree columns", async () => {
+  test("the root scope has a leading icon but no disclosure caret", async () => {
     const wrapper = await mountWithSources();
     const rows = wrapper.findAll(".source-name-layout");
 
     expect(rows).toHaveLength(4);
     expect(rows[0].classes()).toContain("source-name-root");
     expect(rows[0].find(".source-name-toggle").exists()).toBe(false);
-    expect(rows[0].find(".source-name-icon").exists()).toBe(false);
+    expect(rows[0].find(".source-name-icon i").classes()).toContain(
+      "bi-collection",
+    );
     expect(rows[1].classes()).not.toContain("source-name-root");
     expect(rows[1].find(".source-name-icon").exists()).toBe(true);
     wrapper.unmount();

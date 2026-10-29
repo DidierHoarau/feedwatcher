@@ -36,16 +36,17 @@
                 "
               ></i>
             </span>
-            <span class="source-name-icon">
-              <i v-if="!source.isLabel" :class="'bi bi-' + source.icon"></i>
-              <i
-                v-else
-                :class="
-                  source.isCollapsed ? 'bi bi-folder-fill' : 'bi bi-folder2-open'
-                "
-              ></i>
-            </span>
           </template>
+          <span class="source-name-icon">
+            <i v-if="source.isRoot" class="bi bi-collection"></i>
+            <i v-else-if="!source.isLabel" :class="'bi bi-' + source.icon"></i>
+            <i
+              v-else
+              :class="
+                source.isCollapsed ? 'bi bi-folder-fill' : 'bi bi-folder2-open'
+              "
+            ></i>
+          </span>
           <div
             v-on:click="onSourceSelected(source, index)"
             class="source-name-name"
