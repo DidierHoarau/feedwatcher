@@ -16,6 +16,12 @@
  * a readable width on mobile, shares one control height and keeps the From/To
  * date bounds side by side on one row.
  *
+ * The sources-tree state seeds a small label hierarchy and asserts the tree
+ * stays on one indentation grid: every row at a depth shares the same name
+ * position (labels and sources alike), consecutive levels step in by the same
+ * non-zero amount (so the first level of children is indented too), and the
+ * tree never overflows its column horizontally.
+ *
  * The new-source-page and newsletter-page states cover the scrollable pages:
  * `/sources/new` must keep its header and mode tabs fixed while only the
  * active mode scrolls (add-by-url, 25 podcast search results, 25 newsletter
@@ -268,6 +274,7 @@ async function main() {
 
     const seedItems = seedData(userId);
     await seedSourcesAndItems(db, seedItems);
+    seedLabelTree(db, userId);
 
     browser = await puppeteer.launch({
       headless: true,
@@ -350,6 +357,7 @@ async function main() {
         hasTouch: viewport.isMobile,
       });
       await runListPageState(page, base, authHeaders, seedItems, viewport, tmpDir);
+      await runSourceTreeState(page, base, viewport, tmpDir);
       for (const state of STATES) {
         await runState(page, base, authHeaders, seedItems, state, viewport, tmpDir);
       }
@@ -459,6 +467,39 @@ function seedSourcesAndItems(db, seed) {
       datePublished,
       JSON.stringify(item.info),
     );
+  }
+}
+
+// A small label hierarchy (one source per label plus an unlabeled source) so
+// the sources tree renders every level: root, top-level labels/sources,
+// nested labels and sources, and a depth-3 source.
+const LABEL_TREE = [
+  { name: "Unlabeled feed", label: null },
+  { name: "Cars feed", label: "cars" },
+  { name: "Makes feed", label: "cars/makes" },
+  { name: "Racing feed", label: "cars/makes/racing" },
+  { name: "News feed", label: "news" },
+  { name: "Tech feed", label: "news/tech" },
+];
+
+function seedLabelTree(db, userId) {
+  const insertSource = db.prepare(
+    "INSERT INTO sources (id, userId, name, info) VALUES (?, ?, ?, ?)",
+  );
+  const insertLabel = db.prepare(
+    "INSERT INTO sources_labels (id, sourceId, name, info) VALUES (?, ?, ?, ?)",
+  );
+  for (const entry of LABEL_TREE) {
+    const sourceId = crypto.randomUUID();
+    insertSource.run(
+      sourceId,
+      userId,
+      entry.name,
+      JSON.stringify({ url: `https://example.com/${sourceId}` }),
+    );
+    if (entry.label) {
+      insertLabel.run(crypto.randomUUID(), sourceId, entry.label, "{}");
+    }
   }
 }
 
@@ -644,6 +685,189 @@ async function runFilterLayoutState(page, viewport, tmpDir) {
   }
 
   if (hasFailure()) {
+    const shot = path.join(tmpDir, `${caseName.replace(/[^\w.-]+/g, "_")}.png`);
+    await page.screenshot({ path: shot }).catch(() => {});
+    console.error(`    Screenshot: ${shot}`);
+  }
+}
+
+// Runs in the page. Every sources-tree row exposes its hierarchy depth; the
+// name cell's x position must follow depth * one step for labels and sources
+// alike.
+function collectSourceTreeGeometry() {
+  const rectOf = (el) => {
+    if (!el) {
+      return null;
+    }
+    const r = el.getBoundingClientRect();
+    return {
+      top: r.top,
+      bottom: r.bottom,
+      left: r.left,
+      right: r.right,
+      width: r.width,
+      height: r.height,
+    };
+  };
+  const list = document.querySelector("#sources-list");
+  const rows = [
+    ...document.querySelectorAll("#sources-list .source-tree-row"),
+  ].map((row) => {
+    const name = row.querySelector(".source-tree-name");
+    return {
+      depth: Number(row.dataset.treeDepth),
+      isRoot: row.classList.contains("source-tree-row-root"),
+      isLabel: !!row.querySelector(".source-tree-caret-toggle"),
+      name: (name?.textContent || "").trim(),
+      nameBox: rectOf(name),
+      rowBox: rectOf(row),
+    };
+  });
+  return {
+    viewportWidth: window.innerWidth,
+    docScrollWidth: document.documentElement.scrollWidth,
+    list: rectOf(list),
+    listScrollWidth: list ? list.scrollWidth : null,
+    listClientWidth: list ? list.clientWidth : null,
+    rows,
+  };
+}
+
+function average(values) {
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+async function runSourceTreeState(page, base, viewport, tmpDir) {
+  const caseName = `${viewport.name}/sources-tree`;
+  console.log(`  ${viewport.name} / sources-tree`);
+
+  await page.goto(`${base}/sources`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("#sources-list .source-tree-row", {
+    timeout: WAIT_TIMEOUT_MS,
+  });
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll("#sources-list .source-tree-row").length >= 4,
+    { polling: 250, timeout: WAIT_TIMEOUT_MS },
+  );
+  await new Promise((resolve) => setTimeout(resolve, 150));
+
+  const data = await page.evaluate(collectSourceTreeGeometry);
+
+  if (data.docScrollWidth > data.viewportWidth) {
+    fail(
+      caseName,
+      `horizontal overflow: document scrollWidth ${data.docScrollWidth}px > viewport ${data.viewportWidth}px`,
+    );
+  }
+  if (data.rows.length < 7) {
+    fail(
+      caseName,
+      `the sources tree rendered ${data.rows.length} rows, expected at least 7 (root, labels and sources)`,
+    );
+  }
+  if (!data.rows.some((row) => row.isRoot)) {
+    fail(caseName, "the sources tree has no root row");
+  }
+  if (!data.rows.some((row) => row.isLabel && !row.isRoot)) {
+    fail(caseName, "the sources tree has no label row");
+  }
+  if (!data.rows.some((row) => !row.isLabel && !row.isRoot)) {
+    fail(caseName, "the sources tree has no source row");
+  }
+
+  // Group the name cells by hierarchy depth: every row at a depth — label or
+  // source — must share the same name x.
+  const byDepth = new Map();
+  for (const row of data.rows) {
+    if (!row.nameBox) {
+      fail(caseName, `row "${row.name || "?"}" has no name cell`);
+      continue;
+    }
+    if (!byDepth.has(row.depth)) {
+      byDepth.set(row.depth, []);
+    }
+    byDepth.get(row.depth).push(row);
+  }
+  const depths = [...byDepth.keys()].sort((left, right) => left - right);
+  for (let depth = 0; depth <= 3; depth++) {
+    if (!byDepth.has(depth)) {
+      fail(caseName, `the sources tree has no row at depth ${depth}`);
+    }
+  }
+  for (const depth of depths) {
+    const rows = byDepth.get(depth);
+    const lefts = rows.map((row) => row.nameBox.left);
+    if (Math.max(...lefts) - Math.min(...lefts) > 1) {
+      fail(
+        caseName,
+        `rows at depth ${depth} do not share one name column: ${rows.map((row) => `"${row.name}" ${row.nameBox.left.toFixed(1)}px`).join(", ")}`,
+      );
+    }
+  }
+
+  // Consecutive levels must step in by the same, clearly visible amount. This
+  // is the invariant a "flat" first level or a bigger source step breaks.
+  const steps = [];
+  for (let index = 1; index < depths.length; index++) {
+    const previous = average(
+      byDepth.get(depths[index - 1]).map((row) => row.nameBox.left),
+    );
+    const current = average(
+      byDepth.get(depths[index]).map((row) => row.nameBox.left),
+    );
+    steps.push(current - previous);
+  }
+  const depthLabel = (step, index) =>
+    `depth ${depths[index - 1]}→${depths[index]} step ${step.toFixed(1)}px`;
+  if (steps.some((step) => step <= 0)) {
+    fail(
+      caseName,
+      `a deeper level is not indented further: ${steps.map((step, index) => depthLabel(step, index + 1)).join(", ")}`,
+    );
+  } else if (steps.length > 1 && Math.max(...steps) - Math.min(...steps) > 1) {
+    fail(
+      caseName,
+      `indentation steps are not equal: ${steps.map((step, index) => depthLabel(step, index + 1)).join(", ")}`,
+    );
+  }
+  if (steps.length > 0 && steps[0] < 8) {
+    fail(
+      caseName,
+      `the first level of children is not indented: ${depthLabel(steps[0], 1)} (minimum 8px)`,
+    );
+  }
+
+  // Every name must stay inside the tree column: deep indentation may not push
+  // rows out of the sidebar (where names would be clipped or scroll sideways).
+  if (data.list) {
+    for (const row of data.rows) {
+      if (!row.nameBox) {
+        continue;
+      }
+      if (
+        row.nameBox.left < data.list.left - 1 ||
+        row.nameBox.left > data.list.right
+      ) {
+        fail(
+          caseName,
+          `row "${row.name}" name starts at ${row.nameBox.left.toFixed(0)}px, outside the tree column [${data.list.left.toFixed(0)}-${data.list.right.toFixed(0)}]`,
+        );
+        break;
+      }
+    }
+    if (
+      data.listScrollWidth !== null &&
+      data.listScrollWidth > data.listClientWidth + 1
+    ) {
+      fail(
+        caseName,
+        `the tree scrolls horizontally: content ${data.listScrollWidth}px > column ${data.listClientWidth}px`,
+      );
+    }
+  }
+
+  if (failures.some((entry) => entry.caseName === caseName)) {
     const shot = path.join(tmpDir, `${caseName.replace(/[^\w.-]+/g, "_")}.png`);
     await page.screenshot({ path: shot }).catch(() => {});
     console.error(`    Screenshot: ${shot}`);

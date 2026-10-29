@@ -72,7 +72,7 @@ describe("LabelSelectDialog (M18)", () => {
     ] as never[];
     await flushPromises();
 
-    await wrapper.find(".source-name-name").trigger("click");
+    await wrapper.find(".source-tree-name").trigger("click");
 
     expect((wrapper.find("input").element as HTMLInputElement).value).toBe(
       "news",
@@ -118,11 +118,11 @@ describe("LabelSelectDialog (M18)", () => {
     ] as never[];
     await flushPromises();
 
-    const rows = wrapper.findAll(".source-name-layout");
+    const rows = wrapper.findAll(".source-tree-row");
     expect(rows).toHaveLength(2);
-    expect(rows[0].attributes("style")).toContain("--tree-indent: 0");
-    expect(rows[1].attributes("style")).toContain("--tree-indent: 1");
-    expect(rows[0].find(".source-name-icon i").classes()).toContain(
+    expect(rows[0].attributes("style")).toContain("--tree-depth: 1");
+    expect(rows[1].attributes("style")).toContain("--tree-depth: 2");
+    expect(rows[0].find(".source-tree-icon i").classes()).toContain(
       "bi-folder2-open",
     );
   });

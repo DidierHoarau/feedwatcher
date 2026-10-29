@@ -4,6 +4,11 @@ import { handleError } from "~~/services/EventBus";
 import axios from "axios";
 import { find, findIndex, sortBy } from "lodash";
 import { PreferencesLabels } from "~~/services/PreferencesLabels";
+import {
+  applyTreeVisibility,
+  assignTreeCounts,
+  buildSourceTree,
+} from "~~/services/SourceTree";
 
 const PREFERENCES_SOURCES_LIST_DISPLAY = "preferences_sources_list_display";
 
@@ -23,17 +28,6 @@ function persistListMenuOpened(open: boolean) {
   localStorage.setItem(
     PREFERENCES_SOURCES_LIST_DISPLAY,
     JSON.stringify({ isCollapsed: !open }),
-  );
-}
-
-// A label scope covers the exact label and its hierarchical children only:
-// "news" matches "news" and "news/tech", never "newspaper".
-function isLabelInScope(labelName: string, scopeLabelName: string): boolean {
-  if (scopeLabelName === "") {
-    return true;
-  }
-  return (
-    labelName === scopeLabelName || labelName.startsWith(`${scopeLabelName}/`)
   );
 }
 
@@ -150,96 +144,33 @@ export const SourcesStore = defineStore("SourcesStore", {
           const soucesStr = JSON.stringify(sourcesData);
           if (this.sourcesStr === soucesStr) {
             this.checkVisibility();
-            assignCounts(this.sources, this.sourceCounts, "unreadCount");
-            assignCounts(this.sources, this.savedCounts, "savedCount");
+            assignTreeCounts(
+              this.sources as any[],
+              this.sourceCounts,
+              "unreadCount",
+            );
+            assignTreeCounts(
+              this.sources as any[],
+              this.savedCounts,
+              "savedCount",
+            );
             return this.fetchCounts();
           }
           this.sourcesStr = soucesStr;
-          const sourcesTmp: any[] = [];
-          sourcesTmp.push({
-            isLabel: true,
-            isRoot: true,
-            depth: 0,
-            name: "All",
-            displayName: "All",
-            labelName: "",
-            unreadCount: 0,
-            savedCount: 0,
-            isCollapsed: false,
-            sourceInfo: {},
-            isVisible: true,
-          });
-          for (let i = 0; i < sourcesData.length; i++) {
-            const sourceData = sourcesData[i];
-            let labelSplit = [];
-            if (sourceData.labelName) {
-              labelSplit = sourceData.labelName.split("/");
-            }
-            if (
-              labelSplit.length > 0 &&
-              sourceData.labelName !==
-                sourcesTmp[sourcesTmp.length - 1].labelName
-            ) {
-              const parentLabelSplit =
-                sourcesTmp[sourcesTmp.length - 1].labelName.split("/");
-              let labelName = "";
-              for (let j = 0; j < labelSplit.length; j++) {
-                if (labelName !== "") {
-                  labelName += "/";
-                }
-                labelName += labelSplit[j];
-                if (j == labelSplit.length - 1) {
-                  sourcesTmp.push({
-                    isLabel: true,
-                    depth: labelSplit.length,
-                    labelName: sourceData.labelName,
-                    displayName: labelSplit[labelSplit.length - 1],
-                    unreadCount: 0,
-                    savedCount: 0,
-                    sourceInfo: {},
-                    isCollapsed: PreferencesLabels.isCollapsed(
-                      sourceData.labelName,
-                    ),
-                    isVisible: false,
-                  });
-                } else if (
-                  j >= parentLabelSplit.length ||
-                  parentLabelSplit[j] !== labelSplit[j]
-                ) {
-                  sourcesTmp.push({
-                    isLabel: true,
-                    depth: j + 1,
-                    labelName: labelName,
-                    displayName: labelSplit[j],
-                    unreadCount: 0,
-                    savedCount: 0,
-                    sourceInfo: {},
-                    isCollapsed: PreferencesLabels.isCollapsed(labelName),
-                    isVisible: false,
-                  });
-                }
-              }
-            }
-            sourcesTmp.push({
-              sourceId: sourceData.sourceId,
-              isLabel: false,
-              isRoot: false,
-              depth: labelSplit.length + 1,
-              name: sourceData.sourceName,
-              icon: sourceData.sourceInfo.icon,
-              labelName: sourceData.labelName || "",
-              displayName: sourceData.sourceName,
-              unreadCount: 0,
-              savedCount: 0,
-              isCollapsed: false,
-              isVisible: false,
-              sourceInfo: sourceData.sourceInfo,
-            });
-          }
-          this.sources = sourcesTmp as never[];
-          assignCounts(this.sources, this.sourceCounts, "unreadCount");
-          assignCounts(this.sources, this.savedCounts, "savedCount");
-          this.checkVisibility();
+          this.sources = buildSourceTree(
+            sourcesData as any[],
+            (labelName) => PreferencesLabels.isCollapsed(labelName),
+          ) as never[];
+          assignTreeCounts(
+            this.sources as any[],
+            this.sourceCounts,
+            "unreadCount",
+          );
+          assignTreeCounts(
+            this.sources as any[],
+            this.savedCounts,
+            "savedCount",
+          );
           this.updateSelectedIndex();
           return this.fetchCounts();
         })
@@ -257,7 +188,11 @@ export const SourcesStore = defineStore("SourcesStore", {
           )
           .then((res) => {
             this.sourceCounts = res.data.counts;
-            assignCounts(this.sources, this.sourceCounts, "unreadCount");
+            assignTreeCounts(
+              this.sources as any[],
+              this.sourceCounts,
+              "unreadCount",
+            );
           })
           .catch(handleError),
         axios
@@ -267,7 +202,11 @@ export const SourcesStore = defineStore("SourcesStore", {
           )
           .then((res) => {
             this.savedCounts = res.data.counts;
-            assignCounts(this.sources, this.savedCounts, "savedCount");
+            assignTreeCounts(
+              this.sources as any[],
+              this.savedCounts,
+              "savedCount",
+            );
           })
           .catch(handleError),
       ]).finally(() => {
@@ -293,60 +232,11 @@ export const SourcesStore = defineStore("SourcesStore", {
       }
     },
     checkVisibility() {
-      let parentCollapsedLabel = "";
-      for (let i = 0; i < this.sources.length; i++) {
-        const source = this.sources[i] as any;
-        if (
-          parentCollapsedLabel &&
-          isLabelInScope(source.labelName, parentCollapsedLabel)
-        ) {
-          source.isVisible = false;
-        } else if (source.isLabel && !source.isCollapsed) {
-          source.isVisible = true;
-        } else if (source.isLabel && source.isCollapsed) {
-          source.isVisible = true;
-          parentCollapsedLabel = source.labelName;
-        } else {
-          source.isVisible = true;
-        }
-      }
+      applyTreeVisibility(this.sources as any[]);
     },
   },
 });
 
 if (import.meta.hot) {
   import.meta.hot.accept(acceptHMRUpdate(SourcesStore, import.meta.hot));
-}
-
-function assignCounts(sources: any[], counts: any[], field: string) {
-  const countsBySourceId = new Map();
-  for (const count of counts) {
-    countsBySourceId.set(count.sourceId, count);
-  }
-  for (let index = 0; index < sources.length; index++) {
-    const source: any = sources[index];
-    if (!source.isLabel) {
-      const foundCount = countsBySourceId.get(source.sourceId);
-      source[field] = foundCount ? foundCount[field] : 0;
-      continue;
-    }
-    let count = 0;
-    for (
-      let nextIteration = index + 1;
-      nextIteration < sources.length;
-      nextIteration++
-    ) {
-      const sourceNext = sources[nextIteration] as any;
-      if (
-        !sourceNext.isLabel &&
-        isLabelInScope(sourceNext.labelName, source.labelName)
-      ) {
-        const sourceCountNext = countsBySourceId.get(sourceNext.sourceId);
-        if (sourceCountNext) {
-          count += sourceCountNext[field];
-        }
-      }
-    }
-    source[field] = count;
-  }
 }

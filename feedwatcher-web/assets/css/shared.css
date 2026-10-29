@@ -186,58 +186,63 @@
 }
 
 /* ============================================================
-   Source Name Layout — shared across components & pages
+   Source tree rows — shared across components & pages
    ============================================================ */
 
-/* One row shape for every tree level, shared by the source list and the label
-   picker: a fixed disclosure column and a fixed icon column keep the items of a
-   level aligned, and each nested level steps in by one compact step. The root
-   scope has a leading icon instead of a disclosure caret, so the root, the
-   top-level labels and their children share one indentation grid. The step
-   stays well below a full column so deep trees keep their names in view on
-   phones. */
-.source-name-layout {
-  --tree-step: 1.5rem;
+/* Every row of the sources tree — the "All" root, labels and sources — has
+   the same four columns: disclosure caret, icon, name, count. Only the
+   indentation changes with the hierarchy depth: the root is depth 0,
+   top-level labels and unlabeled sources are depth 1, and every nesting level
+   adds exactly one --tree-step for labels and sources alike. Name x is
+   therefore `row padding + depth * --tree-step` for every row, which keeps
+   the whole tree on one grid and makes each step identical. The step stays
+   well below the caret+icon columns so deep trees keep their names in view
+   on phones. */
+.source-tree-row {
+  --tree-step: 1.25rem;
+  --tree-caret-width: 1rem;
+  --tree-icon-width: 1.1rem;
   display: grid;
-  grid-template-columns: 0.9rem 1.05rem minmax(0, 1fr) auto;
+  grid-template-columns:
+    var(--tree-caret-width)
+    var(--tree-icon-width)
+    minmax(0, 1fr)
+    auto;
   align-items: center;
   column-gap: 0.3rem;
+  min-height: 2.6rem;
   padding: var(--space-xs) var(--space-sm);
   padding-left: calc(
-    var(--space-sm) + var(--tree-indent, 0) * var(--tree-step)
+    var(--space-sm) + var(--tree-depth, 0) * var(--tree-step)
   );
 }
-.source-name-toggle,
-.source-name-icon {
+.source-tree-caret,
+.source-tree-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 0;
 }
-.source-name-toggle-label {
+.source-tree-caret {
+  grid-column: 1;
+}
+.source-tree-icon {
+  grid-column: 2;
+}
+.source-tree-caret-toggle {
   cursor: pointer;
 }
-.source-name-name {
+.source-tree-name {
   grid-column: 3;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.source-name-count {
+.source-tree-count {
   grid-column: 4;
 }
-/* Root scope: the leading icon takes the disclosure column and the name spans
-   the icon+name columns, so "All" sits one compact step above the top-level
-   labels while keeping every level on the same indentation grid. */
-.source-name-root .source-name-icon {
-  grid-column: 1;
-  justify-self: center;
-}
-.source-name-root .source-name-name {
-  grid-column: 2 / 4;
-}
-
-.source-active {
+.source-tree-row-active {
   background-color: var(--color-bg-hover);
 }
 
@@ -252,8 +257,8 @@
   text-align: right;
   white-space: nowrap;
 }
-#sources-list .source-name-name,
-#sources-list .source-name-count {
+#sources-list .source-tree-name,
+#sources-list .source-tree-count {
   overflow: hidden;
   text-overflow: ellipsis;
 }

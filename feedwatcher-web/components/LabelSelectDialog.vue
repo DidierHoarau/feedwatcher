@@ -4,40 +4,21 @@
       <h3>Select New Label</h3>
       <article class="label-list">
         <div
-          v-for="(source, index) in sourcesStore.sources"
-          v-bind:key="(source.sourceId || source.labelName) + '-' + index"
+          v-for="entry in labelEntries"
+          v-bind:key="entry.row.labelName"
         >
-          <div
-            v-if="source.isLabel && !source.isRoot"
-            class="source-name-layout"
-            :class="{ 'source-active': sourcesStore.selectedIndex == index }"
-            :style="{ '--tree-indent': Math.max(source.depth - 1, 0) }"
-          >
-            <span class="source-name-toggle"></span>
-            <span class="source-name-icon">
-              <i
-                :class="
-                  source.isCollapsed ? 'bi bi-folder-fill' : 'bi bi-folder2-open'
-                "
-              ></i>
-            </span>
-            <div v-on:click="onSourceSelected(source, index)" class="source-name-name">
-              {{ source.displayName }}
-            </div>
-          </div>
+          <SourceTreeRow
+            :row="entry.row"
+            :active="sourcesStore.selectedIndex === entry.index"
+            v-on:select="onSourceSelected(entry.row, entry.index)"
+          />
         </div>
-        <div
+        <SourceTreeRow
           v-if="displaySaved"
-          v-on:click="onSavedSelected()"
-          class="source-name-layout"
-          :class="{ 'source-active': sourcesStore.selectedIndex == -2 }"
-        >
-          <span class="source-name-toggle"></span>
-          <span class="source-name-icon">
-            <i class="bi bi-bookmark-plus-fill"></i>
-          </span>
-          <div class="source-name-name">Saved Items</div>
-        </div>
+          :row="savedRow"
+          :active="sourcesStore.selectedIndex == -2"
+          v-on:select="onSavedSelected()"
+        />
       </article>
       <label>Label Name</label>
       <input v-model="label" type="text" />
@@ -48,8 +29,30 @@
 </template>
 
 <script setup>
-const sourceItemsStore = SourceItemsStore();
+import SourceTreeRow from "~~/components/SourceTreeRow.vue";
+
 const sourcesStore = SourcesStore();
+
+const labelEntries = computed(() =>
+  sourcesStore.sources
+    .map((row, index) => ({ row, index }))
+    .filter((entry) => entry.row.isLabel && !entry.row.isRoot),
+);
+
+const savedRow = {
+  isLabel: false,
+  isRoot: false,
+  depth: 1,
+  labelName: "",
+  displayName: "Saved Items",
+  name: "Saved Items",
+  icon: "bookmark-plus-fill",
+  sourceInfo: {},
+  unreadCount: 0,
+  savedCount: 0,
+  isCollapsed: false,
+  isVisible: true,
+};
 </script>
 
 <script>
