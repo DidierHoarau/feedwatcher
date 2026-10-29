@@ -87,13 +87,16 @@ describe("SourceList tree indentation", () => {
     mockLabelsApi();
   });
 
-  test("the root scope and top-level labels share the same indentation", async () => {
+  test("the root scope starts at the left edge without tree columns", async () => {
     const wrapper = await mountWithSources();
     const rows = wrapper.findAll(".source-name-layout");
 
     expect(rows).toHaveLength(4);
-    expect(rows[0].attributes("style")).toContain("--tree-indent: 0");
-    expect(rows[1].attributes("style")).toContain("--tree-indent: 0");
+    expect(rows[0].classes()).toContain("source-name-root");
+    expect(rows[0].find(".source-name-toggle").exists()).toBe(false);
+    expect(rows[0].find(".source-name-icon").exists()).toBe(false);
+    expect(rows[1].classes()).not.toContain("source-name-root");
+    expect(rows[1].find(".source-name-icon").exists()).toBe(true);
     wrapper.unmount();
   });
 
@@ -106,12 +109,12 @@ describe("SourceList tree indentation", () => {
     wrapper.unmount();
   });
 
-  test("the root scope has no disclosure caret while labels do", async () => {
+  test("only labels get a disclosure caret", async () => {
     const wrapper = await mountWithSources();
     const rows = wrapper.findAll(".source-name-layout");
 
-    expect(rows[0].find(".source-name-toggle i").exists()).toBe(false);
     expect(rows[1].find(".source-name-toggle i").exists()).toBe(true);
+    expect(rows[2].find(".source-name-toggle i").exists()).toBe(true);
     expect(rows[3].find(".source-name-toggle i").exists()).toBe(false);
     wrapper.unmount();
   });
@@ -126,7 +129,6 @@ describe("SourceList tree indentation", () => {
     expect(rows[3].find(".source-name-icon i").classes()).toContain(
       "bi-car-front",
     );
-    expect(rows[0].find(".source-name-icon i").exists()).toBe(false);
     wrapper.unmount();
   });
 });

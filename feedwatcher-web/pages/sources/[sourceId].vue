@@ -70,8 +70,16 @@
     <input v-model="source.name" type="text" />
     <label>URL</label>
     <input v-model="source.info.url" type="text" />
-    <div class="source-url-finder-block">
-      <label>Find a working URL</label>
+    <button
+      class="outline secondary source-finder-toggle"
+      type="button"
+      :aria-expanded="isUrlFinderOpen"
+      v-on:click="isUrlFinderOpen = !isUrlFinderOpen"
+    >
+      <i class="bi bi-rss"></i>
+      {{ isUrlFinderOpen ? "Hide URL finder" : "Find a working URL" }}
+    </button>
+    <div v-if="isUrlFinderOpen" class="source-url-finder-block">
       <p class="source-finder-hint">
         Paste the site address (or search podcasts below) to discover feeds,
         then use it as the new URL for this source.
@@ -123,6 +131,7 @@ export default {
       source: { info: {} },
       labels: [],
       isSelectLabel: false,
+      isUrlFinderOpen: false,
       resuming: false,
       podcastSearchEnabled: false,
       deleteConfirmOpen: false,
@@ -359,6 +368,11 @@ h1 {
 }
 .source-health-raw-error {
   color: var(--color-text-secondary, inherit);
+}
+.source-finder-toggle {
+  width: 100%;
+  margin-right: 0;
+  margin-bottom: var(--space-base);
 }
 .source-url-finder-block {
   margin-bottom: var(--space-2xl);

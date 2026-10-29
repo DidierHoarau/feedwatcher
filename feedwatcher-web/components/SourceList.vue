@@ -16,31 +16,36 @@
         <div
           v-if="source.isVisible || filterText"
           class="source-name-layout"
-          :class="{ 'source-active': sourcesStore.selectedIndex == index }"
+          :class="{
+            'source-active': sourcesStore.selectedIndex == index,
+            'source-name-root': source.isRoot,
+          }"
           :style="{ '--tree-indent': Math.max(source.depth - 1, 0) }"
           :ref="'source-' + index"
         >
-          <span
-            v-on:click="toggleLabelCollapsed(source, index)"
-            class="source-name-toggle"
-            :class="{ 'source-name-toggle-label': source.isLabel && !source.isRoot }"
-          >
-            <i
-              v-if="source.isLabel && !source.isRoot"
-              :class="
-                source.isCollapsed ? 'bi bi-caret-right-fill' : 'bi bi-caret-down-fill'
-              "
-            ></i>
-          </span>
-          <span class="source-name-icon">
-            <i v-if="!source.isLabel" :class="'bi bi-' + source.icon"></i>
-            <i
-              v-else-if="!source.isRoot"
-              :class="
-                source.isCollapsed ? 'bi bi-folder-fill' : 'bi bi-folder2-open'
-              "
-            ></i>
-          </span>
+          <template v-if="!source.isRoot">
+            <span
+              v-on:click="toggleLabelCollapsed(source, index)"
+              class="source-name-toggle"
+              :class="{ 'source-name-toggle-label': source.isLabel }"
+            >
+              <i
+                v-if="source.isLabel"
+                :class="
+                  source.isCollapsed ? 'bi bi-caret-right-fill' : 'bi bi-caret-down-fill'
+                "
+              ></i>
+            </span>
+            <span class="source-name-icon">
+              <i v-if="!source.isLabel" :class="'bi bi-' + source.icon"></i>
+              <i
+                v-else
+                :class="
+                  source.isCollapsed ? 'bi bi-folder-fill' : 'bi bi-folder2-open'
+                "
+              ></i>
+            </span>
+          </template>
           <div
             v-on:click="onSourceSelected(source, index)"
             class="source-name-name"

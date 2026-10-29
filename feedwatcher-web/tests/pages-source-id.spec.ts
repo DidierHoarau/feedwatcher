@@ -303,6 +303,11 @@ describe("Update Source page: guided recovery", () => {
     return wrapper;
   }
 
+  async function openFinder(wrapper: any) {
+    await wrapper.find(".source-finder-toggle").trigger("click");
+    await flushPromises();
+  }
+
   async function confirmFinder(wrapper: any) {
     const finder = wrapper.findComponent({ name: "SourceUrlFinder" });
     await finder.find(".finder-candidate").trigger("click");
@@ -321,11 +326,23 @@ describe("Update Source page: guided recovery", () => {
     );
   });
 
-  test("shows the guided URL finder below the url field", async () => {
+  test("keeps the URL finder collapsed until it is opened", async () => {
     const wrapper = await mountWithFinder();
-    expect(wrapper.html()).toContain("Find a working URL");
+    const toggle = wrapper.find(".source-finder-toggle");
+
+    expect(toggle.exists()).toBe(true);
+    expect(toggle.text()).toContain("Find a working URL");
+    expect(toggle.attributes("aria-expanded")).toBe("false");
+    expect(wrapper.findComponent({ name: "SourceUrlFinder" }).exists()).toBe(
+      false,
+    );
+
+    await openFinder(wrapper);
     expect(wrapper.findComponent({ name: "SourceUrlFinder" }).exists()).toBe(
       true,
+    );
+    expect(wrapper.find(".source-finder-toggle").text()).toContain(
+      "Hide URL finder",
     );
   });
 
@@ -333,6 +350,7 @@ describe("Update Source page: guided recovery", () => {
     const emitSpy = vi.spyOn(EventBus, "emit");
     const wrapper = await mountWithFinder();
     const vm = wrapper.vm as any;
+    await openFinder(wrapper);
 
     const finder = wrapper.findComponent({ name: "SourceUrlFinder" });
     await finder.find("input").setValue("https://example.com");
@@ -352,6 +370,7 @@ describe("Update Source page: guided recovery", () => {
   test("re-points the source to a podcast found via search", async () => {
     mockSourceApi(FAILING_SOURCE, true);
     const wrapper = await mountWithFinder();
+    await openFinder(wrapper);
 
     const finder = wrapper.findComponent({ name: "SourceUrlFinder" });
     const searchInput = finder.find("input[type=search]");

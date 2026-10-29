@@ -21,9 +21,10 @@
  * active mode scrolls (add-by-url, 25 podcast search results, 25 newsletter
  * feeds), and `/sources/newsletter` must scroll down to the source-health
  * panel. The edit-source-page state covers `/sources/:sourceId`: a long health
- * header plus 25 podcast search results must scroll down to the Labels field
- * and the Update/Delete buttons. They run on a dedicated page with request
- * interception mocking `/api/status`, `/api/sources/search`,
+ * header plus the URL finder expanded to 25 podcast search results must scroll
+ * down to the Labels field and the Update/Delete buttons. They run on a
+ * dedicated page with request interception mocking `/api/status`,
+ * `/api/sources/search`,
  * `/api/sources/newsletter` and the edited source + labels; the service
  * worker is bypassed there because it serves the unauthenticated `/api/status`
  * stale-while-revalidate and would hide the mocked flags.
@@ -1367,6 +1368,11 @@ async function runEditSourcePageState(page, base, viewport, tmpDir) {
   await page.goto(`${base}/sources/${EDIT_SOURCE_ID}`, {
     waitUntil: "domcontentloaded",
   });
+  // The finder is collapsed by default; expand it to reach the podcast search.
+  await page.waitForSelector(".source-finder-toggle", {
+    timeout: WAIT_TIMEOUT_MS,
+  });
+  await page.click(".source-finder-toggle");
   await page.waitForSelector(".finder-podcast-search input[type='search']", {
     timeout: WAIT_TIMEOUT_MS,
   });

@@ -99,7 +99,8 @@ export default {
 
 .label-select-dialog {
   max-height: 80vh;
-  min-width: 25em;
+  /* Never wider than the viewport: on phones the fixed 25em used to overflow. */
+  min-width: min(25em, 100%);
   display: grid;
   grid-template-rows: 2em 1fr auto;
 }

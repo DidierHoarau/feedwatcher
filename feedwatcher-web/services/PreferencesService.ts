@@ -2,8 +2,11 @@ const AUTO_MARK_READ_KEY = "auto_mark_read_on_scroll";
 const OPEN_DETAILS_MODE_KEY = "open_details_mode";
 const OPEN_LINKS_MODE_KEY = "open_links_mode";
 const PODCAST_PLAYBACK_RATE_KEY = "podcast_playback_rate";
+const UI_SCALE_KEY = "ui_scale";
 
 export const PODCAST_PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+export const UI_SCALES = ["auto", "compact", "standard", "large"];
 
 export const PreferencesService = {
   //
@@ -27,6 +30,28 @@ export const PreferencesService = {
 
   setPodcastPlaybackRate(rate: number): void {
     localStorage.setItem(PODCAST_PLAYBACK_RATE_KEY, String(rate));
+  },
+
+  // Interface size — scales the whole UI; "auto" keeps the default, which is
+  // slightly smaller on phones (see --ui-scale in variables.css).
+  getUiScale(): string {
+    const stored = localStorage.getItem(UI_SCALE_KEY) || "auto";
+    return UI_SCALES.includes(stored) ? stored : "auto";
+  },
+
+  setUiScale(scale: string): void {
+    const value = UI_SCALES.includes(scale) ? scale : "auto";
+    localStorage.setItem(UI_SCALE_KEY, value);
+    this.applyUiScale();
+  },
+
+  applyUiScale(): void {
+    const scale = this.getUiScale();
+    if (scale === "auto") {
+      document.documentElement.removeAttribute("data-ui-scale");
+      return;
+    }
+    document.documentElement.setAttribute("data-ui-scale", scale);
   },
 
   // Open Source Details — what happens when clicking the item card

@@ -190,17 +190,19 @@
    ============================================================ */
 
 /* One row shape for every tree level, shared by the source list and the label
-   picker: fixed disclosure and icon columns keep names aligned whatever the
-   level, and the depth is expressed once as left padding. The root scope and
-   top-level labels/sources share the top level (depth 0 and 1). */
+   picker: a fixed disclosure column and a fixed icon column keep the items of a
+   level aligned, and each nested level steps in by one full level width. The
+   root scope has no disclosure/icon, so its name starts at the left edge and
+   the tree below reads as its children. */
 .source-name-layout {
+  --tree-step: calc(1rem + 1.15rem + 2 * var(--space-xs));
   display: grid;
   grid-template-columns: 1rem 1.15rem minmax(0, 1fr) auto;
   align-items: center;
   column-gap: var(--space-xs);
   padding: var(--space-xs) var(--space-sm);
   padding-left: calc(
-    var(--space-sm) + var(--tree-indent, 0) * 1rem
+    var(--space-sm) + var(--tree-indent, 0) * var(--tree-step)
   );
 }
 .source-name-toggle,
@@ -221,6 +223,11 @@
 }
 .source-name-count {
   grid-column: 4;
+}
+/* Root scope: no tree columns, the name spans the level width so it sits at
+   the left edge instead of in the label-name column. */
+.source-name-root .source-name-name {
+  grid-column: 1 / 4;
 }
 
 .source-active {

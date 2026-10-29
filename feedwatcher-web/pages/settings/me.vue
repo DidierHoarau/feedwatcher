@@ -67,6 +67,25 @@
 
       <div class="preference-row">
         <div class="preference-label">
+          <i class="bi bi-zoom-in"></i>
+          <span>Interface size</span>
+        </div>
+        <div class="preference-control">
+          <select
+            v-model="uiScale"
+            @change="changeUiScale"
+            class="preference-select"
+          >
+            <option value="auto">Automatic (smaller on phones)</option>
+            <option value="compact">Compact (85%)</option>
+            <option value="standard">Standard (100%)</option>
+            <option value="large">Large (115%)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="preference-row">
+        <div class="preference-label">
           <i class="bi bi-envelope-open"></i>
           <span>Auto-mark as read</span>
         </div>
@@ -151,6 +170,7 @@ export default {
       autoMarkRead: PreferencesService.isAutoMarkReadEnabled(),
       openDetailsMode: PreferencesService.getOpenDetailsMode(),
       openLinksMode: PreferencesService.getOpenLinksMode(),
+      uiScale: PreferencesService.getUiScale(),
     };
   },
   methods: {
@@ -195,6 +215,9 @@ export default {
     },
     changeOpenLinksMode() {
       PreferencesService.setOpenLinksMode(this.openLinksMode);
+    },
+    changeUiScale() {
+      PreferencesService.setUiScale(this.uiScale);
     },
     toggleTheme() {
       PreferencesService.toggleTheme(this);
