@@ -189,23 +189,38 @@
    Source Name Layout — shared across components & pages
    ============================================================ */
 
+/* One row shape for every tree level, shared by the source list and the label
+   picker: fixed disclosure and icon columns keep names aligned whatever the
+   level, and the depth is expressed once as left padding. The root scope and
+   top-level labels/sources share the top level (depth 0 and 1). */
 .source-name-layout {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1rem 1.15rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-xs);
   padding: var(--space-xs) var(--space-sm);
+  padding-left: calc(
+    var(--space-sm) + var(--tree-indent, 0) * 1rem
+  );
 }
-.source-name-indent {
-  grid-column: 1;
-  padding-right: var(--space-sm);
+.source-name-toggle,
+.source-name-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.source-name-toggle-label {
+  cursor: pointer;
 }
 .source-name-name {
-  grid-column: 2;
+  grid-column: 3;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .source-name-count {
-  grid-column: 3;
+  grid-column: 4;
 }
 
 .source-active {

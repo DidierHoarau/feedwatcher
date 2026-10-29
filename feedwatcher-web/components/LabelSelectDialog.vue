@@ -3,17 +3,25 @@
     <article class="label-select-dialog">
       <h3>Select New Label</h3>
       <article class="label-list">
-        <div v-for="(source, index) in sourcesStore.sources" v-bind:key="source.name">
+        <div
+          v-for="(source, index) in sourcesStore.sources"
+          v-bind:key="(source.sourceId || source.labelName) + '-' + index"
+        >
           <div
             v-if="source.isLabel && !source.isRoot"
             class="source-name-layout"
             :class="{ 'source-active': sourcesStore.selectedIndex == index }"
+            :style="{ '--tree-indent': Math.max(source.depth - 1, 0) }"
           >
-            <span class="source-name-indent">
-              <span v-html="getIndentation(source)"></span>
+            <span class="source-name-toggle"></span>
+            <span class="source-name-icon">
+              <i
+                :class="
+                  source.isCollapsed ? 'bi bi-folder-fill' : 'bi bi-folder2-open'
+                "
+              ></i>
             </span>
             <div v-on:click="onSourceSelected(source, index)" class="source-name-name">
-              <span v-if="!source.isLabel"><i :class="'bi bi-' + source.icon"></i>&nbsp;</span>
               {{ source.displayName }}
             </div>
           </div>
@@ -24,7 +32,8 @@
           class="source-name-layout"
           :class="{ 'source-active': sourcesStore.selectedIndex == -2 }"
         >
-          <span class="source-name-indent">
+          <span class="source-name-toggle"></span>
+          <span class="source-name-icon">
             <i class="bi bi-bookmark-plus-fill"></i>
           </span>
           <div class="source-name-name">Saved Items</div>
@@ -77,13 +86,6 @@ export default {
     },
     cancelSelectLabel() {
       this.$emit("onLabelSelectCancel", { });
-    },
-    getIndentation(source) {
-      let indent = "";
-      for (let i = 1; i < source.depth; i++) {
-        indent += "&nbsp;&nbsp;&nbsp;&nbsp;";
-      }
-      return indent;
     },
   },
 };

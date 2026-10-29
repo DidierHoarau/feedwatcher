@@ -80,6 +80,53 @@ describe("LabelSelectDialog (M18)", () => {
     expect(sourcesStore.selectedIndex).toBe(0);
   });
 
+  test("renders labels with the same tree layout as the source list", async () => {
+    const wrapper = mount(LabelSelectDialog, {
+      global: { plugins: [newPinia()] },
+    });
+    await flushPromises();
+
+    const sourcesStore = SourcesStore();
+    sourcesStore.sources = [
+      {
+        isLabel: true,
+        isRoot: true,
+        depth: 0,
+        labelName: "",
+        displayName: "All",
+        isCollapsed: false,
+        isVisible: true,
+      },
+      {
+        isLabel: true,
+        isRoot: false,
+        depth: 1,
+        labelName: "news",
+        displayName: "news",
+        isCollapsed: false,
+        isVisible: true,
+      },
+      {
+        isLabel: true,
+        isRoot: false,
+        depth: 2,
+        labelName: "news/tech",
+        displayName: "tech",
+        isCollapsed: false,
+        isVisible: true,
+      },
+    ] as never[];
+    await flushPromises();
+
+    const rows = wrapper.findAll(".source-name-layout");
+    expect(rows).toHaveLength(2);
+    expect(rows[0].attributes("style")).toContain("--tree-indent: 0");
+    expect(rows[1].attributes("style")).toContain("--tree-indent: 1");
+    expect(rows[0].find(".source-name-icon i").classes()).toContain(
+      "bi-folder2-open",
+    );
+  });
+
   test("cancel emits onLabelSelectCancel", async () => {
     const wrapper = mount(LabelSelectDialog, {
       global: { plugins: [newPinia()] },

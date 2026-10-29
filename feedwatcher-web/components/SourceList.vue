@@ -17,34 +17,34 @@
           v-if="source.isVisible || filterText"
           class="source-name-layout"
           :class="{ 'source-active': sourcesStore.selectedIndex == index }"
+          :style="{ '--tree-indent': Math.max(source.depth - 1, 0) }"
           :ref="'source-' + index"
         >
           <span
             v-on:click="toggleLabelCollapsed(source, index)"
-            class="source-name-indent"
-            :style="indentStyle(source)"
+            class="source-name-toggle"
+            :class="{ 'source-name-toggle-label': source.isLabel && !source.isRoot }"
           >
             <i
-              v-if="source.isLabel && source.isCollapsed"
-              class="bi bi-caret-right-fill"
+              v-if="source.isLabel && !source.isRoot"
+              :class="
+                source.isCollapsed ? 'bi bi-caret-right-fill' : 'bi bi-caret-down-fill'
+              "
             ></i>
-            <i v-else-if="source.isLabel" class="bi bi-caret-down-fill"></i>
+          </span>
+          <span class="source-name-icon">
+            <i v-if="!source.isLabel" :class="'bi bi-' + source.icon"></i>
+            <i
+              v-else-if="!source.isRoot"
+              :class="
+                source.isCollapsed ? 'bi bi-folder-fill' : 'bi bi-folder2-open'
+              "
+            ></i>
           </span>
           <div
             v-on:click="onSourceSelected(source, index)"
             class="source-name-name"
           >
-            <span v-if="!source.isLabel"
-              ><i :class="'bi bi-' + source.icon"></i>&nbsp;</span
-            >
-            <span
-              v-else-if="!source.isRoot"
-              ><i
-                :class="
-                  source.isCollapsed ? 'bi bi-folder-fill' : 'bi bi-folder2-open'
-                "
-              >&nbsp;</i></span
-            >
             {{ source.displayName }}
             <span
               v-if="sourceHealth(source)"
@@ -159,11 +159,6 @@ export default {
         this.$emit("onSourceSelected", source);
       }
     },
-    indentStyle(source) {
-      return {
-        width: `calc(${source.depth} * 1rem + 0.25rem)`,
-      };
-    },
     toggleLabelCollapsed(label, index) {
       SourcesStore().toggleLabelCollapsed(index);
     },
@@ -236,18 +231,6 @@ export default {
 .source-name-layout {
   align-items: center;
   min-height: 2.6rem;
-}
-
-.source-name-indent {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-shrink: 0;
-  min-width: 1.2rem;
-}
-
-.source-name-indent i {
-  padding: 0.35rem 0.3rem;
 }
 
 /* Unread counts as badges; zero counts dimmed */
