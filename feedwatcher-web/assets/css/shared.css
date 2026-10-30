@@ -189,58 +189,68 @@
    Source tree rows — shared across components & pages
    ============================================================ */
 
-/* Every row of the sources tree — the "All" root, labels and sources — has
-   the same four columns: disclosure caret, icon, name, count. Only the
-   indentation changes with the hierarchy depth: the root is depth 0,
-   top-level labels and unlabeled sources are depth 1, and every nesting level
-   adds exactly one --tree-step for labels and sources alike. Name x is
-   therefore `row padding + depth * --tree-step` for every row, which keeps
-   the whole tree on one grid and makes each step identical. The step stays
-   well below the caret+icon columns so deep trees keep their names in view
-   on phones. */
+/* Every row of the sources tree — the "All" root, labels and sources — is a
+   flex line of indentation cells, disclosure caret, icon, name and count.
+   SourceTreeRow renders exactly one guide cell per hierarchy level (root 0,
+   top-level labels/sources 1, ...), each one --tree-step wide, so every level
+   — labels and sources alike — steps in by the same amount and a row's caret
+   always sits in its parent's guide column. Guides of collapsible ancestors
+   draw a vertical line through that column, which makes the hierarchy
+   readable without relying on the step size alone. */
 .source-tree-row {
-  --tree-step: 1.25rem;
+  --tree-step: 1.5rem;
   --tree-caret-width: 1rem;
   --tree-icon-width: 1.1rem;
-  display: grid;
-  grid-template-columns:
-    var(--tree-caret-width)
-    var(--tree-icon-width)
-    minmax(0, 1fr)
-    auto;
+  --tree-gap: 0.3rem;
+  display: flex;
   align-items: center;
-  column-gap: 0.3rem;
-  min-height: 2.6rem;
-  padding: var(--space-xs) var(--space-sm);
-  padding-left: calc(
-    var(--space-sm) + var(--tree-depth, 0) * var(--tree-step)
-  );
+  min-height: 2.4rem;
+  padding: 0 var(--space-sm);
+}
+.source-tree-guide {
+  position: relative;
+  align-self: stretch;
+  flex: 0 0 var(--tree-step);
+  min-width: 0;
+}
+/* A linked guide continues the caret column of the ancestor at that level
+   (the root never has a caret, hence level > 1). */
+.source-tree-guide-linked::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--tree-caret-width) / 2);
+  border-left: 1px solid var(--color-border-light);
 }
 .source-tree-caret,
 .source-tree-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
+  flex: 0 0 auto;
 }
 .source-tree-caret {
-  grid-column: 1;
+  width: var(--tree-caret-width);
 }
 .source-tree-icon {
-  grid-column: 2;
+  width: var(--tree-icon-width);
+  margin-left: var(--tree-gap);
 }
 .source-tree-caret-toggle {
   cursor: pointer;
 }
 .source-tree-name {
-  grid-column: 3;
+  flex: 1 1 auto;
   min-width: 0;
+  margin-left: var(--tree-gap);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .source-tree-count {
-  grid-column: 4;
+  flex: 0 0 auto;
+  margin-left: var(--tree-gap);
 }
 .source-tree-row-active {
   background-color: var(--color-bg-hover);

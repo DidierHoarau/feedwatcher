@@ -9,6 +9,7 @@
         >
           <SourceTreeRow
             :row="entry.row"
+            :collapsible="false"
             :active="sourcesStore.selectedIndex === entry.index"
             v-on:select="onSourceSelected(entry.row, entry.index)"
           />
@@ -16,6 +17,7 @@
         <SourceTreeRow
           v-if="displaySaved"
           :row="savedRow"
+          :collapsible="false"
           :active="sourcesStore.selectedIndex == -2"
           v-on:select="onSavedSelected()"
         />
@@ -43,6 +45,7 @@ const savedRow = {
   isLabel: false,
   isRoot: false,
   depth: 1,
+  hasChildren: false,
   labelName: "",
   displayName: "Saved Items",
   name: "Saved Items",

@@ -4,8 +4,9 @@
 // that flat payload into an ordered list of rows where `depth` is the real
 // hierarchy depth: the "All" root is 0, top-level labels and unlabeled
 // sources are 1, their children 2, and so on. Both the sources list and the
-// label picker render these rows through `SourceTreeRow.vue`, which indents a
-// row by `depth * --tree-step`; every level therefore steps in by the same
+// label picker render these rows through `SourceTreeRow.vue`, which draws one
+// indentation cell per ancestor level and a vertical guide through the cells
+// of collapsible ancestors; every level therefore steps in by the same
 // amount, for labels and sources alike.
 
 export interface SourceTreeInput {
@@ -20,6 +21,9 @@ export interface SourceTreeRow {
   isRoot?: boolean;
   // Hierarchy depth: root 0, top-level labels/sources 1, ...
   depth: number;
+  // A label with sources or sub-labels can be collapsed; a leaf has no
+  // disclosure caret. Sources always have children=false.
+  hasChildren: boolean;
   labelName: string;
   displayName: string;
   name: string;
@@ -62,6 +66,7 @@ export function buildSourceTree(
       isLabel: true,
       isRoot: true,
       depth: 0,
+      hasChildren: inputs.length > 0,
       labelName: "",
       displayName: "All",
       name: "All",
@@ -81,6 +86,7 @@ export function buildSourceTree(
         isLabel: false,
         isRoot: false,
         depth: node.depth + 1,
+        hasChildren: false,
         labelName: node.labelName,
         displayName: source.sourceName,
         name: source.sourceName,
@@ -103,6 +109,7 @@ export function buildSourceTree(
         isLabel: true,
         isRoot: false,
         depth: child.depth,
+        hasChildren: child.sources.length > 0 || child.children.size > 0,
         labelName: child.labelName,
         displayName: child.displayName,
         name: child.displayName,

@@ -691,9 +691,9 @@ async function runFilterLayoutState(page, viewport, tmpDir) {
   }
 }
 
-// Runs in the page. Every sources-tree row exposes its hierarchy depth; the
-// name cell's x position must follow depth * one step for labels and sources
-// alike.
+// Runs in the page. Every sources-tree row exposes its hierarchy depth and
+// renders one guide cell per level; the name cell's x position must follow
+// depth * one step for labels and sources alike.
 function collectSourceTreeGeometry() {
   const rectOf = (el) => {
     if (!el) {
@@ -714,10 +714,16 @@ function collectSourceTreeGeometry() {
     ...document.querySelectorAll("#sources-list .source-tree-row"),
   ].map((row) => {
     const name = row.querySelector(".source-tree-name");
+    const guides = [...row.querySelectorAll(".source-tree-guide")];
     return {
       depth: Number(row.dataset.treeDepth),
-      isRoot: row.classList.contains("source-tree-row-root"),
-      isLabel: !!row.querySelector(".source-tree-caret-toggle"),
+      kind: row.dataset.treeKind,
+      isRoot: row.dataset.treeKind === "root",
+      isLabel: row.dataset.treeKind === "label",
+      guideCount: guides.length,
+      linkedGuideCount: row.querySelectorAll(".source-tree-guide-linked")
+        .length,
+      guideWidth: guides.length > 0 ? rectOf(guides[0]).width : null,
       name: (name?.textContent || "").trim(),
       nameBox: rectOf(name),
       rowBox: rectOf(row),
@@ -774,6 +780,36 @@ async function runSourceTreeState(page, base, viewport, tmpDir) {
   }
   if (!data.rows.some((row) => !row.isLabel && !row.isRoot)) {
     fail(caseName, "the sources tree has no source row");
+  }
+
+  // Hierarchy is encoded structurally: one guide cell per level, and the
+  // ancestor guides (all but the row's own level) draw a line.
+  for (const row of data.rows) {
+    if (row.guideCount !== row.depth) {
+      fail(
+        caseName,
+        `row "${row.name}" (depth ${row.depth}) renders ${row.guideCount} indentation cells, expected ${row.depth}`,
+      );
+    }
+    const expectedLinked = Math.max(row.depth - 1, 0);
+    if (row.linkedGuideCount !== expectedLinked) {
+      fail(
+        caseName,
+        `row "${row.name}" (depth ${row.depth}) draws ${row.linkedGuideCount} guide lines, expected ${expectedLinked}`,
+      );
+    }
+  }
+  const guideWidths = data.rows
+    .filter((row) => row.guideWidth !== null)
+    .map((row) => row.guideWidth);
+  if (
+    guideWidths.length > 0 &&
+    Math.max(...guideWidths) - Math.min(...guideWidths) > 1
+  ) {
+    fail(
+      caseName,
+      `indentation cells do not share one width: ${guideWidths.map((width) => width.toFixed(1)).join(", ")}px`,
+    );
   }
 
   // Group the name cells by hierarchy depth: every row at a depth — label or
@@ -836,6 +872,18 @@ async function runSourceTreeState(page, base, viewport, tmpDir) {
       caseName,
       `the first level of children is not indented: ${depthLabel(steps[0], 1)} (minimum 8px)`,
     );
+  }
+  // Each level must step in by exactly one indentation cell, so the row grid
+  // and the drawn hierarchy can never drift apart.
+  if (steps.length > 0 && guideWidths.length > 0) {
+    const cell = average(guideWidths);
+    const drift = Math.max(...steps.map((step) => Math.abs(step - cell)));
+    if (drift > 1) {
+      fail(
+        caseName,
+        `indentation steps do not match the ${cell.toFixed(1)}px guide cells: ${steps.map((step, index) => depthLabel(step, index + 1)).join(", ")}`,
+      );
+    }
   }
 
   // Every name must stay inside the tree column: deep indentation may not push

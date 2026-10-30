@@ -64,6 +64,7 @@ describe("LabelSelectDialog (M18)", () => {
         isLabel: true,
         isRoot: false,
         depth: 1,
+        hasChildren: true,
         labelName: "news",
         displayName: "news",
         isCollapsed: false,
@@ -92,6 +93,7 @@ describe("LabelSelectDialog (M18)", () => {
         isLabel: true,
         isRoot: true,
         depth: 0,
+        hasChildren: true,
         labelName: "",
         displayName: "All",
         isCollapsed: false,
@@ -101,6 +103,7 @@ describe("LabelSelectDialog (M18)", () => {
         isLabel: true,
         isRoot: false,
         depth: 1,
+        hasChildren: true,
         labelName: "news",
         displayName: "news",
         isCollapsed: false,
@@ -110,6 +113,7 @@ describe("LabelSelectDialog (M18)", () => {
         isLabel: true,
         isRoot: false,
         depth: 2,
+        hasChildren: true,
         labelName: "news/tech",
         displayName: "tech",
         isCollapsed: false,
@@ -120,8 +124,12 @@ describe("LabelSelectDialog (M18)", () => {
 
     const rows = wrapper.findAll(".source-tree-row");
     expect(rows).toHaveLength(2);
-    expect(rows[0].attributes("style")).toContain("--tree-depth: 1");
-    expect(rows[1].attributes("style")).toContain("--tree-depth: 2");
+    expect(rows.map((row) => row.findAll(".source-tree-guide").length)).toEqual(
+      [1, 2],
+    );
+    // The picker has no toggle handler, so it never shows disclosure carets.
+    expect(rows[0].find(".source-tree-caret i").exists()).toBe(false);
+    expect(rows[1].find(".source-tree-caret i").exists()).toBe(false);
     expect(rows[0].find(".source-tree-icon i").classes()).toContain(
       "bi-folder2-open",
     );

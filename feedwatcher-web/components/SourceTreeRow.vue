@@ -5,11 +5,17 @@
       'source-tree-row-root': row.isRoot,
       'source-tree-row-active': active,
     }"
-    :style="{ '--tree-depth': row.depth }"
     :data-tree-depth="row.depth"
+    :data-tree-kind="row.isRoot ? 'root' : row.isLabel ? 'label' : 'source'"
   >
     <span
-      v-if="row.isLabel && !row.isRoot"
+      v-for="level in row.depth"
+      :key="'guide-' + level"
+      class="source-tree-guide"
+      :class="{ 'source-tree-guide-linked': level > 1 }"
+    ></span>
+    <span
+      v-if="row.hasChildren && collapsible && !row.isRoot"
       class="source-tree-caret source-tree-caret-toggle"
       :title="row.isCollapsed ? 'Expand' : 'Collapse'"
       v-on:click.stop="$emit('toggle')"
@@ -55,6 +61,8 @@ const props = defineProps({
   row: { type: Object, required: true },
   displayCount: { type: [String, Boolean], default: false },
   active: { type: Boolean, default: false },
+  // The label picker has no toggle handler, so it hides the carets.
+  collapsible: { type: Boolean, default: true },
 });
 
 defineEmits(["select", "toggle"]);

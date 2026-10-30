@@ -52,6 +52,20 @@ describe("buildSourceTree", () => {
     ]);
   });
 
+  test("only labels advertise children, and the root only when it has sources", () => {
+    const withSources = build([
+      { sourceId: "s1", sourceName: "One", labelName: "" },
+      { sourceId: "s2", sourceName: "Two", labelName: "news" },
+    ]);
+    for (const row of withSources) {
+      expect(row.hasChildren).toBe(row.isLabel);
+    }
+
+    expect(build([])).toEqual([
+      expect.objectContaining({ isRoot: true, hasChildren: false }),
+    ]);
+  });
+
   test("emits every ancestor label even when only a deep label has sources", () => {
     const rows = build([
       { sourceId: "s1", sourceName: "Deep", labelName: "a/b/c" },

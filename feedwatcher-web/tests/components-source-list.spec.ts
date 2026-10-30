@@ -41,6 +41,7 @@ async function mountWithSources() {
       isLabel: true,
       isRoot: true,
       depth: 0,
+      hasChildren: true,
       name: "All",
       displayName: "All",
       labelName: "",
@@ -51,6 +52,7 @@ async function mountWithSources() {
       isLabel: true,
       isRoot: false,
       depth: 1,
+      hasChildren: true,
       labelName: "cars",
       displayName: "cars",
       isCollapsed: false,
@@ -60,6 +62,7 @@ async function mountWithSources() {
       isLabel: true,
       isRoot: false,
       depth: 2,
+      hasChildren: true,
       labelName: "cars/makes",
       displayName: "makes",
       isCollapsed: false,
@@ -70,6 +73,7 @@ async function mountWithSources() {
       isLabel: false,
       isRoot: false,
       depth: 3,
+      hasChildren: false,
       name: "Autoblog",
       displayName: "Autoblog",
       labelName: "cars/makes",
@@ -102,7 +106,7 @@ describe("SourceList tree indentation", () => {
     wrapper.unmount();
   });
 
-  test("every row is indented by its hierarchy depth", async () => {
+  test("every row renders one indentation cell per hierarchy level", async () => {
     const wrapper = await mountWithSources();
     const rows = wrapper.findAll(".source-tree-row");
 
@@ -112,12 +116,13 @@ describe("SourceList tree indentation", () => {
       "2",
       "3",
     ]);
-    expect(rows.map((row) => row.attributes("style"))).toEqual([
-      "--tree-depth: 0;",
-      "--tree-depth: 1;",
-      "--tree-depth: 2;",
-      "--tree-depth: 3;",
-    ]);
+    expect(rows.map((row) => row.findAll(".source-tree-guide").length)).toEqual(
+      [0, 1, 2, 3],
+    );
+    // The root has no caret column, so the first cell is never linked.
+    expect(
+      rows.map((row) => row.findAll(".source-tree-guide-linked").length),
+    ).toEqual([0, 0, 1, 2]);
     wrapper.unmount();
   });
 
@@ -129,6 +134,7 @@ describe("SourceList tree indentation", () => {
         isLabel: true,
         isRoot: true,
         depth: 0,
+        hasChildren: true,
         labelName: "",
         displayName: "All",
         isCollapsed: false,
@@ -138,6 +144,7 @@ describe("SourceList tree indentation", () => {
         isLabel: true,
         isRoot: false,
         depth: 1,
+        hasChildren: true,
         labelName: "cars",
         displayName: "cars",
         isCollapsed: false,
@@ -148,6 +155,7 @@ describe("SourceList tree indentation", () => {
         isLabel: false,
         isRoot: false,
         depth: 2,
+        hasChildren: false,
         name: "Direct",
         displayName: "Direct",
         labelName: "cars",
@@ -158,6 +166,7 @@ describe("SourceList tree indentation", () => {
         isLabel: true,
         isRoot: false,
         depth: 2,
+        hasChildren: true,
         labelName: "cars/makes",
         displayName: "makes",
         isCollapsed: false,
@@ -167,15 +176,18 @@ describe("SourceList tree indentation", () => {
     await nextTick();
 
     const rows = wrapper.findAll(".source-tree-row");
-    expect(rows[2].attributes("style")).toBe(rows[3].attributes("style"));
+    expect(rows[2].findAll(".source-tree-guide").length).toBe(
+      rows[3].findAll(".source-tree-guide").length,
+    );
     expect(rows[2].attributes("data-tree-depth")).toBe("2");
     wrapper.unmount();
   });
 
-  test("only labels get a disclosure caret", async () => {
+  test("only labels with children get a disclosure caret", async () => {
     const wrapper = await mountWithSources();
     const rows = wrapper.findAll(".source-tree-row");
 
+    expect(rows[0].find(".source-tree-caret i").exists()).toBe(false);
     expect(rows[1].find(".source-tree-caret i").exists()).toBe(true);
     expect(rows[2].find(".source-tree-caret i").exists()).toBe(true);
     expect(rows[3].find(".source-tree-caret i").exists()).toBe(false);
