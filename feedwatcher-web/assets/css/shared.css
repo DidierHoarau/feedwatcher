@@ -186,29 +186,63 @@
 }
 
 /* ============================================================
-   Source Name Layout — shared across components & pages
+   Source tree rows — shared across components & pages
    ============================================================ */
 
-.source-name-layout {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  padding: var(--space-xs) var(--space-sm);
+/* Every row of the sources tree — the "All" root, labels and sources — is a
+   flex line of icon, name and count. Indentation is exactly one input:
+   --tree-depth (set by SourceTreeRow from the row's hierarchy level) times
+   --tree-step. The root is depth 0, so its icon and name start at the list's
+   content edge; every level of labels and sources steps in by one --tree-step,
+   so a label and a source at the same depth always share the same column.
+   The disclosure caret is absolutely positioned in the gutter left of its own
+   level and therefore never contributes to (or shifts) the row content. */
+.source-tree-row {
+  --tree-step: 1.5rem;
+  --tree-caret-width: 1rem;
+  --tree-icon-width: 1.1rem;
+  --tree-gap: 0.3rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+  column-gap: var(--tree-gap);
+  min-height: 2.4rem;
+  padding: 0 var(--space-sm) 0
+    calc(var(--space-sm) + var(--tree-depth, 0) * var(--tree-step));
 }
-.source-name-indent {
-  grid-column: 1;
-  padding-right: var(--space-sm);
+.source-tree-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 var(--tree-icon-width);
+  width: var(--tree-icon-width);
 }
-.source-name-name {
-  grid-column: 2;
+.source-tree-caret {
+  position: absolute;
+  top: 50%;
+  left: calc(
+    var(--space-sm) + var(--tree-depth, 0) * var(--tree-step) -
+      var(--tree-caret-width) - var(--tree-gap)
+  );
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tree-caret-width);
+  height: 1.6rem;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+.source-tree-name {
+  flex: 1 1 auto;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.source-name-count {
-  grid-column: 3;
+.source-tree-count {
+  flex: 0 0 auto;
 }
-
-.source-active {
+.source-tree-row-active {
   background-color: var(--color-bg-hover);
 }
 
@@ -223,8 +257,8 @@
   text-align: right;
   white-space: nowrap;
 }
-#sources-list .source-name-name,
-#sources-list .source-name-count {
+#sources-list .source-tree-name,
+#sources-list .source-tree-count {
   overflow: hidden;
   text-overflow: ellipsis;
 }

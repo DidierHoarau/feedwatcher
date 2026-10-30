@@ -64,6 +64,7 @@ describe("LabelSelectDialog (M18)", () => {
         isLabel: true,
         isRoot: false,
         depth: 1,
+        hasChildren: true,
         labelName: "news",
         displayName: "news",
         isCollapsed: false,
@@ -72,12 +73,72 @@ describe("LabelSelectDialog (M18)", () => {
     ] as never[];
     await flushPromises();
 
-    await wrapper.find(".source-name-name").trigger("click");
+    await wrapper.find(".source-tree-name").trigger("click");
 
     expect((wrapper.find("input").element as HTMLInputElement).value).toBe(
       "news",
     );
     expect(sourcesStore.selectedIndex).toBe(0);
+  });
+
+  test("renders labels with the same tree layout as the source list", async () => {
+    const wrapper = mount(LabelSelectDialog, {
+      global: { plugins: [newPinia()] },
+    });
+    await flushPromises();
+
+    const sourcesStore = SourcesStore();
+    sourcesStore.sources = [
+      {
+        isLabel: true,
+        isRoot: true,
+        depth: 0,
+        hasChildren: true,
+        labelName: "",
+        displayName: "All",
+        isCollapsed: false,
+        isVisible: true,
+      },
+      {
+        isLabel: true,
+        isRoot: false,
+        depth: 1,
+        hasChildren: true,
+        labelName: "news",
+        displayName: "news",
+        isCollapsed: false,
+        isVisible: true,
+      },
+      {
+        isLabel: true,
+        isRoot: false,
+        depth: 2,
+        hasChildren: true,
+        labelName: "news/tech",
+        displayName: "tech",
+        isCollapsed: false,
+        isVisible: true,
+      },
+    ] as never[];
+    await flushPromises();
+
+    const rows = wrapper.findAll(".source-tree-row");
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.attributes("data-tree-depth"))).toEqual([
+      "1",
+      "2",
+    ]);
+    expect(rows.map((row) => row.attributes("style"))).toEqual([
+      "--tree-depth: 1;",
+      "--tree-depth: 2;",
+    ]);
+    expect(wrapper.findAll(".source-tree-guide")).toHaveLength(0);
+    // The picker has no toggle handler, so it never shows disclosure carets.
+    expect(rows[0].find(".source-tree-caret").exists()).toBe(false);
+    expect(rows[1].find(".source-tree-caret").exists()).toBe(false);
+    expect(rows[0].find(".source-tree-icon i").classes()).toContain(
+      "bi-folder2-open",
+    );
   });
 
   test("cancel emits onLabelSelectCancel", async () => {

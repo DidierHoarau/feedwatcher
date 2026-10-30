@@ -16,14 +16,23 @@
  * a readable width on mobile, shares one control height and keeps the From/To
  * date bounds side by side on one row.
  *
+ * The sources-tree state seeds a small label hierarchy and asserts the tree
+ * stays on one indentation grid: each row is padded by exactly depth * one
+ * step (the root has no indentation), its content starts at that padding edge
+ * with nothing reserved before the icon, every row at a depth — label or
+ * source, with or without a caret — shares one icon/name column, consecutive
+ * levels step in by the same non-zero amount (so the first level of children
+ * is indented too), and the tree never overflows its column horizontally.
+ *
  * The new-source-page and newsletter-page states cover the scrollable pages:
  * `/sources/new` must keep its header and mode tabs fixed while only the
  * active mode scrolls (add-by-url, 25 podcast search results, 25 newsletter
  * feeds), and `/sources/newsletter` must scroll down to the source-health
  * panel. The edit-source-page state covers `/sources/:sourceId`: a long health
- * header plus 25 podcast search results must scroll down to the Labels field
- * and the Update/Delete buttons. They run on a dedicated page with request
- * interception mocking `/api/status`, `/api/sources/search`,
+ * header plus the URL finder expanded to 25 podcast search results must scroll
+ * down to the Labels field and the Update/Delete buttons. They run on a
+ * dedicated page with request interception mocking `/api/status`,
+ * `/api/sources/search`,
  * `/api/sources/newsletter` and the edited source + labels; the service
  * worker is bypassed there because it serves the unauthenticated `/api/status`
  * stale-while-revalidate and would hide the mocked flags.
@@ -267,6 +276,7 @@ async function main() {
 
     const seedItems = seedData(userId);
     await seedSourcesAndItems(db, seedItems);
+    seedLabelTree(db, userId);
 
     browser = await puppeteer.launch({
       headless: true,
@@ -349,6 +359,7 @@ async function main() {
         hasTouch: viewport.isMobile,
       });
       await runListPageState(page, base, authHeaders, seedItems, viewport, tmpDir);
+      await runSourceTreeState(page, base, viewport, tmpDir);
       for (const state of STATES) {
         await runState(page, base, authHeaders, seedItems, state, viewport, tmpDir);
       }
@@ -458,6 +469,39 @@ function seedSourcesAndItems(db, seed) {
       datePublished,
       JSON.stringify(item.info),
     );
+  }
+}
+
+// A small label hierarchy (one source per label plus an unlabeled source) so
+// the sources tree renders every level: root, top-level labels/sources,
+// nested labels and sources, and a depth-3 source.
+const LABEL_TREE = [
+  { name: "Unlabeled feed", label: null },
+  { name: "Cars feed", label: "cars" },
+  { name: "Makes feed", label: "cars/makes" },
+  { name: "Racing feed", label: "cars/makes/racing" },
+  { name: "News feed", label: "news" },
+  { name: "Tech feed", label: "news/tech" },
+];
+
+function seedLabelTree(db, userId) {
+  const insertSource = db.prepare(
+    "INSERT INTO sources (id, userId, name, info) VALUES (?, ?, ?, ?)",
+  );
+  const insertLabel = db.prepare(
+    "INSERT INTO sources_labels (id, sourceId, name, info) VALUES (?, ?, ?, ?)",
+  );
+  for (const entry of LABEL_TREE) {
+    const sourceId = crypto.randomUUID();
+    insertSource.run(
+      sourceId,
+      userId,
+      entry.name,
+      JSON.stringify({ url: `https://example.com/${sourceId}` }),
+    );
+    if (entry.label) {
+      insertLabel.run(crypto.randomUUID(), sourceId, entry.label, "{}");
+    }
   }
 }
 
@@ -643,6 +687,266 @@ async function runFilterLayoutState(page, viewport, tmpDir) {
   }
 
   if (hasFailure()) {
+    const shot = path.join(tmpDir, `${caseName.replace(/[^\w.-]+/g, "_")}.png`);
+    await page.screenshot({ path: shot }).catch(() => {});
+    console.error(`    Screenshot: ${shot}`);
+  }
+}
+
+// Runs in the page. Indentation is depth * one step: every row exposes its
+// depth, its computed left padding and the boxes of its icon, name and caret,
+// so the checks can prove that content starts exactly at the padding edge
+// (nothing is reserved for carets) and that labels and sources at one depth
+// share one column.
+function collectSourceTreeGeometry() {
+  const rectOf = (el) => {
+    if (!el) {
+      return null;
+    }
+    const r = el.getBoundingClientRect();
+    return {
+      top: r.top,
+      bottom: r.bottom,
+      left: r.left,
+      right: r.right,
+      width: r.width,
+      height: r.height,
+    };
+  };
+  const list = document.querySelector("#sources-list");
+  const rows = [
+    ...document.querySelectorAll("#sources-list .source-tree-row"),
+  ].map((row) => {
+    const name = row.querySelector(".source-tree-name");
+    const icon = row.querySelector(".source-tree-icon");
+    const caret = row.querySelector(".source-tree-caret");
+    return {
+      depth: Number(row.dataset.treeDepth),
+      kind: row.dataset.treeKind,
+      isRoot: row.dataset.treeKind === "root",
+      isLabel: row.dataset.treeKind === "label",
+      hasCaret: Boolean(caret),
+      caretBox: rectOf(caret),
+      iconBox: rectOf(icon),
+      name: (name?.textContent || "").trim(),
+      nameBox: rectOf(name),
+      rowBox: rectOf(row),
+      paddingLeft: Number.parseFloat(
+        window.getComputedStyle(row).paddingLeft,
+      ),
+    };
+  });
+  return {
+    viewportWidth: window.innerWidth,
+    docScrollWidth: document.documentElement.scrollWidth,
+    list: rectOf(list),
+    listScrollWidth: list ? list.scrollWidth : null,
+    listClientWidth: list ? list.clientWidth : null,
+    rows,
+  };
+}
+
+function average(values) {
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+async function runSourceTreeState(page, base, viewport, tmpDir) {
+  const caseName = `${viewport.name}/sources-tree`;
+  console.log(`  ${viewport.name} / sources-tree`);
+
+  await page.goto(`${base}/sources`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("#sources-list .source-tree-row", {
+    timeout: WAIT_TIMEOUT_MS,
+  });
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll("#sources-list .source-tree-row").length >= 4,
+    { polling: 250, timeout: WAIT_TIMEOUT_MS },
+  );
+  await new Promise((resolve) => setTimeout(resolve, 150));
+
+  const data = await page.evaluate(collectSourceTreeGeometry);
+
+  if (data.docScrollWidth > data.viewportWidth) {
+    fail(
+      caseName,
+      `horizontal overflow: document scrollWidth ${data.docScrollWidth}px > viewport ${data.viewportWidth}px`,
+    );
+  }
+  if (data.rows.length < 7) {
+    fail(
+      caseName,
+      `the sources tree rendered ${data.rows.length} rows, expected at least 7 (root, labels and sources)`,
+    );
+  }
+  if (!data.rows.some((row) => row.isRoot)) {
+    fail(caseName, "the sources tree has no root row");
+  }
+  if (!data.rows.some((row) => row.isLabel && !row.isRoot)) {
+    fail(caseName, "the sources tree has no label row");
+  }
+  if (!data.rows.some((row) => !row.isLabel && !row.isRoot)) {
+    fail(caseName, "the sources tree has no source row");
+  }
+
+  // The root sits at the list content edge: no caret and no reserved column.
+  const root = data.rows.find((row) => row.isRoot);
+  if (root.hasCaret) {
+    fail(caseName, 'the root row renders a disclosure caret');
+  }
+
+  // Indentation is depth * one step and nothing else: every row's content
+  // starts exactly at its padding edge (no empty caret column pushes sources
+  // or leaf labels inwards) and the padding follows depth linearly.
+  const rootPadding = root.paddingLeft;
+  const depthRows = data.rows.filter((row) => row.depth === 1);
+  const levelPadding = depthRows.length > 0 ? depthRows[0].paddingLeft : null;
+  const indentStep =
+    levelPadding === null ? null : levelPadding - rootPadding;
+  if (indentStep === null || indentStep < 8) {
+    fail(
+      caseName,
+      `the first level of children is not indented (padding ${rootPadding}px at depth 0, ${levelPadding}px at depth 1)`,
+    );
+  } else {
+    for (const row of data.rows) {
+      const expected = rootPadding + row.depth * indentStep;
+      if (Math.abs(row.paddingLeft - expected) > 1) {
+        fail(
+          caseName,
+          `row "${row.name}" (depth ${row.depth}, ${row.kind}) is padded ${row.paddingLeft.toFixed(1)}px, expected ${expected.toFixed(1)}px (${rootPadding.toFixed(1)} + ${row.depth} * ${indentStep.toFixed(1)})`,
+        );
+      }
+    }
+  }
+  for (const row of data.rows) {
+    if (!row.iconBox) {
+      fail(caseName, `row "${row.name || "?"}" has no icon cell`);
+      continue;
+    }
+    const contentOffset = row.iconBox.left - row.rowBox.left;
+    if (Math.abs(contentOffset - row.paddingLeft) > 1) {
+      fail(
+        caseName,
+        `row "${row.name}" (depth ${row.depth}, ${row.kind}) starts its content at ${contentOffset.toFixed(1)}px but is padded ${row.paddingLeft.toFixed(1)}px: something is reserved before the icon`,
+      );
+    }
+    // A caret is decoration in the gutter: it must stay left of the content.
+    if (row.hasCaret && row.caretBox) {
+      if (row.caretBox.right > row.iconBox.left + 0.5) {
+        fail(
+          caseName,
+          `row "${row.name}" caret (right ${row.caretBox.right.toFixed(1)}px) overlaps its content (icon left ${row.iconBox.left.toFixed(1)}px)`,
+        );
+      }
+      if (row.caretBox.left < row.rowBox.left - 0.5) {
+        fail(
+          caseName,
+          `row "${row.name}" caret starts outside the row (${row.caretBox.left.toFixed(1)}px < ${row.rowBox.left.toFixed(1)}px)`,
+        );
+      }
+    }
+  }
+
+  // Group the content cells by hierarchy depth: every row at a depth — label
+  // or source, with or without a caret — must share the same icon and name x.
+  const byDepth = new Map();
+  for (const row of data.rows) {
+    if (!row.nameBox || !row.iconBox) {
+      fail(caseName, `row "${row.name || "?"}" has no name or icon cell`);
+      continue;
+    }
+    if (!byDepth.has(row.depth)) {
+      byDepth.set(row.depth, []);
+    }
+    byDepth.get(row.depth).push(row);
+  }
+  const depths = [...byDepth.keys()].sort((left, right) => left - right);
+  for (let depth = 0; depth <= 3; depth++) {
+    if (!byDepth.has(depth)) {
+      fail(caseName, `the sources tree has no row at depth ${depth}`);
+    }
+  }
+  for (const depth of depths) {
+    const rows = byDepth.get(depth);
+    const nameLefts = rows.map((row) => row.nameBox.left);
+    if (Math.max(...nameLefts) - Math.min(...nameLefts) > 1) {
+      fail(
+        caseName,
+        `rows at depth ${depth} do not share one name column: ${rows.map((row) => `"${row.name}" ${row.nameBox.left.toFixed(1)}px`).join(", ")}`,
+      );
+    }
+    const iconLefts = rows.map((row) => row.iconBox.left);
+    if (Math.max(...iconLefts) - Math.min(...iconLefts) > 1) {
+      fail(
+        caseName,
+        `rows at depth ${depth} do not share one icon column: ${rows.map((row) => `"${row.name}" ${row.iconBox.left.toFixed(1)}px`).join(", ")}`,
+      );
+    }
+  }
+
+  // Consecutive levels must step in by the same, clearly visible amount. This
+  // is the invariant a "flat" first level or a bigger source step breaks.
+  const steps = [];
+  for (let index = 1; index < depths.length; index++) {
+    const previous = average(
+      byDepth.get(depths[index - 1]).map((row) => row.nameBox.left),
+    );
+    const current = average(
+      byDepth.get(depths[index]).map((row) => row.nameBox.left),
+    );
+    steps.push(current - previous);
+  }
+  const depthLabel = (step, index) =>
+    `depth ${depths[index - 1]}→${depths[index]} step ${step.toFixed(1)}px`;
+  if (steps.some((step) => step <= 0)) {
+    fail(
+      caseName,
+      `a deeper level is not indented further: ${steps.map((step, index) => depthLabel(step, index + 1)).join(", ")}`,
+    );
+  } else if (steps.length > 1 && Math.max(...steps) - Math.min(...steps) > 1) {
+    fail(
+      caseName,
+      `indentation steps are not equal: ${steps.map((step, index) => depthLabel(step, index + 1)).join(", ")}`,
+    );
+  }
+  if (steps.length > 0 && steps[0] < 8) {
+    fail(
+      caseName,
+      `the first level of children is not indented: ${depthLabel(steps[0], 1)} (minimum 8px)`,
+    );
+  }
+
+  // Every name must stay inside the tree column: deep indentation may not push
+  // rows out of the sidebar (where names would be clipped or scroll sideways).
+  if (data.list) {
+    for (const row of data.rows) {
+      if (!row.nameBox) {
+        continue;
+      }
+      if (
+        row.nameBox.left < data.list.left - 1 ||
+        row.nameBox.left > data.list.right
+      ) {
+        fail(
+          caseName,
+          `row "${row.name}" name starts at ${row.nameBox.left.toFixed(0)}px, outside the tree column [${data.list.left.toFixed(0)}-${data.list.right.toFixed(0)}]`,
+        );
+        break;
+      }
+    }
+    if (
+      data.listScrollWidth !== null &&
+      data.listScrollWidth > data.listClientWidth + 1
+    ) {
+      fail(
+        caseName,
+        `the tree scrolls horizontally: content ${data.listScrollWidth}px > column ${data.listClientWidth}px`,
+      );
+    }
+  }
+
+  if (failures.some((entry) => entry.caseName === caseName)) {
     const shot = path.join(tmpDir, `${caseName.replace(/[^\w.-]+/g, "_")}.png`);
     await page.screenshot({ path: shot }).catch(() => {});
     console.error(`    Screenshot: ${shot}`);
@@ -1367,6 +1671,11 @@ async function runEditSourcePageState(page, base, viewport, tmpDir) {
   await page.goto(`${base}/sources/${EDIT_SOURCE_ID}`, {
     waitUntil: "domcontentloaded",
   });
+  // The finder is collapsed by default; expand it to reach the podcast search.
+  await page.waitForSelector(".source-finder-toggle", {
+    timeout: WAIT_TIMEOUT_MS,
+  });
+  await page.click(".source-finder-toggle");
   await page.waitForSelector(".finder-podcast-search input[type='search']", {
     timeout: WAIT_TIMEOUT_MS,
   });

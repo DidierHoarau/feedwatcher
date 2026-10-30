@@ -66,6 +66,29 @@
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-full: 999px;
+
+  /* ---------- Interface scale ----------
+     Everything is sized in rem/em, so scaling the root font size scales the
+     whole UI. Phones start a little smaller (the elements felt too large),
+     and Settings > Preferences > Interface size can override it. */
+  --ui-scale: 100%;
+  --pico-font-size: var(--ui-scale);
+}
+
+@media (max-width: 700px) {
+  :root {
+    --ui-scale: 90%;
+  }
+}
+
+html[data-ui-scale="compact"] {
+  --ui-scale: 85%;
+}
+html[data-ui-scale="standard"] {
+  --ui-scale: 100%;
+}
+html[data-ui-scale="large"] {
+  --ui-scale: 115%;
 }
 
 /* ============================================================

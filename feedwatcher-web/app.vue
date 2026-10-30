@@ -1,5 +1,6 @@
 <script setup>
 import { EventBus, EventTypes } from "~~/services/EventBus";
+import { PreferencesService } from "~~/services/PreferencesService";
 
 const showSourceDialog = ref(false);
 const dialogItem = ref(null);
@@ -13,6 +14,7 @@ function updateAppHeight() {
 }
 
 onMounted(() => {
+  PreferencesService.applyUiScale();
   updateAppHeight();
   window.addEventListener("resize", updateAppHeight);
   window.visualViewport?.addEventListener("resize", updateAppHeight);

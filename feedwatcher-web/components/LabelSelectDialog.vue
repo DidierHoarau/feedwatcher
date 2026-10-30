@@ -3,32 +3,24 @@
     <article class="label-select-dialog">
       <h3>Select New Label</h3>
       <article class="label-list">
-        <div v-for="(source, index) in sourcesStore.sources" v-bind:key="source.name">
-          <div
-            v-if="source.isLabel && !source.isRoot"
-            class="source-name-layout"
-            :class="{ 'source-active': sourcesStore.selectedIndex == index }"
-          >
-            <span class="source-name-indent">
-              <span v-html="getIndentation(source)"></span>
-            </span>
-            <div v-on:click="onSourceSelected(source, index)" class="source-name-name">
-              <span v-if="!source.isLabel"><i :class="'bi bi-' + source.icon"></i>&nbsp;</span>
-              {{ source.displayName }}
-            </div>
-          </div>
-        </div>
         <div
-          v-if="displaySaved"
-          v-on:click="onSavedSelected()"
-          class="source-name-layout"
-          :class="{ 'source-active': sourcesStore.selectedIndex == -2 }"
+          v-for="entry in labelEntries"
+          v-bind:key="entry.row.labelName"
         >
-          <span class="source-name-indent">
-            <i class="bi bi-bookmark-plus-fill"></i>
-          </span>
-          <div class="source-name-name">Saved Items</div>
+          <SourceTreeRow
+            :row="entry.row"
+            :collapsible="false"
+            :active="sourcesStore.selectedIndex === entry.index"
+            v-on:select="onSourceSelected(entry.row, entry.index)"
+          />
         </div>
+        <SourceTreeRow
+          v-if="displaySaved"
+          :row="savedRow"
+          :collapsible="false"
+          :active="sourcesStore.selectedIndex == -2"
+          v-on:select="onSavedSelected()"
+        />
       </article>
       <label>Label Name</label>
       <input v-model="label" type="text" />
@@ -39,8 +31,31 @@
 </template>
 
 <script setup>
-const sourceItemsStore = SourceItemsStore();
+import SourceTreeRow from "~~/components/SourceTreeRow.vue";
+
 const sourcesStore = SourcesStore();
+
+const labelEntries = computed(() =>
+  sourcesStore.sources
+    .map((row, index) => ({ row, index }))
+    .filter((entry) => entry.row.isLabel && !entry.row.isRoot),
+);
+
+const savedRow = {
+  isLabel: false,
+  isRoot: false,
+  depth: 1,
+  hasChildren: false,
+  labelName: "",
+  displayName: "Saved Items",
+  name: "Saved Items",
+  icon: "bookmark-plus-fill",
+  sourceInfo: {},
+  unreadCount: 0,
+  savedCount: 0,
+  isCollapsed: false,
+  isVisible: true,
+};
 </script>
 
 <script>
@@ -78,13 +93,6 @@ export default {
     cancelSelectLabel() {
       this.$emit("onLabelSelectCancel", { });
     },
-    getIndentation(source) {
-      let indent = "";
-      for (let i = 1; i < source.depth; i++) {
-        indent += "&nbsp;&nbsp;&nbsp;&nbsp;";
-      }
-      return indent;
-    },
   },
 };
 </script>
@@ -97,7 +105,8 @@ export default {
 
 .label-select-dialog {
   max-height: 80vh;
-  min-width: 25em;
+  /* Never wider than the viewport: on phones the fixed 25em used to overflow. */
+  min-width: min(25em, 100%);
   display: grid;
   grid-template-rows: 2em 1fr auto;
 }
