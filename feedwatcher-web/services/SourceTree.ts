@@ -4,10 +4,11 @@
 // that flat payload into an ordered list of rows where `depth` is the real
 // hierarchy depth: the "All" root is 0, top-level labels and unlabeled
 // sources are 1, their children 2, and so on. Both the sources list and the
-// label picker render these rows through `SourceTreeRow.vue`, which draws one
-// indentation cell per ancestor level and a vertical guide through the cells
-// of collapsible ancestors; every level therefore steps in by the same
-// amount, for labels and sources alike.
+// label picker render these rows through `SourceTreeRow.vue`, which indents a
+// row by exactly `depth * --tree-step`. Depth is the only indentation input,
+// so labels and sources at the same level always share one column, the root
+// (depth 0) starts at the list's content edge, and a disclosure caret never
+// shifts the row content.
 
 export interface SourceTreeInput {
   sourceId: string;

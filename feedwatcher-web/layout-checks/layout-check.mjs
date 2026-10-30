@@ -17,10 +17,12 @@
  * date bounds side by side on one row.
  *
  * The sources-tree state seeds a small label hierarchy and asserts the tree
- * stays on one indentation grid: every row at a depth shares the same name
- * position (labels and sources alike), consecutive levels step in by the same
- * non-zero amount (so the first level of children is indented too), and the
- * tree never overflows its column horizontally.
+ * stays on one indentation grid: each row is padded by exactly depth * one
+ * step (the root has no indentation), its content starts at that padding edge
+ * with nothing reserved before the icon, every row at a depth — label or
+ * source, with or without a caret — shares one icon/name column, consecutive
+ * levels step in by the same non-zero amount (so the first level of children
+ * is indented too), and the tree never overflows its column horizontally.
  *
  * The new-source-page and newsletter-page states cover the scrollable pages:
  * `/sources/new` must keep its header and mode tabs fixed while only the
@@ -691,9 +693,11 @@ async function runFilterLayoutState(page, viewport, tmpDir) {
   }
 }
 
-// Runs in the page. Every sources-tree row exposes its hierarchy depth and
-// renders one guide cell per level; the name cell's x position must follow
-// depth * one step for labels and sources alike.
+// Runs in the page. Indentation is depth * one step: every row exposes its
+// depth, its computed left padding and the boxes of its icon, name and caret,
+// so the checks can prove that content starts exactly at the padding edge
+// (nothing is reserved for carets) and that labels and sources at one depth
+// share one column.
 function collectSourceTreeGeometry() {
   const rectOf = (el) => {
     if (!el) {
@@ -714,19 +718,22 @@ function collectSourceTreeGeometry() {
     ...document.querySelectorAll("#sources-list .source-tree-row"),
   ].map((row) => {
     const name = row.querySelector(".source-tree-name");
-    const guides = [...row.querySelectorAll(".source-tree-guide")];
+    const icon = row.querySelector(".source-tree-icon");
+    const caret = row.querySelector(".source-tree-caret");
     return {
       depth: Number(row.dataset.treeDepth),
       kind: row.dataset.treeKind,
       isRoot: row.dataset.treeKind === "root",
       isLabel: row.dataset.treeKind === "label",
-      guideCount: guides.length,
-      linkedGuideCount: row.querySelectorAll(".source-tree-guide-linked")
-        .length,
-      guideWidth: guides.length > 0 ? rectOf(guides[0]).width : null,
+      hasCaret: Boolean(caret),
+      caretBox: rectOf(caret),
+      iconBox: rectOf(icon),
       name: (name?.textContent || "").trim(),
       nameBox: rectOf(name),
       rowBox: rectOf(row),
+      paddingLeft: Number.parseFloat(
+        window.getComputedStyle(row).paddingLeft,
+      ),
     };
   });
   return {
@@ -782,42 +789,71 @@ async function runSourceTreeState(page, base, viewport, tmpDir) {
     fail(caseName, "the sources tree has no source row");
   }
 
-  // Hierarchy is encoded structurally: one guide cell per level, and the
-  // ancestor guides (all but the row's own level) draw a line.
-  for (const row of data.rows) {
-    if (row.guideCount !== row.depth) {
-      fail(
-        caseName,
-        `row "${row.name}" (depth ${row.depth}) renders ${row.guideCount} indentation cells, expected ${row.depth}`,
-      );
-    }
-    const expectedLinked = Math.max(row.depth - 1, 0);
-    if (row.linkedGuideCount !== expectedLinked) {
-      fail(
-        caseName,
-        `row "${row.name}" (depth ${row.depth}) draws ${row.linkedGuideCount} guide lines, expected ${expectedLinked}`,
-      );
-    }
-  }
-  const guideWidths = data.rows
-    .filter((row) => row.guideWidth !== null)
-    .map((row) => row.guideWidth);
-  if (
-    guideWidths.length > 0 &&
-    Math.max(...guideWidths) - Math.min(...guideWidths) > 1
-  ) {
-    fail(
-      caseName,
-      `indentation cells do not share one width: ${guideWidths.map((width) => width.toFixed(1)).join(", ")}px`,
-    );
+  // The root sits at the list content edge: no caret and no reserved column.
+  const root = data.rows.find((row) => row.isRoot);
+  if (root.hasCaret) {
+    fail(caseName, 'the root row renders a disclosure caret');
   }
 
-  // Group the name cells by hierarchy depth: every row at a depth — label or
-  // source — must share the same name x.
+  // Indentation is depth * one step and nothing else: every row's content
+  // starts exactly at its padding edge (no empty caret column pushes sources
+  // or leaf labels inwards) and the padding follows depth linearly.
+  const rootPadding = root.paddingLeft;
+  const depthRows = data.rows.filter((row) => row.depth === 1);
+  const levelPadding = depthRows.length > 0 ? depthRows[0].paddingLeft : null;
+  const indentStep =
+    levelPadding === null ? null : levelPadding - rootPadding;
+  if (indentStep === null || indentStep < 8) {
+    fail(
+      caseName,
+      `the first level of children is not indented (padding ${rootPadding}px at depth 0, ${levelPadding}px at depth 1)`,
+    );
+  } else {
+    for (const row of data.rows) {
+      const expected = rootPadding + row.depth * indentStep;
+      if (Math.abs(row.paddingLeft - expected) > 1) {
+        fail(
+          caseName,
+          `row "${row.name}" (depth ${row.depth}, ${row.kind}) is padded ${row.paddingLeft.toFixed(1)}px, expected ${expected.toFixed(1)}px (${rootPadding.toFixed(1)} + ${row.depth} * ${indentStep.toFixed(1)})`,
+        );
+      }
+    }
+  }
+  for (const row of data.rows) {
+    if (!row.iconBox) {
+      fail(caseName, `row "${row.name || "?"}" has no icon cell`);
+      continue;
+    }
+    const contentOffset = row.iconBox.left - row.rowBox.left;
+    if (Math.abs(contentOffset - row.paddingLeft) > 1) {
+      fail(
+        caseName,
+        `row "${row.name}" (depth ${row.depth}, ${row.kind}) starts its content at ${contentOffset.toFixed(1)}px but is padded ${row.paddingLeft.toFixed(1)}px: something is reserved before the icon`,
+      );
+    }
+    // A caret is decoration in the gutter: it must stay left of the content.
+    if (row.hasCaret && row.caretBox) {
+      if (row.caretBox.right > row.iconBox.left + 0.5) {
+        fail(
+          caseName,
+          `row "${row.name}" caret (right ${row.caretBox.right.toFixed(1)}px) overlaps its content (icon left ${row.iconBox.left.toFixed(1)}px)`,
+        );
+      }
+      if (row.caretBox.left < row.rowBox.left - 0.5) {
+        fail(
+          caseName,
+          `row "${row.name}" caret starts outside the row (${row.caretBox.left.toFixed(1)}px < ${row.rowBox.left.toFixed(1)}px)`,
+        );
+      }
+    }
+  }
+
+  // Group the content cells by hierarchy depth: every row at a depth — label
+  // or source, with or without a caret — must share the same icon and name x.
   const byDepth = new Map();
   for (const row of data.rows) {
-    if (!row.nameBox) {
-      fail(caseName, `row "${row.name || "?"}" has no name cell`);
+    if (!row.nameBox || !row.iconBox) {
+      fail(caseName, `row "${row.name || "?"}" has no name or icon cell`);
       continue;
     }
     if (!byDepth.has(row.depth)) {
@@ -833,11 +869,18 @@ async function runSourceTreeState(page, base, viewport, tmpDir) {
   }
   for (const depth of depths) {
     const rows = byDepth.get(depth);
-    const lefts = rows.map((row) => row.nameBox.left);
-    if (Math.max(...lefts) - Math.min(...lefts) > 1) {
+    const nameLefts = rows.map((row) => row.nameBox.left);
+    if (Math.max(...nameLefts) - Math.min(...nameLefts) > 1) {
       fail(
         caseName,
         `rows at depth ${depth} do not share one name column: ${rows.map((row) => `"${row.name}" ${row.nameBox.left.toFixed(1)}px`).join(", ")}`,
+      );
+    }
+    const iconLefts = rows.map((row) => row.iconBox.left);
+    if (Math.max(...iconLefts) - Math.min(...iconLefts) > 1) {
+      fail(
+        caseName,
+        `rows at depth ${depth} do not share one icon column: ${rows.map((row) => `"${row.name}" ${row.iconBox.left.toFixed(1)}px`).join(", ")}`,
       );
     }
   }
@@ -872,18 +915,6 @@ async function runSourceTreeState(page, base, viewport, tmpDir) {
       caseName,
       `the first level of children is not indented: ${depthLabel(steps[0], 1)} (minimum 8px)`,
     );
-  }
-  // Each level must step in by exactly one indentation cell, so the row grid
-  // and the drawn hierarchy can never drift apart.
-  if (steps.length > 0 && guideWidths.length > 0) {
-    const cell = average(guideWidths);
-    const drift = Math.max(...steps.map((step) => Math.abs(step - cell)));
-    if (drift > 1) {
-      fail(
-        caseName,
-        `indentation steps do not match the ${cell.toFixed(1)}px guide cells: ${steps.map((step, index) => depthLabel(step, index + 1)).join(", ")}`,
-      );
-    }
   }
 
   // Every name must stay inside the tree column: deep indentation may not push

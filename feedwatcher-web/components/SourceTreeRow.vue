@@ -5,18 +5,13 @@
       'source-tree-row-root': row.isRoot,
       'source-tree-row-active': active,
     }"
+    :style="{ '--tree-depth': row.depth }"
     :data-tree-depth="row.depth"
     :data-tree-kind="row.isRoot ? 'root' : row.isLabel ? 'label' : 'source'"
   >
     <span
-      v-for="level in row.depth"
-      :key="'guide-' + level"
-      class="source-tree-guide"
-      :class="{ 'source-tree-guide-linked': level > 1 }"
-    ></span>
-    <span
-      v-if="row.hasChildren && collapsible && !row.isRoot"
-      class="source-tree-caret source-tree-caret-toggle"
+      v-if="showCaret"
+      class="source-tree-caret"
       :title="row.isCollapsed ? 'Expand' : 'Collapse'"
       v-on:click.stop="$emit('toggle')"
     >
@@ -26,7 +21,6 @@
         "
       ></i>
     </span>
-    <span v-else class="source-tree-caret"></span>
     <span class="source-tree-icon"><i :class="iconClass"></i></span>
     <div class="source-tree-name" v-on:click="$emit('select')">
       {{ row.displayName }}
@@ -76,6 +70,14 @@ const iconClass = computed(() => {
   }
   return `bi bi-${props.row.icon}`;
 });
+
+// A caret is decoration in the gutter of the row's own level: it never
+// contributes to the layout, so labels and sources at the same depth keep the
+// same icon and name column with or without one.
+const showCaret = computed(
+  () =>
+    Boolean(props.row.hasChildren) && props.collapsible && !props.row.isRoot,
+);
 
 const health = computed(() => sourceHealth(props.row));
 const healthIcon = computed(() => sourceHealthIcon(props.row));
