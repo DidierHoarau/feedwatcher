@@ -2,7 +2,7 @@ import { FastifyInstance } from "fastify";
 import { XMLBuilder, XMLParser } from "fast-xml-parser";
 import { find } from "lodash";
 import { Source } from "../model/Source";
-import { Span } from "@opentelemetry/sdk-trace-base";
+import { Span } from "@opentelemetry/sdk-trace";
 import { SourceLabelsDataListForUser } from "./SourceLabelsData";
 import { SourcesDataListForUser } from "./SourcesData";
 import { ConfigGet } from "../Config";

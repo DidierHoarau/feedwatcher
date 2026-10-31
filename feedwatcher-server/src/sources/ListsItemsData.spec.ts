@@ -1,4 +1,4 @@
-import { Span } from "@opentelemetry/sdk-trace-base";
+import { Span } from "@opentelemetry/sdk-trace";
 import { ListsItemsDataGetItemForUser } from "./ListsItemsData";
 import { DbUtilsQuerySQL } from "@devopsplaybook.io/common-utils";
 

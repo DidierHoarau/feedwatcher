@@ -1,4 +1,4 @@
-import { Span } from "@opentelemetry/sdk-trace-base";
+import { Span } from "@opentelemetry/sdk-trace";
 import { Config, ConfigGet } from "../Config";
 import { TimeoutWait } from "@devopsplaybook.io/common-utils";
 import { RulesDataListAll } from "../rules/RulesData";

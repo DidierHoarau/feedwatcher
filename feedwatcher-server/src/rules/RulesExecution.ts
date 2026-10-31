@@ -1,4 +1,4 @@
-import { Span } from "@opentelemetry/sdk-trace-base";
+import { Span } from "@opentelemetry/sdk-trace";
 import { Rules } from "../model/Rules";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { DbUtilsExecSQL } from "@devopsplaybook.io/common-utils";
