@@ -8,8 +8,5 @@
   },
   "devDependencies": {
     "puppeteer": "^25.16.0"
-  },
-  "allowScripts": {
-    "puppeteer@25.16.0": true
   }
 }
