@@ -1,4 +1,4 @@
-import { Span } from "@opentelemetry/sdk-trace-base";
+import { Span } from "@opentelemetry/sdk-trace";
 import { SourceItem } from "../model/SourceItem";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { OTelTracer } from "../OTelContext";

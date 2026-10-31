@@ -1,4 +1,4 @@
-import { Span } from "@opentelemetry/sdk-trace-base";
+import { Span } from "@opentelemetry/sdk-trace";
 import { ConfigGet } from "../Config";
 import { Source } from "../model/Source";
 import { OTelLogger } from "../OTelContext";

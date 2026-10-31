@@ -1,4 +1,4 @@
-import { Span } from "@opentelemetry/sdk-trace-base";
+import { Span } from "@opentelemetry/sdk-trace";
 import * as webpush from "web-push";
 import { Config } from "../Config";
 import {

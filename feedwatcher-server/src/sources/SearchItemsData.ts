@@ -1,4 +1,4 @@
-import { Span } from "@opentelemetry/sdk-trace-base";
+import { Span } from "@opentelemetry/sdk-trace";
 import { SearchItemsResult } from "../model/SearchItemsResult";
 import { SearchItemsOptions } from "../model/SearchItemsOptions";
 import { SourceItem } from "../model/SourceItem";

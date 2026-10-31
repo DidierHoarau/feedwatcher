@@ -1,4 +1,4 @@
-import { Span } from "@opentelemetry/sdk-trace-base";
+import { Span } from "@opentelemetry/sdk-trace";
 import { Source } from "../model/Source";
 import { v4 as uuidv4 } from "uuid";
 import { SourcesDataGet, SourcesDataInvalidateUserCache } from "./SourcesData";

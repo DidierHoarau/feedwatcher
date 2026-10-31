@@ -7,6 +7,9 @@
     "check": "node layout-check.mjs"
   },
   "devDependencies": {
-    "puppeteer": "^25.13.0"
+    "puppeteer": "^25.16.0"
+  },
+  "allowScripts": {
+    "puppeteer@25.16.0": true
   }
 }
