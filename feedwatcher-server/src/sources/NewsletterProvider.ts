@@ -8,8 +8,10 @@ import {
   NewsletterGetFeeds,
 } from "./NewsletterClient";
 import {
+  newsletterCatalogueIndex,
   newsletterFeedIdFromUrl,
   newsletterUrlOrigin,
+  NewsletterCatalogueIndex,
 } from "./NewsletterMatching";
 import { normalizeSourceUrl } from "./SourceUrl";
 import {
@@ -51,6 +53,25 @@ export interface NewsletterRepairReport {
 }
 
 let lastAutoRepairFailureAt = 0;
+
+// The client returns the same cached array for 30 s, so identity is a cheap
+// freshness signal: a refreshed catalogue rebuilds the index once per run.
+let cachedIndexFeeds: NewsletterFeed[] = null;
+let cachedIndex: NewsletterCatalogueIndex = null;
+
+async function newsletterCatalogueIndexGet(): Promise<NewsletterCatalogueIndex> {
+  const feeds = await NewsletterGetFeeds();
+  if (cachedIndexFeeds !== feeds) {
+    cachedIndexFeeds = feeds;
+    cachedIndex = newsletterCatalogueIndex(feeds);
+  }
+  return cachedIndex;
+}
+
+export function NewsletterResetCatalogueIndexForTests(): void {
+  cachedIndexFeeds = null;
+  cachedIndex = null;
+}
 
 export function NewsletterResetAutoRepairForTests(): void {
   lastAutoRepairFailureAt = 0;
@@ -105,16 +126,16 @@ export async function NewsletterResolveProviderForUrl(
       providerUrl: String(url).trim(),
     };
   }
-  let catalogue: NewsletterFeed[];
+  let index: NewsletterCatalogueIndex;
   try {
-    catalogue = await NewsletterGetFeeds();
+    index = await newsletterCatalogueIndexGet();
   } catch {
     return null;
   }
   // The feed id alone is never enough: the URL must live on an origin the
   // catalogue confirms, otherwise a foreign (possibly internal) host could
   // borrow newsletter credentials and SSRF trust.
-  const feed = catalogue.find((entry) => entry.providerFeedId === feedId);
+  const feed = index.byFeedId.get(feedId);
   if (feed && newsletterUrlOrigin(feed.feedUrl) === origin) {
     return {
       provider: NEWSLETTER_PROVIDER,
@@ -122,7 +143,7 @@ export async function NewsletterResolveProviderForUrl(
       providerUrl: feed.feedUrl,
     };
   }
-  if (catalogue.some((entry) => newsletterUrlOrigin(entry.feedUrl) === origin)) {
+  if (index.origins.has(origin)) {
     return {
       provider: NEWSLETTER_PROVIDER,
       providerFeedId: feedId,
@@ -163,11 +184,9 @@ export async function NewsletterBackfillProviders(
   }
   if (options.useCatalogue) {
     try {
-      for (const feed of await NewsletterGetFeeds()) {
-        const origin = newsletterUrlOrigin(feed.feedUrl);
-        if (origin) {
-          verifiedOrigins.add(origin);
-        }
+      const index = await newsletterCatalogueIndexGet();
+      for (const origin of index.origins) {
+        verifiedOrigins.add(origin);
       }
     } catch {
       logger.warn("Newsletter catalogue unavailable during provider backfill", span);
@@ -215,10 +234,7 @@ export async function NewsletterRepairProviderSources(
   const dryRun = options.dryRun !== false;
   // Throws NewsletterError when the catalogue is unavailable; route callers
   // map it to a response and the scheduler swallows it.
-  const catalogue: NewsletterFeed[] = await NewsletterGetFeeds();
-  const catalogueById = new Map(
-    catalogue.map((feed) => [feed.providerFeedId, feed]),
-  );
+  const catalogueById = (await newsletterCatalogueIndexGet()).byFeedId;
   const sources =
     options.sources ?? (await listSources(span, options.userId));
   const report: NewsletterRepairReport = {

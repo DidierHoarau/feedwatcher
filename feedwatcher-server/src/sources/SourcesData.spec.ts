@@ -1,5 +1,8 @@
 import { DbUtilsQuerySQL } from "@devopsplaybook.io/common-utils";
-import { SourcesDataInvalidateUserCache } from "./SourcesData";
+import {
+  SourcesDataInvalidateUserCache,
+  SourcesDataResetCountsForTests,
+} from "./SourcesData";
 
 jest.mock("../OTelContext", () => ({
   OTelLogger: () => ({
@@ -22,6 +25,7 @@ jest.mock("@devopsplaybook.io/common-utils", () => ({
 describe("SourcesDataInvalidateUserCache (M5)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    SourcesDataResetCountsForTests();
     jest.mocked(DbUtilsQuerySQL).mockResolvedValue([]);
   });
 
@@ -29,9 +33,9 @@ describe("SourcesDataInvalidateUserCache (M5)", () => {
     jest.useFakeTimers();
     try {
       await SourcesDataInvalidateUserCache({} as any, "user-burst");
-      // First refresh outside the throttle window: 2 aggregate queries
+      // First refresh outside the throttle window: 3 aggregate queries
       const afterFirstRefresh = jest.mocked(DbUtilsQuerySQL).mock.calls.length;
-      expect(afterFirstRefresh).toBe(2);
+      expect(afterFirstRefresh).toBe(3);
 
       for (let i = 0; i < 50; i++) {
         await SourcesDataInvalidateUserCache({} as any, "user-burst");
@@ -43,9 +47,9 @@ describe("SourcesDataInvalidateUserCache (M5)", () => {
 
       await jest.advanceTimersByTimeAsync(2000);
 
-      // One single trailing refresh: 2 immediate + 2 trailing queries total
+      // One single trailing refresh: 3 immediate + 3 trailing queries total
       const totalCalls = jest.mocked(DbUtilsQuerySQL).mock.calls.length;
-      expect(totalCalls).toBe(4);
+      expect(totalCalls).toBe(6);
     } finally {
       jest.useRealTimers();
     }
@@ -75,10 +79,10 @@ describe("SourcesDataInvalidateUserCache (M5)", () => {
       callsAfterWarmup
     );
 
-    // Invalidation refreshes both aggregates (outside the throttle window)
+    // Invalidation refreshes all aggregates (outside the throttle window)
     await SourcesDataInvalidateUserCache({} as any, "user-cache");
     expect(jest.mocked(DbUtilsQuerySQL).mock.calls.length).toBe(
-      callsAfterWarmup + 2
+      callsAfterWarmup + 3
     );
   });
 });

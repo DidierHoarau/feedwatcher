@@ -1,4 +1,5 @@
 import Fastify, { FastifyInstance } from "fastify";
+import axios from "axios";
 import { SourcesRoutes } from "./SourcesRoutes";
 import { SourcesDataAdd, SourcesDataListForUser } from "./SourcesData";
 import {
@@ -10,6 +11,14 @@ import {
 import { AuthGetUserSession } from "../users/Auth";
 import { UrlSafetyError, UrlSafetyFetchText } from "../utils-std-ts/UrlSafety";
 import { NewsletterResolveProviderForUrl } from "./NewsletterProvider";
+import { ConfigGet } from "../Config";
+
+const mockStartSpan = jest.fn(() => ({ end: jest.fn() }));
+
+jest.mock("axios", () => ({
+  __esModule: true,
+  default: { get: jest.fn() },
+}));
 
 jest.mock("./NewsletterProvider", () => ({
   ...jest.requireActual("./NewsletterProvider"),
@@ -18,6 +27,7 @@ jest.mock("./NewsletterProvider", () => ({
 
 jest.mock("../OTelContext", () => ({
   OTelRequestSpan: jest.fn(() => ({})),
+  OTelTracer: () => ({ startSpan: mockStartSpan }),
   OTelLogger: () => ({
     createModuleLogger: () => ({
       info: jest.fn(),
@@ -63,6 +73,7 @@ describe("SourcesRoutes", () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockStartSpan.mockClear();
     unhandledRejections.length = 0;
     process.on("unhandledRejection", unhandledHandler);
     jest.mocked(AuthGetUserSession).mockResolvedValue({
@@ -115,6 +126,19 @@ describe("SourcesRoutes", () => {
     expect(response.statusCode).toBe(200);
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(unhandledRejections).toEqual([]);
+  });
+
+  test("refresh-all uses a dedicated background span (M9)", async () => {
+    const response = await fastify.inject({ method: "PUT", url: "/fetch" });
+
+    expect(response.statusCode).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(mockStartSpan).toHaveBeenCalledWith("SourcesRefreshAll");
+    const refreshSpan = mockStartSpan.mock.results[0].value;
+    expect(ProcessorsFetchSourceItemsForUser).toHaveBeenCalledWith(
+      refreshSpan,
+      "user-1",
+    );
   });
 
   test("rejects a source with no url with 400", async () => {
@@ -442,6 +466,63 @@ describe("SourcesRoutes", () => {
           "Source Not Supported (No Processor Matching): Failed to fetch URL (HTTP 404)",
       });
       expect(SourcesDataAdd).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("GET /search (M5)", () => {
+    let originalKey: string;
+    let originalSecret: string;
+
+    beforeAll(() => {
+      const config = ConfigGet();
+      originalKey = config.PODCAST_INDEX_API_KEY;
+      originalSecret = config.PODCAST_INDEX_API_SECRET;
+      config.PODCAST_INDEX_API_KEY = "test-key";
+      config.PODCAST_INDEX_API_SECRET = "test-secret";
+    });
+
+    afterAll(() => {
+      const config = ConfigGet();
+      config.PODCAST_INDEX_API_KEY = originalKey;
+      config.PODCAST_INDEX_API_SECRET = originalSecret;
+    });
+
+    test("returns 504 when the upstream call times out, with timeout and size caps set", async () => {
+      jest.mocked(axios.get).mockRejectedValue(
+        Object.assign(new Error("timeout of 10000ms exceeded"), {
+          code: "ECONNABORTED",
+        }),
+      );
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/search?q=podcast",
+      });
+
+      expect(response.statusCode).toBe(504);
+      expect(response.json()).toEqual({
+        error: "Podcast Index search timed out",
+      });
+      const options = jest.mocked(axios.get).mock.calls[0][1] as any;
+      expect(options.timeout).toBe(10000);
+      expect(options.maxContentLength).toBe(2 * 1024 * 1024);
+      expect(options.maxBodyLength).toBe(2 * 1024 * 1024);
+    });
+
+    test("keeps mapping a non-timeout upstream status (429) onto the response", async () => {
+      jest.mocked(axios.get).mockRejectedValue(
+        Object.assign(new Error("Too Many Requests"), {
+          response: { status: 429, data: { description: "Rate limited" } },
+        }),
+      );
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/search?q=podcast",
+      });
+
+      expect(response.statusCode).toBe(429);
+      expect(response.json()).toEqual({ error: "Rate limited" });
     });
   });
 });

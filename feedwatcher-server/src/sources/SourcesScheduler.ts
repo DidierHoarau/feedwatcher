@@ -3,44 +3,47 @@ import { Config, ConfigGet } from "../Config";
 import { TimeoutWait } from "@devopsplaybook.io/common-utils";
 import { RulesDataListAll } from "../rules/RulesData";
 import { ProcessorsFetchSourceItems } from "../procesors/Processors";
-import { SourcesDataListAll, SourcesDataListCountsSaved } from "./SourcesData";
-import { RulesExecutionExecuteUserRules } from "../rules/RulesExecution";
+import { ProcessorsPoolGet } from "../procesors/ProcessorsPool";
 import {
-  SourceItemsDataCleanupOrphans,
-  SourceItemsDataGetCount,
-} from "./SourceItemsData";
-import { PromisePool } from "../utils-std-ts/PromisePool";
+  SourcesDataGetGlobalItemCounts,
+  SourcesDataListAll,
+  SourcesDataWarmItemCounts,
+} from "./SourcesData";
+import { RulesExecutionExecuteUserRules } from "../rules/RulesExecution";
+import { SourceItemsDataCleanupOrphans } from "./SourceItemsData";
 import { SourceIsDueForFetch } from "../model/SourceHealth";
-import { SourceItemStatus } from "../model/SourceItemStatus";
 import { NotificationsCheckNewItems } from "../notifications/Notifications";
 import { NewsletterAutoRepair } from "./NewsletterProvider";
 import { OTelLogger, OTelMeter, OTelTracer } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger("Scheduler");
 
+// Orphan deletes are O(tables) and only matter for residue, so a daily pass
+// is enough (the item counters are reconciled when it runs).
+const ORPHAN_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
 // Falls back to the shared config instance so the cycle functions stay
 // usable (and testable) outside the full App startup.
 let config: Config = ConfigGet();
 let lastRulesExecution = 0;
-let promisePool: PromisePool;
+let lastOrphanCleanup = 0; // first cycle runs it
 
-const statsSourceItms = {
-  itemsTotal: 0,
-  itemsRead: 0,
-  itemsUnread: 0,
-  itemsBookmarked: 0,
-};
+export function SourcesSchedulerResetForTests(): void {
+  lastRulesExecution = 0;
+  lastOrphanCleanup = 0;
+}
 
 export async function SourcesSchedulerInit(context: Span, configIn: Config) {
   const span = OTelTracer().startSpan("SourcesSchedulerInit", context);
   config = configIn;
-  await SourcesSchedulerUpdateStats(span);
+  await SourcesDataWarmItemCounts(span);
 
   OTelMeter().createObservableGauge(
     "feeds.items.queue",
     (observableResult) => {
-      observableResult.observe(statsSourceItms.itemsUnread, { item: "unread" });
-      observableResult.observe(statsSourceItms.itemsBookmarked, {
+      const counts = SourcesDataGetGlobalItemCounts();
+      observableResult.observe(counts.unread, { item: "unread" });
+      observableResult.observe(counts.bookmarked, {
         item: "bookmarked",
       });
     },
@@ -50,8 +53,9 @@ export async function SourcesSchedulerInit(context: Span, configIn: Config) {
   OTelMeter().createObservableGauge(
     "feeds.items.total",
     (observableResult) => {
-      observableResult.observe(statsSourceItms.itemsRead, { item: "read" });
-      observableResult.observe(statsSourceItms.itemsTotal, {
+      const counts = SourcesDataGetGlobalItemCounts();
+      observableResult.observe(counts.read, { item: "read" });
+      observableResult.observe(counts.total, {
         item: "total",
       });
     },
@@ -61,14 +65,13 @@ export async function SourcesSchedulerInit(context: Span, configIn: Config) {
   OTelMeter().createObservableGauge(
     "feeds.fetch.queue",
     (observableResult) => {
-      if (promisePool) {
-        observableResult.observe(promisePool.getQueueLength(), {
-          status: "pending",
-        });
-        observableResult.observe(promisePool.getInFlightCount(), {
-          status: "in-flight",
-        });
-      }
+      const pool = ProcessorsPoolGet();
+      observableResult.observe(pool.getQueueLength(), {
+        status: "pending",
+      });
+      observableResult.observe(pool.getInFlightCount(), {
+        status: "in-flight",
+      });
     },
     "Feed source fetch queue depth",
   );
@@ -86,16 +89,6 @@ async function SourcesSchedulerStartSchedule() {
     await SourcesSchedulerCycle();
     await TimeoutWait(config.SOURCE_FETCH_FREQUENCY / 4);
   }
-}
-
-function promisePoolGet(): PromisePool {
-  if (!promisePool) {
-    promisePool = new PromisePool(
-      config.PROCESSOR_CONCURRENCY,
-      config.SOURCE_FETCH_FREQUENCY / 6,
-    );
-  }
-  return promisePool;
 }
 
 // Runs one scheduler cycle; any failure is logged and swallowed so the
@@ -132,7 +125,7 @@ export async function SourcesSchedulerRunCycle(span0: Span): Promise<void> {
         config.SOURCE_BACKOFF_MAX,
       )
     ) {
-      promisePoolGet().add(async (signal) => {
+      ProcessorsPoolGet().add(async (signal) => {
         const span = OTelTracer().startSpan("FetchSourceItems");
         try {
           await ProcessorsFetchSourceItems(span, source, signal);
@@ -152,7 +145,7 @@ export async function SourcesSchedulerRunCycle(span0: Span): Promise<void> {
   if (now - lastRulesExecution > config.SOURCE_FETCH_FREQUENCY) {
     lastRulesExecution = now;
     for (const userRules of await RulesDataListAll(span0)) {
-      promisePoolGet().add(async () => {
+      ProcessorsPoolGet().add(async () => {
         const span = OTelTracer().startSpan("ExecuteUserRules");
         try {
           await RulesExecutionExecuteUserRules(span, userRules);
@@ -169,38 +162,24 @@ export async function SourcesSchedulerRunCycle(span0: Span): Promise<void> {
     }
   }
 
-  promisePoolGet().add(async () => {
-    const span = OTelTracer().startSpan("CleanupOrphanItems");
-    try {
-      await SourceItemsDataCleanupOrphans(span);
-    } catch (err) {
-      logger.error("CleanupOrphanItems failed", err, span);
-    } finally {
-      span.end();
-    }
-  });
-
-  await SourcesSchedulerUpdateStats(span0);
+  if (now - lastOrphanCleanup >= ORPHAN_CLEANUP_INTERVAL_MS) {
+    // Marked at enqueue so a backed-up pool cannot enqueue duplicates.
+    lastOrphanCleanup = now;
+    ProcessorsPoolGet().add(async () => {
+      const span = OTelTracer().startSpan("CleanupOrphanItems");
+      try {
+        await SourceItemsDataCleanupOrphans(span);
+      } catch (err) {
+        logger.error("CleanupOrphanItems failed", err, span);
+      } finally {
+        span.end();
+      }
+    });
+  }
 
   try {
     await NotificationsCheckNewItems(span0);
   } catch (err) {
     logger.error("NotificationsCheckNewItems failed", err, span0);
   }
-}
-
-// private
-
-async function SourcesSchedulerUpdateStats(context: Span) {
-  const span = OTelTracer().startSpan("SourcesSchedulerUpdateStats", context);
-  const [nbReadItem, nbUnreadItem, nbSavedItem] = await Promise.all([
-    SourceItemsDataGetCount(span, SourceItemStatus.read),
-    SourceItemsDataGetCount(span, SourceItemStatus.unread),
-    SourcesDataListCountsSaved(span),
-  ]);
-  statsSourceItms.itemsTotal = nbReadItem + nbUnreadItem;
-  statsSourceItms.itemsRead = nbReadItem;
-  statsSourceItms.itemsUnread = nbUnreadItem;
-  statsSourceItms.itemsBookmarked = nbSavedItem;
-  span.end();
 }

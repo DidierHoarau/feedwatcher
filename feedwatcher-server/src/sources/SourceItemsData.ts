@@ -11,7 +11,11 @@ import {
   DbUtilsQuerySQL,
   PostgresDbUtilsGetPool,
 } from "@devopsplaybook.io/common-utils";
-import { SourcesDataGet, SourcesDataInvalidateUserCache } from "./SourcesData";
+import {
+  SourcesDataGet,
+  SourcesDataInvalidateUserCache,
+  SourcesDataWarmItemCounts,
+} from "./SourcesData";
 
 export async function SourceItemsDataGetForUser(
   context: Span,
@@ -289,23 +293,6 @@ export async function SourceItemsDataCleanupOrphans(
     span,
     "DELETE FROM lists_items WHERE itemId NOT IN (SELECT id FROM sources_items)",
   );
+  await SourcesDataWarmItemCounts(span);
   span.end();
-}
-
-export async function SourceItemsDataGetCount(
-  context: Span,
-  status: SourceItemStatus,
-): Promise<number> {
-  const span = OTelTracer().startSpan("SourceItemsDataGetCount", context);
-  const countRaw = await DbUtilsQuerySQL(
-    span,
-    "SELECT COUNT(*) as count FROM sources_items WHERE status = ?",
-    [status],
-  );
-  let count = 0;
-  if (countRaw.length > 0) {
-    count = countRaw[0].count;
-  }
-  span.end();
-  return count;
 }

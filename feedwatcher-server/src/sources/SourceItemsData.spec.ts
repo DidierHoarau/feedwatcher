@@ -17,13 +17,17 @@ import {
   SourceItemsDataAddMany,
   SourceItemsDataCleanupOrphans,
 } from "./SourceItemsData";
-import { SourcesDataInvalidateUserCache } from "./SourcesData";
+import {
+  SourcesDataInvalidateUserCache,
+  SourcesDataWarmItemCounts,
+} from "./SourcesData";
 
 jest.mock("./SourcesData", () => {
   const actual = jest.requireActual("./SourcesData");
   return {
     ...actual,
     SourcesDataInvalidateUserCache: jest.fn(),
+    SourcesDataWarmItemCounts: jest.fn(),
   };
 });
 
@@ -141,6 +145,7 @@ describe("SourceItemsDataCleanupOrphans", () => {
       "SELECT id FROM lists_items ORDER BY id",
     );
     expect(rows.map((row: any) => row.id)).toEqual(["li-1"]);
+    expect(SourcesDataWarmItemCounts).toHaveBeenCalledTimes(1);
   });
 
   test("cleans saved-list rows of items removed with their source in one pass", async () => {

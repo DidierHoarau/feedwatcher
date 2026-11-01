@@ -110,6 +110,12 @@ Adding a source supports pasting any site URL: FeedWatcher discovers the site's 
 
 > **SSRF protection:** source URLs, URL previews and article fetches are validated before connecting: only `http`/`https` URLs are accepted, hostnames must resolve to public addresses, every redirect is revalidated, and the connection is pinned to the validated IP. Loopback, link-local, private, metadata and other special-use ranges are rejected. Self-hosted and home-lab installs that intentionally follow feeds on their local network can set `SOURCE_ALLOW_PRIVATE_NETWORK=true`; this disables the address restrictions and should stay `false` on shared or public instances. The setting is read at startup: restart the application after changing it.
 
+## Database
+
+FeedWatcher supports **SQLite only** (`DATABASE_TYPE=sqlite`, the default). The schema relies on SQLite FTS5 virtual tables and triggers for full-text search (`feedwatcher-server/sql/init-0008.sql`), SQLite `MATCH`/`bm25` ranking in item search and `GLOB` matching in rules; the shipped migrations do not work on PostgreSQL, and the PostgreSQL code path in the item writer is not supported.
+
+The scheduler gauges are served from in-memory counters: they are updated as items change, reconciled at startup and after the orphan cleanup, and the orphan cleanup runs at most once every 24 hours (it used to run every cycle).
+
 ## General
 
 | Variable                 | Description                                     | Default             |
@@ -247,6 +253,13 @@ Notes:
 | `OPENTELEMETRY_COLLECTOR_EXPORT_METRICS_INTERVAL_SECONDS` | Metrics export interval in seconds          | `60`    |
 | `OPENTELEMETRY_COLLECTOR_AWS`                             | Enable AWS OTel collector                   | `false` |
 | `OPENTELEMETRY_COLLECT_AUTHORIZATION_HEADER`              | Authorization header for the OTel collector |         |
+
+Gauges:
+
+- `feeds.items.queue{item}` and `feeds.items.total{item}` are **process-wide** (all users), not per user.
+- `bookmarked` counts **distinct** items saved in any list: an item in two lists counts once.
+- Values are eventually consistent: per-mutation updates appear within the 2 s coalescing window, and a full reconciliation runs at startup and after the daily orphan cleanup.
+- `feeds.fetch.queue{status}` reflects the shared processor pool used by scheduled fetches and manual "refresh all".
 
 # Development
 

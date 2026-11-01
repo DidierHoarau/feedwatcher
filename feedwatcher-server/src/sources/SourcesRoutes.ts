@@ -5,6 +5,7 @@ import { Source } from "../model/Source";
 import {
   OTelLogger,
   OTelRequestSpan,
+  OTelTracer,
 } from "../OTelContext";
 import {
   ProcessorsCheckSource,
@@ -44,6 +45,9 @@ const FEED_LINK_TYPES = [
 ];
 
 const MAX_DISCOVERED_FEEDS = 10;
+
+const PODCAST_INDEX_TIMEOUT_MS = 10_000;
+const PODCAST_INDEX_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 interface DiscoveredFeed {
   url: string;
@@ -193,10 +197,10 @@ export class SourcesRoutes {
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });
       }
-      ProcessorsFetchSourceItemsForUser(
-        OTelRequestSpan(req),
-        userSession.userId,
-      ).catch((err) => logger.error("Error fetching source items", err));
+      const span = OTelTracer().startSpan("SourcesRefreshAll");
+      ProcessorsFetchSourceItemsForUser(span, userSession.userId)
+        .catch((err) => logger.error("Error fetching source items", err, span))
+        .finally(() => span.end());
       return res.status(200).send({});
     });
 
@@ -317,6 +321,9 @@ export class SourcesRoutes {
           `https://api.podcastindex.org/api/1.0/search/byterm`,
           {
             params: { q: query, max: 20 },
+            timeout: PODCAST_INDEX_TIMEOUT_MS,
+            maxContentLength: PODCAST_INDEX_MAX_RESPONSE_BYTES,
+            maxBodyLength: PODCAST_INDEX_MAX_RESPONSE_BYTES,
             headers: {
               "X-Auth-Key": apiKey,
               "X-Auth-Date": epoch,
@@ -346,9 +353,15 @@ export class SourcesRoutes {
         return res.status(200).send({ feeds });
       } catch (err: unknown) {
         const e = err as {
+          code?: string;
           response?: { status?: number; data?: { description?: string } };
           message?: string;
         };
+        if (e.code === "ECONNABORTED" || e.code === "ETIMEDOUT") {
+          return res
+            .status(504)
+            .send({ error: "Podcast Index search timed out" });
+        }
         const status = e.response?.status || 500;
         const message =
           e.response?.data?.description ||
