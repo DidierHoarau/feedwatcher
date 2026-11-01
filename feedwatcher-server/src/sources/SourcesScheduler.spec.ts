@@ -1,12 +1,16 @@
-import { SourcesSchedulerCycle } from "./SourcesScheduler";
-import { SourcesDataListAll, SourcesDataListCountsSaved } from "./SourcesData";
+import {
+  SourcesSchedulerCycle,
+  SourcesSchedulerResetForTests,
+} from "./SourcesScheduler";
+import {
+  SourcesDataListAll,
+  SourcesDataWarmItemCounts,
+} from "./SourcesData";
 import { RulesDataListAll } from "../rules/RulesData";
 import { RulesExecutionExecuteUserRules } from "../rules/RulesExecution";
-import {
-  SourceItemsDataCleanupOrphans,
-  SourceItemsDataGetCount,
-} from "./SourceItemsData";
+import { SourceItemsDataCleanupOrphans } from "./SourceItemsData";
 import { ProcessorsFetchSourceItems } from "../procesors/Processors";
+import { ProcessorsPoolResetForTests } from "../procesors/ProcessorsPool";
 import { NewsletterAutoRepair } from "./NewsletterProvider";
 
 jest.mock("./NewsletterProvider", () => ({
@@ -33,7 +37,13 @@ jest.mock("../OTelContext", () => ({
 
 jest.mock("./SourcesData", () => ({
   SourcesDataListAll: jest.fn(),
-  SourcesDataListCountsSaved: jest.fn(),
+  SourcesDataWarmItemCounts: jest.fn(),
+  SourcesDataGetGlobalItemCounts: jest.fn(() => ({
+    read: 0,
+    unread: 0,
+    total: 0,
+    bookmarked: 0,
+  })),
 }));
 
 jest.mock("../rules/RulesData", () => ({
@@ -46,7 +56,6 @@ jest.mock("../rules/RulesExecution", () => ({
 
 jest.mock("./SourceItemsData", () => ({
   SourceItemsDataCleanupOrphans: jest.fn(),
-  SourceItemsDataGetCount: jest.fn(),
 }));
 
 jest.mock("../procesors/Processors", () => ({
@@ -81,11 +90,12 @@ async function runQueuedTasks(): Promise<void> {
 describe("SourcesSchedulerCycle", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    SourcesSchedulerResetForTests();
+    ProcessorsPoolResetForTests();
     mockPoolTasks.length = 0;
     jest.mocked(SourcesDataListAll).mockResolvedValue([]);
+    jest.mocked(SourcesDataWarmItemCounts).mockResolvedValue(undefined);
     jest.mocked(RulesDataListAll).mockResolvedValue([]);
-    jest.mocked(SourcesDataListCountsSaved).mockResolvedValue(0);
-    jest.mocked(SourceItemsDataGetCount).mockResolvedValue(0);
     jest.mocked(SourceItemsDataCleanupOrphans).mockResolvedValue(undefined);
     jest.mocked(RulesExecutionExecuteUserRules).mockResolvedValue(undefined);
     jest.mocked(NotificationsCheckNewItems).mockResolvedValue(undefined);
@@ -170,5 +180,37 @@ describe("SourcesSchedulerCycle", () => {
     await runQueuedTasks();
 
     expect(ProcessorsFetchSourceItems).toHaveBeenCalledTimes(1);
+  });
+
+  test("runs orphan cleanup at most once a day and never collects counts per cycle (M2)", async () => {
+    jest.useFakeTimers();
+    try {
+      // Cleanup is where the in-memory totals are reconciled after the deletes.
+      jest.mocked(SourceItemsDataCleanupOrphans).mockImplementation(async () => {
+        await SourcesDataWarmItemCounts({} as any);
+      });
+
+      jest.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+      await SourcesSchedulerCycle();
+      expect(mockPoolTasks.length).toBe(1);
+      await runQueuedTasks();
+      expect(SourceItemsDataCleanupOrphans).toHaveBeenCalledTimes(1);
+
+      jest.setSystemTime(new Date("2026-01-01T01:00:00Z"));
+      await SourcesSchedulerCycle();
+      expect(mockPoolTasks.length).toBe(0);
+      expect(SourceItemsDataCleanupOrphans).toHaveBeenCalledTimes(1);
+      expect(SourcesDataWarmItemCounts).toHaveBeenCalledTimes(1);
+
+      jest.setSystemTime(new Date("2026-01-02T02:00:00Z"));
+      await SourcesSchedulerCycle();
+      expect(mockPoolTasks.length).toBe(1);
+      await runQueuedTasks();
+
+      expect(SourceItemsDataCleanupOrphans).toHaveBeenCalledTimes(2);
+      expect(SourcesDataWarmItemCounts).toHaveBeenCalledTimes(2);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

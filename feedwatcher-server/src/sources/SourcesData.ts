@@ -13,6 +13,12 @@ const logger = OTelLogger().createModuleLogger(path.basename(__filename));
 const cacheUserCounts: any = {};
 const cacheUserSavedCounts: any = {};
 
+type UserItemCounts = { read: number; unread: number; bookmarked: number };
+// Process-wide item totals maintained from the per-user refresh below, so the
+// scheduler gauges never scan the tables. Reconciled at startup and after the
+// daily orphan cleanup.
+const userItemCounts = new Map<string, UserItemCounts>();
+
 // Time-throttled count refresh: a burst of mutations triggers one immediate
 // aggregate refresh plus at most one trailing refresh.
 const COUNT_REFRESH_THROTTLE_MS = 2000;
@@ -211,8 +217,19 @@ async function refreshUserCountsCaches(
 ): Promise<void> {
   const span = OTelTracer().startSpan("SourcesDataInvalidateUserCache", context);
   try {
-    await SourcesDataListCountsForUser(span, userId, true);
-    await SourcesDataListCountsSavedForUser(span, userId, true);
+    const [, savedRows, totals] = await Promise.all([
+      SourcesDataListCountsForUser(span, userId, true),
+      SourcesDataListCountsSavedForUser(span, userId, true),
+      SourcesDataQueryUserTotals(span, userId),
+    ]);
+    userItemCounts.set(userId, {
+      read: totals.read,
+      unread: totals.unread,
+      bookmarked: savedRows.reduce(
+        (sum: number, row: any) => sum + Number(row.savedCount ?? 0),
+        0,
+      ),
+    });
   } catch (err) {
     logger.error(`Counts refresh failed for user ${userId}`, err, span);
   } finally {
@@ -220,23 +237,106 @@ async function refreshUserCountsCaches(
   }
 }
 
-export async function SourcesDataListCountsSaved(
+async function SourcesDataQueryUserTotals(
   context: Span,
-): Promise<number> {
-  const span = OTelTracer().startSpan("SourcesDataListCountsSaved", context);
-  const countRaw = await DbUtilsQuerySQL(
+  userId: string,
+): Promise<{ read: number; unread: number }> {
+  const span = OTelTracer().startSpan("SourcesDataQueryUserTotals", context);
+  const totalsRaw = await DbUtilsQuerySQL(
     span,
-    "    SELECT COUNT(sources_items.id) as count " +
-      "    FROM lists_items, sources_items " +
-      "    WHERE lists_items.itemId = sources_items.id ",
+    "SELECT COUNT(CASE WHEN status = 'unread' THEN 1 END) AS unreadCount, " +
+      "       COUNT(CASE WHEN status = 'read' THEN 1 END) AS readCount " +
+      "FROM sources_items " +
+      "WHERE sourceId IN (SELECT id FROM sources WHERE userId = ?)",
+    [userId],
   );
-
-  let count = 0;
-  if (countRaw.length > 0) {
-    count = countRaw[0].count;
-  }
   span.end();
-  return count;
+  const totals = totalsRaw.length > 0 ? totalsRaw[0] : {};
+  return {
+    read: Number(totals.readCount ?? 0),
+    unread: Number(totals.unreadCount ?? 0),
+  };
+}
+
+// Rebuilds the process-wide item totals in one pass (startup and after the
+// daily orphan cleanup); never called per scheduler cycle.
+export async function SourcesDataWarmItemCounts(context: Span): Promise<void> {
+  const span = OTelTracer().startSpan("SourcesDataWarmItemCounts", context);
+  try {
+    const [statusRows, savedRows] = await Promise.all([
+      DbUtilsQuerySQL(
+        span,
+        "SELECT sources.userId AS userId, " +
+          "       COUNT(CASE WHEN sources_items.status = 'unread' THEN 1 END) AS unreadCount, " +
+          "       COUNT(CASE WHEN sources_items.status = 'read' THEN 1 END) AS readCount " +
+          "FROM sources_items, sources " +
+          "WHERE sources_items.sourceId = sources.id " +
+          "GROUP BY sources.userId",
+      ),
+      DbUtilsQuerySQL(
+        span,
+        "SELECT sources.userId AS userId, " +
+          "       COUNT(DISTINCT lists_items.itemId) AS savedCount " +
+          "FROM lists_items, sources_items, sources " +
+          "WHERE lists_items.itemId = sources_items.id " +
+          "      AND sources_items.sourceId = sources.id " +
+          "GROUP BY sources.userId",
+      ),
+    ]);
+    userItemCounts.clear();
+    const ensureEntry = (userId: string): UserItemCounts => {
+      let entry = userItemCounts.get(userId);
+      if (!entry) {
+        entry = { read: 0, unread: 0, bookmarked: 0 };
+        userItemCounts.set(userId, entry);
+      }
+      return entry;
+    };
+    for (const row of statusRows) {
+      const entry = ensureEntry(row.userId);
+      entry.read = Number(row.readCount ?? 0);
+      entry.unread = Number(row.unreadCount ?? 0);
+    }
+    for (const row of savedRows) {
+      ensureEntry(row.userId).bookmarked = Number(row.savedCount ?? 0);
+    }
+  } finally {
+    span.end();
+  }
+}
+
+export function SourcesDataGetGlobalItemCounts(): {
+  read: number;
+  unread: number;
+  total: number;
+  bookmarked: number;
+} {
+  let read = 0;
+  let unread = 0;
+  let bookmarked = 0;
+  for (const counts of userItemCounts.values()) {
+    read += counts.read;
+    unread += counts.unread;
+    bookmarked += counts.bookmarked;
+  }
+  return { read, unread, total: read + unread, bookmarked };
+}
+
+export function SourcesDataResetCountsForTests(): void {
+  for (const userId of Object.keys(countRefreshState)) {
+    const state = countRefreshState[userId];
+    if (state?.timer) {
+      clearTimeout(state.timer);
+    }
+    delete countRefreshState[userId];
+  }
+  for (const userId of Object.keys(cacheUserCounts)) {
+    delete cacheUserCounts[userId];
+  }
+  for (const userId of Object.keys(cacheUserSavedCounts)) {
+    delete cacheUserSavedCounts[userId];
+  }
+  userItemCounts.clear();
 }
 
 function fromRaw(sourceRaw: any): Source {

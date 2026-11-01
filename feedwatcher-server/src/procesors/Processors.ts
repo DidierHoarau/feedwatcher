@@ -33,6 +33,7 @@ import {
   newsletterRedactText,
   newsletterRedactUrl,
 } from "../sources/NewsletterMatching";
+import { ProcessorsPoolGet } from "./ProcessorsPool";
 
 const logger = OTelLogger().createModuleLogger("Processor");
 let config: Config;
@@ -241,11 +242,29 @@ export async function ProcessorsFetchSourceItemsForUser(
     "ProcessorsFetchSourceItemsForUser",
     context,
   );
-  const sources = await SourcesDataListForUser(span, userId);
-  for (const source of sources) {
-    await ProcessorsFetchSourceItems(span, source);
+  try {
+    const sources = await SourcesDataListForUser(span, userId);
+    await Promise.all(
+      sources.map((source) =>
+        ProcessorsPoolGet().add(async (signal) => {
+          const fetchSpan = OTelTracer().startSpan("FetchSourceItems", span);
+          try {
+            await ProcessorsFetchSourceItems(fetchSpan, source, signal);
+          } catch (err) {
+            logger.error(
+              `FetchSourceItems failed for source ${source.id}`,
+              err,
+              fetchSpan,
+            );
+          } finally {
+            fetchSpan.end();
+          }
+        }),
+      ),
+    );
+  } finally {
+    span.end();
   }
-  span.end();
 }
 
 export async function ProcessorsFetchSourceItems(

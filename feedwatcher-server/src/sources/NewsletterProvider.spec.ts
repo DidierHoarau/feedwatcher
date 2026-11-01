@@ -7,6 +7,7 @@ import {
   NewsletterMatchExistingSourceByUrl,
   NewsletterRepairProviderSources,
   NewsletterResetAutoRepairForTests,
+  NewsletterResetCatalogueIndexForTests,
   NewsletterResolveProviderForUrl,
 } from "./NewsletterProvider";
 import {
@@ -86,6 +87,7 @@ describe("NewsletterProvider", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     NewsletterResetAutoRepairForTests();
+    NewsletterResetCatalogueIndexForTests();
     jest.mocked(ConfigGet).mockReturnValue({
       NEWSLETTER_URL: INTERNAL,
     } as any);

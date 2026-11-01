@@ -1,4 +1,5 @@
 import {
+  newsletterCatalogueIndex,
   newsletterCatalogueStates,
   newsletterFeedIdFromUrl,
   newsletterFindSourceIds,
@@ -275,5 +276,45 @@ describe("newsletterCatalogueStates", () => {
     expect(states.map((entry) => entry.providerFeedId)).toEqual(["a", "b"]);
     expect(states[0].itemCount).toBe(12);
     expect(states[0].latestDate).toBe("2026-10-27T06:00:00.000Z");
+  });
+});
+
+describe("newsletterCatalogueIndex", () => {
+  test("maps each feed id with the first occurrence winning", () => {
+    const first = feed({
+      providerFeedId: "alpha",
+      feedUrl: "https://newsletter.example/rss/alpha",
+    });
+    const duplicate = feed({
+      providerFeedId: "alpha",
+      feedUrl: "https://other.example/rss/alpha",
+    });
+    const index = newsletterCatalogueIndex([first, duplicate]);
+
+    expect(index.byFeedId.get("alpha")).toBe(first);
+    expect(index.byFeedId.size).toBe(1);
+  });
+
+  test("collects only valid feed origins", () => {
+    const index = newsletterCatalogueIndex([
+      feed({
+        providerFeedId: "alpha",
+        feedUrl: "https://newsletter.example/rss/alpha",
+      }),
+      feed({
+        providerFeedId: "beta",
+        feedUrl: "https://newsletter.example/rss/beta",
+      }),
+      feed({ providerFeedId: "invalid", feedUrl: "not a url" }),
+    ]);
+
+    expect(Array.from(index.origins)).toEqual(["https://newsletter.example"]);
+  });
+
+  test("returns an empty index for an empty catalogue", () => {
+    const index = newsletterCatalogueIndex([]);
+
+    expect(index.byFeedId.size).toBe(0);
+    expect(index.origins.size).toBe(0);
   });
 });

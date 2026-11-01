@@ -23,8 +23,11 @@ jest.mock("./NewsletterProvider", () => ({
   NewsletterResolveProviderForUrl: jest.fn(),
 }));
 
+const mockStartSpan = jest.fn(() => ({ end: jest.fn() }));
+
 jest.mock("../OTelContext", () => ({
   OTelRequestSpan: jest.fn(() => ({})),
+  OTelTracer: () => ({ startSpan: mockStartSpan }),
   OTelLogger: () => ({
     createModuleLogger: () => ({
       info: jest.fn(),
@@ -69,6 +72,7 @@ describe("SourcesIdRoutes (M1/L3)", () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockStartSpan.mockClear();
     jest.mocked(AuthGetUserSession).mockResolvedValue({
       isAuthenticated: true,
       userId: "user-1",
@@ -234,7 +238,39 @@ describe("SourcesIdRoutes (M1/L3)", () => {
     expect(SourcesDataUpdate).toHaveBeenCalled();
     expect(namesAtUpdate[0]).toBe("Renamed");
     await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(jest.mocked(ProcessorsFetchSourceItems)).toHaveBeenCalled();
+    expect(jest.mocked(ProcessorsFetchSourceItems)).toHaveBeenCalledTimes(1);
+    expect(mockStartSpan).toHaveBeenCalledWith("SourceRefreshAfterUpdate");
+  });
+
+  test("PUT a name/label-only edit performs no outbound work (M8)", async () => {
+    jest.mocked(SourcesDataGet).mockResolvedValue(newSource("user-1"));
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/api/sources/source-1",
+      payload: { name: "Renamed", labels: ["News"] },
+    });
+
+    expect(response.statusCode).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(ProcessorsCheckSource).not.toHaveBeenCalled();
+    expect(ProcessorsFetchSourceItems).not.toHaveBeenCalled();
+  });
+
+  test("PUT an unchanged-URL edit performs no outbound work (M8)", async () => {
+    jest.mocked(SourcesDataGet).mockResolvedValue(newSource("user-1"));
+
+    const response = await fastify.inject({
+      method: "PUT",
+      url: "/api/sources/source-1",
+      payload: { name: "Renamed", url: "https://example.com/feed" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(ProcessorsCheckSource).not.toHaveBeenCalled();
+    expect(ProcessorsFetchSourceItems).not.toHaveBeenCalled();
+    expect(mockStartSpan).not.toHaveBeenCalledWith("SourceRefreshAfterUpdate");
   });
 
   test("PUT with a changed URL that no processor supports returns 400 and persists nothing", async () => {

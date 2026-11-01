@@ -19,7 +19,7 @@ import {
   NewsletterResolveProviderForUrl,
 } from "./NewsletterProvider";
 import { AuthGetUserSession } from "../users/Auth";
-import { OTelLogger, OTelRequestSpan } from "../OTelContext";
+import { OTelLogger, OTelRequestSpan, OTelTracer } from "../OTelContext";
 import { SourceGetHealth } from "../model/SourceHealth";
 import { ConfigGet } from "../Config";
 
@@ -114,6 +114,7 @@ export class SourcesIdRoutes {
       if (!req.body.name) {
         return res.status(400).send({ error: "Parameter missing: name" });
       }
+      let sourceUrlChanged = false;
       if (req.body.url !== undefined) {
         const url = String(req.body.url).trim();
         if (!url) {
@@ -168,6 +169,7 @@ export class SourcesIdRoutes {
                 : "Source Not Supported (No Processor Matching)",
             });
           }
+          sourceUrlChanged = true;
         }
       }
       // ProcessorsCheckSource overwrites the name with the processor-provided
@@ -181,11 +183,14 @@ export class SourcesIdRoutes {
           req.body.labels,
         );
       }
-      ProcessorsCheckSource(OTelRequestSpan(req), source)
-        .then(() => ProcessorsFetchSourceItems(OTelRequestSpan(req), source))
-        .catch((err) =>
-          logger.error(`Error refreshing source ${source.id}`, err),
-        );
+      if (sourceUrlChanged) {
+        const span = OTelTracer().startSpan("SourceRefreshAfterUpdate");
+        ProcessorsFetchSourceItems(span, source)
+          .catch((err) =>
+            logger.error(`Error refreshing source ${source.id}`, err, span),
+          )
+          .finally(() => span.end());
+      }
       return res.status(200).send();
     });
 

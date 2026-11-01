@@ -43,6 +43,30 @@ interface SourceIdentity {
   info?: any;
 }
 
+export interface NewsletterCatalogueIndex {
+  byFeedId: Map<string, NewsletterFeed>;
+  origins: Set<string>;
+}
+
+// Built once per catalogue refresh so source scans do not re-scan the feed
+// list per source (first feed id wins, like Array.find).
+export function newsletterCatalogueIndex(
+  feeds: NewsletterFeed[],
+): NewsletterCatalogueIndex {
+  const byFeedId = new Map<string, NewsletterFeed>();
+  const origins = new Set<string>();
+  for (const feed of feeds ?? []) {
+    if (!byFeedId.has(feed.providerFeedId)) {
+      byFeedId.set(feed.providerFeedId, feed);
+    }
+    const origin = newsletterUrlOrigin(feed?.feedUrl);
+    if (origin) {
+      origins.add(origin);
+    }
+  }
+  return { byFeedId, origins };
+}
+
 // Exact `URL.origin` (scheme + host + port) of a URL, or null when invalid.
 export function newsletterUrlOrigin(url: string): string | null {
   if (typeof url !== "string" || url.trim() === "") {
