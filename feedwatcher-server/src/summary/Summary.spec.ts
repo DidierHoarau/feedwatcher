@@ -6,6 +6,7 @@ import { Config } from "../Config";
 import { UsersDataList } from "../users/UsersData";
 import {
   SummaryGenerate,
+  SummaryGetCached,
   SummaryInit,
   SUMMARY_MAX_PROMPT_ITEMS,
 } from "./Summary";
@@ -194,6 +195,8 @@ test("writes atomically via a temp file and rename (M11)", async () => {
   expect(fs.pathExistsSync(tmpPath)).toBe(false);
   const saved = fs.readJsonSync(finalPath);
   expect(saved["user-1"].summary).toBe("## Summary");
+  expect(saved["user-1"].status).toBe("ok");
+  expect(saved["user-1"].error).toBeNull();
 });
 
 test("uses a custom summary prompt as the system message (N1)", async () => {
@@ -285,4 +288,126 @@ test("keeps generating summaries when the digest push fails (N1)", async () => {
   await expect(SummaryGenerate(config)).resolves.toBeUndefined();
   const saved = fs.readJsonSync(finalPath);
   expect(saved["user-1"].summary).toBe("## Summary");
+});
+
+describe("summary failure handling (M3)", () => {
+  const PREVIOUS_GENERATED_AT = "2026-10-31T08:00:00.000Z";
+
+  function setupPreviousGeneration() {
+    const dir = newTempDir();
+    tempDirs.push(dir);
+    const config = newConfig(dir, "test-key");
+    jest.mocked(DbUtilsQuerySQL).mockResolvedValue([rawItem(1)]);
+    jest.mocked(UsersDataList).mockResolvedValue([{ id: "user-1" }] as any);
+    return { dir, config, finalPath: path.join(dir, "summary.json") };
+  }
+
+  test("keeps the previous summary and marks it stale on LLM failure", async () => {
+    const { config, finalPath } = setupPreviousGeneration();
+    fs.writeJsonSync(finalPath, {
+      "user-1": {
+        itemCount: 2,
+        summary: "## Old Summary",
+        generatedAt: PREVIOUS_GENERATED_AT,
+      },
+    });
+    await SummaryInit({} as any, config);
+    jest.mocked(axios.post).mockRejectedValue(new Error("LLM down"));
+
+    await SummaryGenerate(config);
+
+    const saved = fs.readJsonSync(finalPath)["user-1"];
+    expect(saved.summary).toBe("## Old Summary");
+    expect(saved.generatedAt).toBe(PREVIOUS_GENERATED_AT);
+    expect(saved.itemCount).toBe(2);
+    expect(saved.status).toBe("error");
+    expect(saved.error).toContain("LLM down");
+    expect(saved.errorAt).toBeTruthy();
+    expect(NotificationsSendDigestForUser).not.toHaveBeenCalled();
+  });
+
+  test("treats an empty LLM answer as a failure and keeps the previous summary", async () => {
+    const { config, finalPath } = setupPreviousGeneration();
+    fs.writeJsonSync(finalPath, {
+      "user-1": {
+        itemCount: 2,
+        summary: "## Old Summary",
+        generatedAt: PREVIOUS_GENERATED_AT,
+      },
+    });
+    await SummaryInit({} as any, config);
+    jest.mocked(axios.post).mockResolvedValue({
+      data: { choices: [{ message: { content: "   " } }] },
+    } as any);
+
+    await SummaryGenerate(config);
+
+    const saved = fs.readJsonSync(finalPath)["user-1"];
+    expect(saved.summary).toBe("## Old Summary");
+    expect(saved.generatedAt).toBe(PREVIOUS_GENERATED_AT);
+    expect(saved.status).toBe("error");
+    expect(saved.error).toBe("LLM returned an empty summary");
+    expect(NotificationsSendDigestForUser).not.toHaveBeenCalled();
+  });
+
+  test("writes an empty error entry when there is no previous summary", async () => {
+    const { config, finalPath } = setupPreviousGeneration();
+    fs.writeJsonSync(finalPath, {});
+    await SummaryInit({} as any, config);
+    jest.mocked(axios.post).mockRejectedValue(new Error("LLM down"));
+
+    await SummaryGenerate(config);
+
+    const saved = fs.readJsonSync(finalPath)["user-1"];
+    expect(saved.summary).toBe("");
+    expect(saved.itemCount).toBe(0);
+    expect(saved.status).toBe("error");
+    expect(saved.error).toContain("LLM down");
+    expect(NotificationsSendDigestForUser).not.toHaveBeenCalled();
+  });
+
+  test("SummaryGetCached exposes the stale status and error", async () => {
+    const dir = newTempDir();
+    tempDirs.push(dir);
+    const config = newConfig(dir, "test-key");
+    fs.writeJsonSync(path.join(dir, "summary.json"), {
+      "user-1": {
+        itemCount: 2,
+        summary: "## Old Summary",
+        generatedAt: PREVIOUS_GENERATED_AT,
+        status: "error",
+        error: "LLM down",
+        errorAt: "2026-11-01T09:00:00.000Z",
+      },
+    });
+    await SummaryInit({} as any, config);
+
+    const cached = await SummaryGetCached("user-1");
+
+    expect(cached.status).toBe("error");
+    expect(cached.error).toBe("LLM down");
+    expect(cached.summary).toBe("## Old Summary");
+    expect(cached.generatedAt.toISOString()).toBe(PREVIOUS_GENERATED_AT);
+    expect(cached.errorAt.toISOString()).toBe("2026-11-01T09:00:00.000Z");
+  });
+
+  test("SummaryGetCached reads a legacy entry as ok", async () => {
+    const dir = newTempDir();
+    tempDirs.push(dir);
+    const config = newConfig(dir, "test-key");
+    fs.writeJsonSync(path.join(dir, "summary.json"), {
+      "user-1": {
+        itemCount: 1,
+        summary: "## Legacy",
+        generatedAt: PREVIOUS_GENERATED_AT,
+      },
+    });
+    await SummaryInit({} as any, config);
+
+    const cached = await SummaryGetCached("user-1");
+
+    expect(cached.status).toBe("ok");
+    expect(cached.error).toBeNull();
+    expect(cached.errorAt).toBeNull();
+  });
 });

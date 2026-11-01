@@ -487,3 +487,61 @@ describe("ssrf-http private-network opt-in", () => {
     expect(axios.get).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("ssrf-http per-call private-network override (M4)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    ssrfHttp.configure({ allowPrivateNetwork: false });
+    jest.mocked(dns.promises.lookup).mockResolvedValue(publicLookup);
+  });
+
+  afterAll(() => {
+    ssrfHttp.configure({ allowPrivateNetwork: false });
+  });
+
+  test("allowPrivateNetwork: false wins over the global flag", async () => {
+    ssrfHttp.configure({ allowPrivateNetwork: true });
+
+    await expect(
+      ssrfHttp.validateUrl("http://127.0.0.1/feed", {
+        allowPrivateNetwork: false,
+      }),
+    ).rejects.toThrow("URL not allowed");
+  });
+
+  test("allowPrivateNetwork: true permits a private target without changing the global flag", async () => {
+    await expect(
+      ssrfHttp.validateUrl("http://127.0.0.1/feed", {
+        allowPrivateNetwork: true,
+      }),
+    ).resolves.toMatchObject({ address: "127.0.0.1", family: 4 });
+
+    await expect(
+      ssrfHttp.validateUrl("http://127.0.0.1/feed"),
+    ).rejects.toThrow("URL not allowed");
+  });
+
+  test("fetchText forwards allowPrivateNetwork: true to every hop", async () => {
+    jest.mocked(axios.get).mockResolvedValue(okResponse());
+
+    await expect(
+      ssrfHttp.fetchText("http://127.0.0.1/feed", {
+        allowedContentTypes: ["text/plain"],
+        allowPrivateNetwork: true,
+      }),
+    ).resolves.toMatchObject({ data: "ok" });
+    expect(axios.get).toHaveBeenCalledTimes(1);
+  });
+
+  test("fetchText forwards allowPrivateNetwork: false over the global flag", async () => {
+    ssrfHttp.configure({ allowPrivateNetwork: true });
+
+    await expect(
+      ssrfHttp.fetchText("http://127.0.0.1/feed", {
+        allowedContentTypes: ["text/plain"],
+        allowPrivateNetwork: false,
+      }),
+    ).rejects.toThrow("URL not allowed");
+    expect(axios.get).not.toHaveBeenCalled();
+  });
+});

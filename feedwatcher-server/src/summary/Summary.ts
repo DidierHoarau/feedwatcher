@@ -61,7 +61,10 @@ export async function SummaryInit(
 export async function SummaryGetCached(userId: string): Promise<{
   itemCount: number;
   summary: string;
-  generatedAt: Date;
+  generatedAt: Date | null;
+  status: "ok" | "error";
+  error: string | null;
+  errorAt: Date | null;
 } | null> {
   try {
     if (!(await fs.pathExists(summaryFilePath))) {
@@ -75,7 +78,11 @@ export async function SummaryGetCached(userId: string): Promise<{
     return {
       itemCount: entry.itemCount,
       summary: entry.summary,
-      generatedAt: new Date(entry.generatedAt),
+      // Legacy entries without the new fields are read as a healthy summary.
+      generatedAt: entry.generatedAt ? new Date(entry.generatedAt) : null,
+      status: entry.status === "error" ? "error" : "ok",
+      error: entry.error ?? null,
+      errorAt: entry.errorAt ? new Date(entry.errorAt) : null,
     };
   } catch (error) {
     logger.error(`Failed to read summary for user ${userId}: ${error.message}`);
@@ -86,17 +93,50 @@ export async function SummaryGetCached(userId: string): Promise<{
 export async function SummaryGenerate(config: Config) {
   const span = OTelTracer().startSpan("SummaryGenerate");
   const users = await UsersDataList(span);
-  const allSummaries: Record<
+  let previousSummaries: Record<string, any> = {};
+  try {
+    if (await fs.pathExists(summaryFilePath)) {
+      previousSummaries = await fs.readJson(summaryFilePath);
+    }
+  } catch (error) {
+    logger.warn(`Failed to read previous summaries: ${error.message}`);
+  }
+  const now = new Date().toISOString();
+  const allSummaries: Record<string, any> = {};
+  const freshSummaries: Record<
     string,
-    { itemCount: number; summary: string; generatedAt: string }
+    { summary: string; error?: string }
   > = {};
   for (const user of users) {
     const result = await SummaryGenerateForUser(span, config, user);
-    allSummaries[user.id] = {
-      itemCount: result.itemCount,
-      summary: result.summary,
-      generatedAt: new Date().toISOString(),
-    };
+    freshSummaries[user.id] = result;
+    if (result.error) {
+      const previous = previousSummaries[user.id];
+      allSummaries[user.id] = previous
+        ? {
+            ...previous,
+            status: "error",
+            error: result.error,
+            errorAt: now,
+          }
+        : {
+            itemCount: 0,
+            summary: "",
+            generatedAt: null,
+            status: "error",
+            error: result.error,
+            errorAt: now,
+          };
+    } else {
+      allSummaries[user.id] = {
+        itemCount: result.itemCount,
+        summary: result.summary,
+        generatedAt: now,
+        status: "ok",
+        error: null,
+        errorAt: null,
+      };
+    }
   }
   try {
     // Write to a temp file then rename so readers never see a partial file
@@ -107,10 +147,12 @@ export async function SummaryGenerate(config: Config) {
     logger.error(`Failed to save summary file: ${error.message}`);
   }
   for (const user of users) {
-    const summary = allSummaries[user.id]?.summary;
-    if (summary && summary.trim() !== "") {
+    // Only a freshly generated summary is pushed: a preserved (stale) one
+    // must not be re-sent, and a failed generation sends nothing.
+    const result = freshSummaries[user.id];
+    if (result && !result.error && result.summary.trim() !== "") {
       try {
-        await NotificationsSendDigestForUser(span, user.id, summary);
+        await NotificationsSendDigestForUser(span, user.id, result.summary);
       } catch (error) {
         logger.error(
           `Failed to send digest notification for user ${user.id}: ${error.message}`
@@ -125,7 +167,12 @@ export async function SummaryGenerateForUser(
   context: Span,
   config: Config,
   user: User
-): Promise<{ itemCount: number; summary: string; items: SourceItem[] }> {
+): Promise<{
+  itemCount: number;
+  summary: string;
+  items: SourceItem[];
+  error?: string;
+}> {
   const span = OTelTracer().startSpan("SummaryGenerateForUser", context);
   const userId = user.id;
   const customPrompt = user.settings?.summaryPrompt?.trim() || "";
@@ -172,6 +219,7 @@ export async function SummaryGenerateForUser(
   const newsText = newsLines.join("\n");
 
   let summary = "";
+  let error: string | undefined;
   try {
     const response = await axios.post(
       config.LLM_API_URL,
@@ -197,10 +245,16 @@ export async function SummaryGenerateForUser(
       },
     );
     summary = response.data?.choices?.[0]?.message?.content || "";
-  } catch (error) {
-    logger.error(`  Failed to generate summary: ${error.message}`);
+    if (!summary.trim()) {
+      // A 2xx with no content must not overwrite a good digest with "".
+      error = "LLM returned an empty summary";
+      logger.error(`  Failed to generate summary: ${error}`);
+    }
+  } catch (err: any) {
+    error = String(err?.message ?? err).slice(0, 300);
+    logger.error(`  Failed to generate summary: ${error}`);
   }
 
   span.end();
-  return { itemCount: newsLines.length, summary, items };
+  return { itemCount: newsLines.length, summary, items, error };
 }

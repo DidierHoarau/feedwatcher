@@ -1,6 +1,7 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { OTelRequestSpan } from "../OTelContext";
 import { AuthGetUserSession } from "../users/Auth";
+import { UrlSafetyValidate } from "../utils-std-ts/UrlSafety";
 import {
   PushSubscription,
   PushSubscriptionsDataDelete,
@@ -29,6 +30,15 @@ export class PushRoutes {
         return res.status(400).send({ error: "Missing: Endpoint" });
       }
       if (!req.body.endpoint.startsWith("https://")) {
+        return res.status(400).send({ error: "Invalid: Endpoint" });
+      }
+      try {
+        // Push endpoints are public HTTPS services: never allow private or
+        // loopback targets, even when the server allows trusted private feeds.
+        await UrlSafetyValidate(req.body.endpoint, {
+          allowPrivateNetwork: false,
+        });
+      } catch {
         return res.status(400).send({ error: "Invalid: Endpoint" });
       }
       const keys = req.body.keys;

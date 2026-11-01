@@ -1,6 +1,10 @@
 import Fastify, { FastifyInstance } from "fastify";
 import axios from "axios";
 import { SourcesRoutes } from "./SourcesRoutes";
+import {
+  SOURCES_DISCOVER_RATE_LIMIT,
+  SOURCES_FETCH_RATE_LIMIT,
+} from "./SourcesRoutes";
 import { SourcesDataAdd, SourcesDataListForUser } from "./SourcesData";
 import {
   ProcessorsCheckSource,
@@ -523,6 +527,63 @@ describe("SourcesRoutes", () => {
 
       expect(response.statusCode).toBe(429);
       expect(response.json()).toEqual({ error: "Rate limited" });
+    });
+  });
+
+  describe("outbound rate limits (L2)", () => {
+    const tokenA = { authorization: "Bearer session-token-a" };
+    const tokenB = { authorization: "Bearer session-token-b" };
+
+    test("limits discover per bearer token", async () => {
+      jest.mocked(UrlSafetyFetchText).mockResolvedValue("<html></html>");
+
+      for (let i = 0; i < SOURCES_DISCOVER_RATE_LIMIT.max; i++) {
+        const response = await fastify.inject({
+          method: "GET",
+          url: "/discover?url=https://example.com",
+          headers: tokenA,
+        });
+        expect(response.statusCode).toBe(200);
+      }
+
+      const limited = await fastify.inject({
+        method: "GET",
+        url: "/discover?url=https://example.com",
+        headers: tokenA,
+      });
+      expect(limited.statusCode).toBe(429);
+
+      const otherUser = await fastify.inject({
+        method: "GET",
+        url: "/discover?url=https://example.com",
+        headers: tokenB,
+      });
+      expect(otherUser.statusCode).toBe(200);
+    });
+
+    test("limits fetch per bearer token", async () => {
+      for (let i = 0; i < SOURCES_FETCH_RATE_LIMIT.max; i++) {
+        const response = await fastify.inject({
+          method: "PUT",
+          url: "/fetch",
+          headers: tokenA,
+        });
+        expect(response.statusCode).toBe(200);
+      }
+
+      const limited = await fastify.inject({
+        method: "PUT",
+        url: "/fetch",
+        headers: tokenA,
+      });
+      expect(limited.statusCode).toBe(429);
+
+      const otherUser = await fastify.inject({
+        method: "PUT",
+        url: "/fetch",
+        headers: tokenB,
+      });
+      expect(otherUser.statusCode).toBe(200);
     });
   });
 });

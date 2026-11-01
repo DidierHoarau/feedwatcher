@@ -51,3 +51,43 @@ describe("Home page processors list", () => {
     wrapper.unmount();
   });
 });
+
+describe("Home page summary state (M3)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(axios.get).mockReset();
+    vi.mocked(axios.get).mockResolvedValue({ data: [] });
+  });
+
+  test("shows a stale banner and keeps the previous summary on error", async () => {
+    const wrapper = await mountPage();
+    await wrapper.setData({
+      summary: {
+        summary: "## Old",
+        status: "error",
+        generatedAt: "2026-10-31T08:00:00.000Z",
+      },
+    });
+
+    expect(wrapper.find(".summary-stale").exists()).toBe(true);
+    expect(wrapper.find(".summary-stale").text()).toContain(
+      "could not be generated"
+    );
+    expect(wrapper.find(".summary-text").exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  test("shows the banner without summary text when there is no digest", async () => {
+    const wrapper = await mountPage();
+    await wrapper.setData({
+      summary: { summary: "", status: "error", generatedAt: null },
+    });
+
+    expect(wrapper.find(".summary-stale").exists()).toBe(true);
+    expect(wrapper.find(".summary-stale").text()).toContain(
+      "could not be generated"
+    );
+    expect(wrapper.find(".summary-text").exists()).toBe(false);
+    wrapper.unmount();
+  });
+});

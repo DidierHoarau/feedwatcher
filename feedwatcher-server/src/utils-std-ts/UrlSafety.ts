@@ -1,3 +1,4 @@
+import * as https from "https";
 import * as path from "path";
 
 const ssrfHttp: any = require(path.join(
@@ -28,6 +29,7 @@ export interface UrlSafetyFetchOptions {
   trustedOrigins?: string[];
   headers?: Record<string, string>;
   maxRedirects?: number;
+  allowPrivateNetwork?: boolean;
 }
 
 // Validates a URL for outbound fetching: http(s) only, hostname must resolve
@@ -39,6 +41,31 @@ export async function UrlSafetyValidate(
   try {
     await ssrfHttp.validateUrl(urlRaw, options);
   } catch (err: any) {
+    throw new UrlSafetyError(err.message, err.statusCode);
+  }
+}
+
+// Validates an HTTPS URL and returns an agent that always connects to the
+// address validated for it, so DNS cannot be rebound between validation and
+// the request. Used for push endpoints, which must stay public-only.
+export async function UrlSafetyPinnedHttpsAgent(
+  urlRaw: string,
+  options: UrlSafetyFetchOptions = {},
+): Promise<https.Agent> {
+  try {
+    const parsed = new URL(urlRaw);
+    if (parsed.protocol !== "https:") {
+      throw new UrlSafetyError("Invalid URL", 400);
+    }
+    const validated = await ssrfHttp.validateUrl(urlRaw, options);
+    return new https.Agent({
+      keepAlive: false,
+      lookup: ssrfHttp.createPinnedLookup(validated.address, validated.family),
+    });
+  } catch (err: any) {
+    if (err instanceof UrlSafetyError) {
+      throw err;
+    }
     throw new UrlSafetyError(err.message, err.statusCode);
   }
 }

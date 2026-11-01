@@ -13,14 +13,22 @@ export class SummaryRoutes {
       }
       const cached = await SummaryGetCached(userSession.userId);
       if (!cached) {
-        return res
-          .status(200)
-          .send({ itemCount: 0, summary: "", generatedAt: null });
+        return res.status(200).send({
+          itemCount: 0,
+          summary: "",
+          generatedAt: null,
+          status: "ok",
+          error: null,
+          errorAt: null,
+        });
       }
       return res.status(200).send({
         itemCount: cached.itemCount,
         summary: cached.summary,
         generatedAt: cached.generatedAt,
+        status: cached.status,
+        error: cached.error,
+        errorAt: cached.errorAt,
       });
     });
   }

@@ -1,9 +1,11 @@
 import axios from "axios";
 import * as dns from "dns";
+import * as https from "https";
 import {
   isPrivateAddress,
   UrlSafetyError,
   UrlSafetyFetchText,
+  UrlSafetyPinnedHttpsAgent,
   UrlSafetyValidate,
 } from "./UrlSafety";
 
@@ -251,5 +253,54 @@ describe("UrlSafetyFetchText", () => {
     await expect(
       UrlSafetyFetchText("https://example.com/feed")
     ).rejects.toMatchObject({ statusCode: 415 });
+  });
+});
+
+describe("UrlSafetyPinnedHttpsAgent (M4)", () => {
+  function agentLookup(agent: any, options: any): Promise<any> {
+    return new Promise((resolve) => {
+      agent.options.lookup("example.com", options, (...args: any[]) => {
+        resolve(args);
+      });
+    });
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.mocked(dns.promises.lookup).mockResolvedValue(publicLookup);
+  });
+
+  test("returns an HTTPS agent pinned to the validated address", async () => {
+    const agent = await UrlSafetyPinnedHttpsAgent(
+      "https://push.example.com/x",
+      { allowPrivateNetwork: false },
+    );
+
+    expect(agent).toBeInstanceOf(https.Agent);
+    expect(agent.options.keepAlive).toBe(false);
+    expect(await agentLookup(agent, {})).toEqual([
+      null,
+      "93.184.216.34",
+      4,
+    ]);
+    agent.destroy();
+  });
+
+  test.each([
+    "https://127.0.0.1/x",
+    "https://[::1]/x",
+    "https://10.0.0.1/x",
+  ])("rejects a private target %s", async (url) => {
+    await expect(
+      UrlSafetyPinnedHttpsAgent(url, { allowPrivateNetwork: false }),
+    ).rejects.toBeInstanceOf(UrlSafetyError);
+  });
+
+  test("rejects a non-HTTPS URL", async () => {
+    await expect(
+      UrlSafetyPinnedHttpsAgent("http://push.example.com/x", {
+        allowPrivateNetwork: false,
+      }),
+    ).rejects.toMatchObject({ message: "Invalid URL", statusCode: 400 });
   });
 });
