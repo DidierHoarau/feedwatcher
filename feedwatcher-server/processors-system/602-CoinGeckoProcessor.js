@@ -38,6 +38,7 @@ module.exports = {
     }
     const sourceItems = [];
     const sourceItem = {};
+    const now = new Date();
     sourceItem.url = source.info.url;
     sourceItem.title = `Price: USD ${value}`;
     if (lastSourceItemSaved && value > lastSourceItemSaved.info.price) {
@@ -46,8 +47,9 @@ module.exports = {
       sourceItem.title += " (down)";
     }
     sourceItem.content = "";
-    sourceItem.datePublished = new Date();
-    sourceItem.info = { price: value };
+    sourceItem.datePublished = now;
+    // One price per day reuses the source URL: dedupe on the price timestamp.
+    sourceItem.info = { price: value, itemId: now.toISOString() };
     sourceItems.push(sourceItem);
     return sourceItems;
   },

@@ -104,3 +104,68 @@ describe("Wikipedia processor: rejected attacker-style URLs", () => {
     expect(axiosSpy).not.toHaveBeenCalled();
   });
 });
+
+describe("Wikipedia processor: hidden revisions", () => {
+  beforeEach(() => {
+    jest
+      .spyOn(dns.promises, "lookup")
+      .mockResolvedValue([{ address: "93.184.216.34", family: 4 }] as any);
+    jest.spyOn(axios, "get").mockImplementation(async (url: string) => {
+      if (String(url).includes("/history")) {
+        return {
+          status: 200,
+          headers: { "content-type": "application/json" },
+          data: JSON.stringify({
+            revisions: [
+              {
+                id: 1,
+                timestamp: "2026-01-01T00:00:00Z",
+                comment: "initial",
+                user: { name: "Alice" },
+                delta: 1,
+                size: 10,
+              },
+              {
+                id: 2,
+                timestamp: "2026-01-02T00:00:00Z",
+                comment: null,
+                user: null,
+                delta: 2,
+                size: 12,
+              },
+              {
+                id: null,
+                timestamp: "2026-01-03T00:00:00Z",
+                comment: "deleted",
+                user: null,
+                delta: 0,
+                size: 12,
+              },
+            ],
+          }),
+        } as any;
+      }
+      return {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        data: JSON.stringify({ title: "Earth" }),
+      } as any;
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test("returns revisions with suppressed comment/user and skips unidentified ones", async () => {
+    const source = new Source();
+    source.info.url = "https://en.wikipedia.org/wiki/Earth";
+
+    const sourceItems = await processor.fetchLatest(source, null);
+
+    expect(sourceItems).toHaveLength(2);
+    expect(sourceItems.map((item: any) => item.info.itemId)).toEqual([1, 2]);
+    expect(sourceItems[1].content).toContain("(hidden user)");
+    expect(sourceItems[1].url).toBe(source.info.url);
+  });
+});

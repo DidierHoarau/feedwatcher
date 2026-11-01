@@ -67,7 +67,11 @@ afterEach(() => {
   tempDirs = [];
 });
 
-function newItem(id: string, url: string): SourceItem {
+function newItem(
+  id: string,
+  url: string,
+  options: { date?: Date | string | null; itemId?: string } = {},
+): SourceItem {
   const item = new SourceItem();
   item.id = id;
   item.sourceId = "src-1";
@@ -76,8 +80,11 @@ function newItem(id: string, url: string): SourceItem {
   item.url = url;
   item.thumbnail = null;
   item.status = "unread" as any;
-  item.datePublished = new Date("2026-01-01T00:00:00Z");
-  item.info = {};
+  item.datePublished =
+    options.date === undefined
+      ? new Date("2026-01-01T00:00:00Z")
+      : (options.date as any);
+  item.info = options.itemId ? { itemId: options.itemId } : {};
   return item;
 }
 
@@ -171,8 +178,14 @@ describe("SourceItemsDataAddMany", () => {
       items.push(newItem(`item-${i}`, `https://example.com/${i}`));
     }
 
-    await SourceItemsDataAddMany(span, "src-1", "user-1", items);
+    const result = await SourceItemsDataAddMany(
+      span,
+      "src-1",
+      "user-1",
+      items,
+    );
 
+    expect(result).toEqual({ inserted: 50, skipped: 0 });
     expect(await countItems()).toBe(50);
     expect(SourcesDataInvalidateUserCache).toHaveBeenCalledTimes(1);
     expect(jest.mocked(SourcesDataInvalidateUserCache)).toHaveBeenCalledWith(
@@ -186,46 +199,76 @@ describe("SourceItemsDataAddMany", () => {
       newItem("item-1", "https://example.com/a"),
     ]);
 
-    await SourceItemsDataAddMany(span, "src-1", "user-1", [
+    const result = await SourceItemsDataAddMany(span, "src-1", "user-1", [
       newItem("item-2", "https://example.com/a"),
       newItem("item-3", "https://example.com/b"),
       newItem("item-4", "https://example.com/b"),
       newItem("item-5", "https://example.com/c"),
     ]);
 
+    expect(result).toEqual({ inserted: 2, skipped: 2 });
     const rows = await DbUtilsQuerySQL(span, "SELECT id, url FROM sources_items ORDER BY id");
     expect(rows.map((row) => row.id)).toEqual(["item-1", "item-3", "item-5"]);
   });
 
   test("inserts items without a URL without the dedupe guard", async () => {
-    await SourceItemsDataAddMany(span, "src-1", "user-1", [
+    const result = await SourceItemsDataAddMany(span, "src-1", "user-1", [
       newItem("item-1", ""),
       newItem("item-2", ""),
     ]);
 
+    expect(result).toEqual({ inserted: 2, skipped: 0 });
     expect(await countItems()).toBe(2);
   });
 
   test("does nothing for an empty batch", async () => {
-    await SourceItemsDataAddMany(span, "src-1", "user-1", []);
+    const result = await SourceItemsDataAddMany(span, "src-1", "user-1", []);
 
+    expect(result).toEqual({ inserted: 0, skipped: 0 });
     expect(await countItems()).toBe(0);
     expect(SourcesDataInvalidateUserCache).not.toHaveBeenCalled();
   });
 
-  test("rolls the whole batch back when one item is invalid", async () => {
-    const badItem = newItem("item-bad", "https://example.com/bad");
-    badItem.datePublished = new Date("not a date");
+  test("skips an item with an invalid datePublished and keeps the rest", async () => {
+    const badItem = newItem("item-bad", "https://example.com/bad", {
+      date: new Date("not a date"),
+    });
 
-    await expect(
-      SourceItemsDataAddMany(span, "src-1", "user-1", [
-        newItem("item-1", "https://example.com/a"),
-        badItem,
-        newItem("item-3", "https://example.com/c"),
-      ]),
-    ).rejects.toThrow();
+    const result = await SourceItemsDataAddMany(span, "src-1", "user-1", [
+      newItem("item-1", "https://example.com/a"),
+      badItem,
+      newItem("item-3", "https://example.com/c"),
+    ]);
 
-    expect(await countItems()).toBe(0);
-    expect(SourcesDataInvalidateUserCache).not.toHaveBeenCalled();
+    expect(result).toEqual({ inserted: 2, skipped: 1 });
+    expect(await countItems()).toBe(2);
+    expect(SourcesDataInvalidateUserCache).toHaveBeenCalledTimes(1);
+  });
+
+  test("stores items sharing a URL when they have distinct itemIds", async () => {
+    const items = [
+      newItem("item-1", "https://example.com/source", { itemId: "a" }),
+      newItem("item-2", "https://example.com/source", { itemId: "b" }),
+      newItem("item-3", "https://example.com/source", { itemId: "c" }),
+    ];
+
+    const first = await SourceItemsDataAddMany(span, "src-1", "user-1", items);
+    expect(first).toEqual({ inserted: 3, skipped: 0 });
+
+    const second = await SourceItemsDataAddMany(span, "src-1", "user-1", items);
+    expect(second).toEqual({ inserted: 0, skipped: 3 });
+    expect(await countItems()).toBe(3);
+  });
+
+  test("stores items sharing the same datePublished when they have distinct itemIds", async () => {
+    const date = new Date("2026-05-01T12:00:00Z");
+    const result = await SourceItemsDataAddMany(span, "src-1", "user-1", [
+      newItem("item-a", "https://example.com/source", { date, itemId: "a" }),
+      newItem("item-b", "https://example.com/source", { date, itemId: "b" }),
+      newItem("item-c", "https://example.com/source", { date, itemId: "c" }),
+    ]);
+
+    expect(result).toEqual({ inserted: 3, skipped: 0 });
+    expect(await countItems()).toBe(3);
   });
 });

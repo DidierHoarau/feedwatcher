@@ -1,4 +1,5 @@
 import { Span } from "@opentelemetry/sdk-trace";
+import { createHash } from "crypto";
 import { SourceItem } from "../model/SourceItem";
 import { SourceItemStatus } from "../model/SourceItemStatus";
 import { OTelTracer } from "../OTelContext";
@@ -37,41 +38,95 @@ export async function SourceItemsDataGetForUser(
 
 const INSERT_ITEM_SQL =
   "INSERT INTO sources_items " +
-  "(id, sourceId, title, content, url, status, datePublished, thumbnail, info) " +
-  "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ? " +
-  "WHERE ? = '' OR NOT EXISTS ( " +
-  "  SELECT 1 FROM sources_items WHERE sourceId = ? AND url = ? " +
+  "(id, sourceId, title, content, url, status, datePublished, thumbnail, info, dedupeKey) " +
+  "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ? " +
+  "WHERE NOT EXISTS ( " +
+  "  SELECT 1 FROM sources_items WHERE sourceId = ? AND dedupeKey = ? " +
   ")";
 
+export const DEDUPE_KEY_MAX_LENGTH = 500;
+
+// Returns null for missing or unparseable dates so callers can skip the item
+// instead of failing the whole batch (or storing an epoch date).
+export function SourceItemDateNormalize(
+  value: Date | string | number | null | undefined,
+): Date | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+}
+
+function dedupeKeyFor(kind: string, value: string): string {
+  const key = `${kind}:${value}`;
+  if (key.length <= DEDUPE_KEY_MAX_LENGTH) {
+    return key;
+  }
+  return `${kind}:sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+// Item identity used for dedupe: a stable per-item id when the processor
+// provides info.itemId, otherwise the item url. Items with neither are never
+// deduplicated (same as before).
+export function SourceItemDedupeKey(sourceItem: SourceItem): string | null {
+  const itemId = sourceItem.info ? sourceItem.info.itemId : undefined;
+  if (itemId !== undefined && itemId !== null && String(itemId) !== "") {
+    return dedupeKeyFor("item", String(itemId));
+  }
+  if (sourceItem.url) {
+    return dedupeKeyFor("url", sourceItem.url);
+  }
+  return null;
+}
+
 function itemInsertParams(sourceId: string, sourceItem: SourceItem): any[] {
+  const dedupeKey = SourceItemDedupeKey(sourceItem);
   return [
     sourceItem.id,
     sourceId,
-    sourceItem.title,
-    sourceItem.content,
-    sourceItem.url,
-    sourceItem.status,
-    sourceItem.datePublished.toISOString(),
-    sourceItem.thumbnail,
-    JSON.stringify(sourceItem.info),
-    sourceItem.url,
+    sourceItem.title ?? "",
+    sourceItem.content ?? "",
+    sourceItem.url ?? "",
+    sourceItem.status ?? SourceItemStatus.unread,
+    SourceItemDateNormalize(sourceItem.datePublished).toISOString(),
+    sourceItem.thumbnail ?? null,
+    JSON.stringify(sourceItem.info ?? {}),
+    dedupeKey,
     sourceId,
-    sourceItem.url,
+    dedupeKey,
   ];
 }
 
 // Inserts one source's new items in a single batch/transaction, then
-// invalidates the owner's cache once. URL dedupe is preserved per item:
-// re-fetched items (e.g. date-less feeds reprocessed every cycle) are skipped,
-// items without a url skip the guard. A failure rolls back the whole batch.
+// invalidates the owner's cache once. Items are deduplicated on their stable
+// per-item key (info.itemId, else url); items with neither are always stored.
+// An item with an invalid datePublished is skipped instead of rolling the
+// whole batch back. Returns how many rows were inserted and skipped.
 export async function SourceItemsDataAddMany(
   context: Span,
   sourceId: string,
   userId: string,
   sourceItems: SourceItem[],
-): Promise<void> {
+): Promise<{ inserted: number; skipped: number }> {
   if (!sourceItems || sourceItems.length === 0) {
-    return;
+    return { inserted: 0, skipped: 0 };
+  }
+  let inserted = 0;
+  let skipped = 0;
+  const itemsToInsert: SourceItem[] = [];
+  for (const sourceItem of sourceItems) {
+    if (!SourceItemDateNormalize(sourceItem.datePublished)) {
+      skipped++;
+      continue;
+    }
+    itemsToInsert.push(sourceItem);
+  }
+  if (itemsToInsert.length === 0) {
+    return { inserted, skipped };
   }
   const span = OTelTracer().startSpan("SourceItemsDataAddMany", context);
   try {
@@ -82,9 +137,13 @@ export async function SourceItemsDataAddMany(
       try {
         await client.query("BEGIN");
         const sql = convertToPostgresPlaceholders(INSERT_ITEM_SQL);
-        for (const sourceItem of sourceItems) {
+        for (const sourceItem of itemsToInsert) {
           // eslint-disable-next-line no-await-in-loop
-          await client.query(sql, itemInsertParams(sourceId, sourceItem));
+          const result = await client.query(
+            sql,
+            itemInsertParams(sourceId, sourceItem),
+          );
+          inserted += result.rowCount ?? 0;
         }
         await client.query("COMMIT");
       } catch (err) {
@@ -104,15 +163,18 @@ export async function SourceItemsDataAddMany(
       const insert = db.prepare(INSERT_ITEM_SQL);
       const runBatch = db.transaction((items: SourceItem[]) => {
         for (const sourceItem of items) {
-          insert.run(...itemInsertParams(sourceId, sourceItem));
+          const result = insert.run(...itemInsertParams(sourceId, sourceItem));
+          inserted += result.changes;
         }
       });
-      runBatch(sourceItems);
+      runBatch(itemsToInsert);
     }
+    skipped += itemsToInsert.length - inserted;
     await SourcesDataInvalidateUserCache(span, userId);
   } finally {
     span.end();
   }
+  return { inserted, skipped };
 }
 
 export async function SourceItemsDataUpdate(

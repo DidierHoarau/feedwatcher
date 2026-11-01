@@ -21,6 +21,7 @@ import {
 import {
   SourceItemsDataAddMany,
   SourceItemsDataGetLastForSource,
+  SourceItemDateNormalize,
 } from "../sources/SourceItemsData";
 import {
   SourcesFetchStateDataGet,
@@ -286,7 +287,7 @@ export async function ProcessorsFetchSourceItems(
         try {
           const processor = await ProcessorsLoadFile(processorsFile);
           if (await processor.test(source, sourceContext)) {
-            let nbNewItem = 0;
+            let skippedItemCount = 0;
             let lastItemDate: Date = null;
             const newSourceItems = await processor.fetchLatest(
               source,
@@ -296,20 +297,26 @@ export async function ProcessorsFetchSourceItems(
             const sourceItemsToSave = [];
             for (const newSourceItem of newSourceItems) {
               try {
-                const itemDate = new Date(newSourceItem.datePublished);
-                if (!isNaN(itemDate.getTime())) {
-                  if (
-                    !lastItemDate ||
-                    itemDate.getTime() > lastItemDate.getTime()
-                  ) {
-                    lastItemDate = itemDate;
-                  }
+                const itemDate = SourceItemDateNormalize(
+                  newSourceItem.datePublished,
+                );
+                if (!itemDate) {
+                  skippedItemCount++;
+                  logger.warn(
+                    `Skipping item with an invalid datePublished for source ${source.id} (${source.name})`,
+                    context,
+                  );
+                  continue;
+                }
+                newSourceItem.datePublished = itemDate;
+                if (!lastItemDate || itemDate.getTime() > lastItemDate.getTime()) {
+                  lastItemDate = itemDate;
                 }
                 if (
                   !lastSourceItemSaved ||
-                  newSourceItem.datePublished > lastSourceItemSaved.datePublished
+                  itemDate.getTime() >=
+                    lastSourceItemSaved.datePublished.getTime()
                 ) {
-                  nbNewItem++;
                   newSourceItem.sourceId = source.id;
                   newSourceItem.status = SourceItemStatus.unread;
                   if (!newSourceItem.info) {
@@ -322,22 +329,26 @@ export async function ProcessorsFetchSourceItems(
                 }
               } catch (err) {
                 // One malformed item must not abort the whole fetch
+                skippedItemCount++;
                 logger.warn(
                   `Skipping invalid item for source ${source.id} (${source.name}): ${err.message}`,
                   context,
                 );
               }
             }
+            let insertedItemCount = 0;
             if (sourceItemsToSave.length > 0) {
-              await SourceItemsDataAddMany(
+              const addResult = await SourceItemsDataAddMany(
                 context,
                 source.id,
                 source.userId,
                 sourceItemsToSave,
               );
+              insertedItemCount = addResult.inserted;
+              skippedItemCount += addResult.skipped;
             }
             logger.info(
-              `Source ${source.id} has ${nbNewItem} new items`,
+              `Source ${source.id} has ${insertedItemCount} new items (${skippedItemCount} skipped)`,
               context,
             );
             if (source.info.processorPath !== processorsFile.path) {

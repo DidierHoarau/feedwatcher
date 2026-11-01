@@ -88,16 +88,25 @@ module.exports = {
     const sourceItems = [];
     for (let i = 0; i < pageRevisions.length; i++) {
       const item = pageRevisions[i];
+      // Hidden revisions can have a suppressed user or a missing comment;
+      // without an id/timestamp the revision cannot be identified or dated.
+      if (item.id === undefined || item.id === null || !item.timestamp) {
+        continue;
+      }
       const sourceItem = {};
+      const comment = typeof item.comment === "string" ? item.comment : "";
+      const userName = item.user && item.user.name ? item.user.name : "(hidden user)";
       sourceItem.url = source.info.url;
-      sourceItem.title = item.comment.substring(0, 20);
-      sourceItem.content = `Comment: <br/>${item.comment}<br>Author: ${item.user.name}<br />Change Size: ${item.delta}/${item.size}`;
+      sourceItem.title = comment.substring(0, 20);
+      sourceItem.content = `Comment: <br/>${comment}<br>Author: ${userName}<br />Change Size: ${item.delta}/${item.size}`;
       if (i > 0) {
         sourceItem.content += `<br />Difference: <a href="https://${pageLanguage}.wikipedia.org/w/index.php?title=${pageName}&diff=${
           item.id
         }&oldid=${pageRevisions[i - 1].id}" target="_blank">Link</a>`;
       }
       sourceItem.datePublished = new Date(item.timestamp);
+      // Every revision shares the source URL: dedupe on the revision id.
+      sourceItem.info = { itemId: item.id };
       sourceItems.push(sourceItem);
     }
     return sourceItems;
