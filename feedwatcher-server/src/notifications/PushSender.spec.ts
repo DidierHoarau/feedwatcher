@@ -1,4 +1,6 @@
 import { Span } from "@opentelemetry/sdk-trace";
+import * as dns from "dns";
+import * as https from "https";
 import * as webpush from "web-push";
 import { Config } from "../Config";
 import {
@@ -12,6 +14,10 @@ jest.mock("web-push", () => ({
   generateVAPIDKeys: jest.fn(),
   setVapidDetails: jest.fn(),
   sendNotification: jest.fn(),
+}));
+
+jest.mock("dns", () => ({
+  promises: { lookup: jest.fn() },
 }));
 
 jest.mock("../OTelContext", () => ({
@@ -70,6 +76,9 @@ beforeEach(() => {
   jest
     .mocked(PushSubscriptionsDataListForUser)
     .mockResolvedValue([]);
+  jest
+    .mocked(dns.promises.lookup)
+    .mockResolvedValue([{ address: "93.184.216.34", family: 4 }] as any);
 });
 
 describe("PushSenderInit", () => {
@@ -195,6 +204,35 @@ describe("PushSenderSendToUser", () => {
     expect(
       jest.mocked(webpush.sendNotification).mock.calls[0][1]
     ).toBe(JSON.stringify({ title: "Hello" }));
+    const options = jest.mocked(webpush.sendNotification).mock
+      .calls[0][2] as any;
+    expect(options.agent).toBeInstanceOf(https.Agent);
+  });
+
+  test("skips a subscription with a private endpoint without deleting it (M4)", async () => {
+    jest
+      .mocked(PushSubscriptionsDataListForUser)
+      .mockResolvedValue([
+        {
+          endpoint: "https://127.0.0.1/internal",
+          keys: { p256dh: "k1", auth: "a1" },
+        },
+        {
+          endpoint: "https://push.example.com/sub-2",
+          keys: { p256dh: "k2", auth: "a2" },
+        },
+      ]);
+    jest.mocked(webpush.sendNotification).mockResolvedValue(undefined);
+    await PushSenderInit(span, newConfig("cfg-public", "cfg-private"));
+
+    const sent = await PushSenderSendToUser(span, "user-1", {});
+
+    expect(sent).toBe(1);
+    expect(webpush.sendNotification).toHaveBeenCalledTimes(1);
+    expect(
+      jest.mocked(webpush.sendNotification).mock.calls[0][0]
+    ).toMatchObject({ endpoint: "https://push.example.com/sub-2" });
+    expect(PushSubscriptionsDataDelete).not.toHaveBeenCalled();
   });
 
   test("removes the subscription on 404/410 (N1)", async () => {

@@ -13,6 +13,9 @@
 
     <div v-if="summary" class="summary-section">
       <h2>News Summary</h2>
+      <p v-if="summaryStaleMessage" class="summary-stale" role="status">
+        {{ summaryStaleMessage }}
+      </p>
       <div class="summary-content">
         <div
           v-if="summary.summary"
@@ -67,6 +70,19 @@ export default {
       if (!this.summary?.summary) return "";
       return DOMPurify.sanitize(marked(this.summary.summary));
     },
+    summaryStaleMessage() {
+      if (this.summary?.status !== "error") return "";
+      const generatedAt = this.summary.generatedAt
+        ? new Date(this.summary.generatedAt)
+        : null;
+      if (this.summary.summary && generatedAt && !isNaN(generatedAt)) {
+        return `The latest summary could not be generated. Showing the last available summary from ${generatedAt.toLocaleString()}.`;
+      }
+      if (this.summary.summary) {
+        return "The latest summary could not be generated. Showing the last available summary.";
+      }
+      return "The latest summary could not be generated. It will be retried at the next scheduled run.";
+    },
   },
   methods: {
     searchDashboard() {
@@ -103,7 +119,10 @@ export default {
           await AuthService.getAuthHeader(),
         );
         const summaryData = res.data;
-        if (summaryData && summaryData.summary) {
+        if (
+          summaryData &&
+          (summaryData.summary || summaryData.status === "error")
+        ) {
           this.summary = summaryData;
         }
       } catch (error) {
@@ -138,6 +157,10 @@ export default {
 }
 .summary-content {
   margin-top: var(--space-sm);
+}
+.summary-stale {
+  color: var(--color-warning);
+  margin-bottom: var(--space-sm);
 }
 .summary-meta {
   font-size: var(--font-base);

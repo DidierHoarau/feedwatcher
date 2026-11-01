@@ -60,6 +60,19 @@ function configure(options) {
   allowPrivateNetwork = !!(options && options.allowPrivateNetwork === true);
 }
 
+// Per-call override: `false` forces public-only even when the module-global
+// flag allows private networks, `true` allows them for this call only, and an
+// absent value keeps the module-global default.
+function isPrivateNetworkAllowed(options) {
+  if (options && options.allowPrivateNetwork === false) {
+    return false;
+  }
+  if (options && options.allowPrivateNetwork === true) {
+    return true;
+  }
+  return allowPrivateNetwork;
+}
+
 // Normalizes the per-call trusted origins to exact `URL.origin` values
 // (scheme + host + port). Invalid entries are ignored.
 function trustedOriginSet(trustedOrigins) {
@@ -143,8 +156,9 @@ async function validateUrl(urlRaw, options = {}) {
     throw new SsrfHttpError("Invalid URL", 400);
   }
   const trusted = trustedOriginSet(options.trustedOrigins).has(url.origin);
+  const privateAllowed = isPrivateNetworkAllowed(options);
   if (net.isIP(hostname)) {
-    if (!allowPrivateNetwork && !trusted && isPrivateAddress(hostname)) {
+    if (!privateAllowed && !trusted && isPrivateAddress(hostname)) {
       throw new SsrfHttpError("URL not allowed", 400);
     }
     return { url, address: hostname, family: net.isIP(hostname) };
@@ -158,7 +172,7 @@ async function validateUrl(urlRaw, options = {}) {
   if (!addresses || addresses.length === 0) {
     throw new SsrfHttpError("Unable to resolve hostname", 502);
   }
-  if (!allowPrivateNetwork && !trusted) {
+  if (!privateAllowed && !trusted) {
     for (const address of addresses) {
       if (isPrivateAddress(address.address)) {
         throw new SsrfHttpError("URL not allowed", 400);
@@ -196,6 +210,7 @@ async function fetchText(urlRaw, options = {}) {
   const allowedContentTypes = options.allowedContentTypes;
   const signal = options.signal;
   const trustedOrigins = options.trustedOrigins;
+  const allowPrivateNetworkOverride = options.allowPrivateNetwork;
   const headers = Object.assign(
     { "User-Agent": USER_AGENT },
     options.headers || {},
@@ -207,7 +222,10 @@ async function fetchText(urlRaw, options = {}) {
   );
   let currentUrl = String(urlRaw);
   for (let hop = 0; hop <= maxRedirects; hop++) {
-    const validated = await validateUrl(currentUrl, { trustedOrigins });
+    const validated = await validateUrl(currentUrl, {
+      trustedOrigins,
+      allowPrivateNetwork: allowPrivateNetworkOverride,
+    });
     const isHttps = validated.url.protocol === "https:";
     const Agent = isHttps ? https.Agent : http.Agent;
     const agent = new Agent({
@@ -284,6 +302,7 @@ async function fetchText(urlRaw, options = {}) {
 module.exports = {
   SsrfHttpError,
   configure,
+  createPinnedLookup,
   isPrivateAddress,
   validateUrl,
   fetchText,

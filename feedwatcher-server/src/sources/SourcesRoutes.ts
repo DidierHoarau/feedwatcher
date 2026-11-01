@@ -1,6 +1,7 @@
 import { FastifyInstance, RequestGenericInterface } from "fastify";
 import { createHash } from "crypto";
 import axios from "axios";
+import rateLimit from "@fastify/rate-limit";
 import { Source } from "../model/Source";
 import {
   OTelLogger,
@@ -45,6 +46,21 @@ const FEED_LINK_TYPES = [
 ];
 
 const MAX_DISCOVERED_FEEDS = 10;
+
+// Expensive outbound endpoints: discover/preview each perform one outbound
+// fetch, fetch starts a full background refresh for all of the user's sources.
+export const SOURCES_DISCOVER_RATE_LIMIT = {
+  max: 30,
+  timeWindow: "1 minute",
+};
+export const SOURCES_PREVIEW_RATE_LIMIT = {
+  max: 30,
+  timeWindow: "1 minute",
+};
+export const SOURCES_FETCH_RATE_LIMIT = {
+  max: 10,
+  timeWindow: "1 minute",
+};
 
 const PODCAST_INDEX_TIMEOUT_MS = 10_000;
 const PODCAST_INDEX_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
@@ -115,6 +131,18 @@ export class SourcesRoutes {
   //
   public async getRoutes(fastify: FastifyInstance): Promise<void> {
     //
+    // Encapsulated limiter for this plugin only: per bearer token (a session)
+    // with a per-IP fallback, so one user cannot exhaust another's bucket.
+    await fastify.register(rateLimit, {
+      global: false,
+      keyGenerator: (req) => {
+        const authorization = req.headers.authorization;
+        return authorization
+          ? `token:${createHash("sha256").update(authorization).digest("hex")}`
+          : `ip:${req.ip}`;
+      },
+    });
+
     fastify.get("/", async (req, res) => {
       const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
@@ -192,99 +220,111 @@ export class SourcesRoutes {
       return res.status(201).send(source.toJson());
     });
 
-    fastify.put<PostSource>("/fetch", async (req, res) => {
-      const userSession = await AuthGetUserSession(req);
-      if (!userSession.isAuthenticated) {
-        return res.status(403).send({ error: "Access Denied" });
+    fastify.put<PostSource>(
+      "/fetch",
+      { config: { rateLimit: SOURCES_FETCH_RATE_LIMIT } },
+      async (req, res) => {
+        const userSession = await AuthGetUserSession(req);
+        if (!userSession.isAuthenticated) {
+          return res.status(403).send({ error: "Access Denied" });
+        }
+        const span = OTelTracer().startSpan("SourcesRefreshAll");
+        ProcessorsFetchSourceItemsForUser(span, userSession.userId)
+          .catch((err) => logger.error("Error fetching source items", err, span))
+          .finally(() => span.end());
+        return res.status(200).send({});
       }
-      const span = OTelTracer().startSpan("SourcesRefreshAll");
-      ProcessorsFetchSourceItemsForUser(span, userSession.userId)
-        .catch((err) => logger.error("Error fetching source items", err, span))
-        .finally(() => span.end());
-      return res.status(200).send({});
-    });
+    );
 
     interface DiscoverQuery extends RequestGenericInterface {
       Querystring: {
         url: string;
       };
     }
-    fastify.get<DiscoverQuery>("/discover", async (req, res) => {
-      const userSession = await AuthGetUserSession(req);
-      if (!userSession.isAuthenticated) {
-        return res.status(403).send({ error: "Access Denied" });
+    fastify.get<DiscoverQuery>(
+      "/discover",
+      { config: { rateLimit: SOURCES_DISCOVER_RATE_LIMIT } },
+      async (req, res) => {
+        const userSession = await AuthGetUserSession(req);
+        if (!userSession.isAuthenticated) {
+          return res.status(403).send({ error: "Access Denied" });
+        }
+        const requestedUrl = String(req.query.url || "").trim();
+        if (!requestedUrl) {
+          return res.status(400).send({ error: "Missing: url" });
+        }
+        let body: string;
+        try {
+          const providerMeta = await NewsletterResolveProviderForUrl(requestedUrl);
+          body = await UrlSafetyFetchText(
+            requestedUrl,
+            FEED_FETCH_CONTENT_TYPES,
+            NewsletterFetchOptionsForUrl(requestedUrl, providerMeta),
+          );
+        } catch (err: any) {
+          const status =
+            err instanceof UrlSafetyError ? err.statusCode : 502;
+          return res
+            .status(status)
+            .send({ error: err?.message || "Failed to fetch URL" });
+        }
+        if (looksLikeFeed(body)) {
+          return res
+            .status(200)
+            .send({ feeds: [{ url: requestedUrl, title: "", type: "" }] });
+        }
+        return res.status(200).send({ feeds: extractFeedLinks(body, requestedUrl) });
       }
-      const requestedUrl = String(req.query.url || "").trim();
-      if (!requestedUrl) {
-        return res.status(400).send({ error: "Missing: url" });
-      }
-      let body: string;
-      try {
-        const providerMeta = await NewsletterResolveProviderForUrl(requestedUrl);
-        body = await UrlSafetyFetchText(
-          requestedUrl,
-          FEED_FETCH_CONTENT_TYPES,
-          NewsletterFetchOptionsForUrl(requestedUrl, providerMeta),
-        );
-      } catch (err: any) {
-        const status =
-          err instanceof UrlSafetyError ? err.statusCode : 502;
-        return res
-          .status(status)
-          .send({ error: err?.message || "Failed to fetch URL" });
-      }
-      if (looksLikeFeed(body)) {
-        return res
-          .status(200)
-          .send({ feeds: [{ url: requestedUrl, title: "", type: "" }] });
-      }
-      return res.status(200).send({ feeds: extractFeedLinks(body, requestedUrl) });
-    });
+    );
 
     interface PostPreview extends RequestGenericInterface {
       Body: {
         url: string;
       };
     }
-    fastify.post<PostPreview>("/preview", async (req, res) => {
-      const userSession = await AuthGetUserSession(req);
-      if (!userSession.isAuthenticated) {
-        return res.status(403).send({ error: "Access Denied" });
-      }
-      if (!req.body.url || !String(req.body.url).trim()) {
-        return res.status(400).send({ error: "Missing: url" });
-      }
-      // Transient source: only used to run processor detection + one fetch.
-      const source = new Source();
-      source.name = req.body.url;
-      source.info = { url: req.body.url };
-      const providerMeta = await NewsletterResolveProviderForUrl(req.body.url);
-      if (providerMeta) {
-        source.info.provider = providerMeta.provider;
-        source.info.providerFeedId = providerMeta.providerFeedId;
-        source.info.providerUrl = providerMeta.providerUrl;
-      }
-      source.userId = userSession.userId;
-      const { preview, error } = await ProcessorsPreviewSource(
-        OTelRequestSpan(req),
-        source,
-      );
-      if (!preview) {
-        return res.status(400).send({
-          error: error
-            ? `Source Not Supported (No Processor Matching): ${error}`
-            : "Source Not Supported (No Processor Matching)",
+    fastify.post<PostPreview>(
+      "/preview",
+      { config: { rateLimit: SOURCES_PREVIEW_RATE_LIMIT } },
+      async (req, res) => {
+        const userSession = await AuthGetUserSession(req);
+        if (!userSession.isAuthenticated) {
+          return res.status(403).send({ error: "Access Denied" });
+        }
+        if (!req.body.url || !String(req.body.url).trim()) {
+          return res.status(400).send({ error: "Missing: url" });
+        }
+        // Transient source: only used to run processor detection + one fetch.
+        const source = new Source();
+        source.name = req.body.url;
+        source.info = { url: req.body.url };
+        const providerMeta = await NewsletterResolveProviderForUrl(req.body.url);
+        if (providerMeta) {
+          source.info.provider = providerMeta.provider;
+          source.info.providerFeedId = providerMeta.providerFeedId;
+          source.info.providerUrl = providerMeta.providerUrl;
+        }
+        source.userId = userSession.userId;
+        const { preview, error } = await ProcessorsPreviewSource(
+          OTelRequestSpan(req),
+          source,
+        );
+        if (!preview) {
+          return res.status(400).send({
+            error: error
+              ? `Source Not Supported (No Processor Matching): ${error}`
+              : "Source Not Supported (No Processor Matching)",
+          });
+        }
+        return res.status(200).send({
+          processor: {
+            title: preview.processorTitle,
+            icon: preview.processorIcon,
+          },
+          name: preview.name,
+          items: preview.items,
         });
       }
-      return res.status(200).send({
-        processor: {
-          title: preview.processorTitle,
-          icon: preview.processorIcon,
-        },
-        name: preview.name,
-        items: preview.items,
-      });
-    });
+    );
 
     interface SearchQuery extends RequestGenericInterface {
       Querystring: {

@@ -464,10 +464,7 @@ export async function ProcessorsFetchSourceItems(
         );
       }
       await SourcesDataUpdate(context, source);
-      logger.warn(
-        `No processor found for ${source.id} (${source.name})`,
-        context,
-      );
+      logger.warn(ProcessorsFetchFailureLogMessage(source, lastError), context);
     } else {
       const updatedState = sourceContext.getUpdatedState();
       if (updatedState) {
@@ -485,6 +482,16 @@ export async function ProcessorsFetchSourceItems(
     sourcesInFlight.delete(source.id);
     userProcessorInfoStatusStop(context, source.userId);
   }
+}
+
+export function ProcessorsFetchFailureLogMessage(
+  source: Source,
+  lastError: Error,
+): string {
+  if (lastError) {
+    return `Failed to fetch source ${source.id} (${source.name}): ${source.info?.lastFetchError || lastError.message}`;
+  }
+  return `No processor found for ${source.id} (${source.name})`;
 }
 
 export function ProcessorsGetUserProcessorInfo(

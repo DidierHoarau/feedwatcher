@@ -16,6 +16,7 @@ import {
 } from "./OTelContext";
 import { ProcessorsInit } from "./procesors/Processors";
 import { ProcessorsRoutes } from "./procesors/ProcessorsRoutes";
+import { SecurityHeadersRegister } from "./SecurityHeaders";
 import { NotificationsInit } from "./notifications/Notifications";
 import { PushRoutes } from "./notifications/PushRoutes";
 import {
@@ -92,6 +93,8 @@ Promise.resolve().then(async () => {
   // API
 
   const fastify = Fastify({});
+
+  SecurityHeadersRegister(fastify);
 
   if (config.CORS_POLICY_ORIGIN) {
     fastify.register(cors, {

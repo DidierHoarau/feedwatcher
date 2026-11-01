@@ -15,6 +15,7 @@ import { Config } from "../../Config";
 import { Source } from "../../model/Source";
 import { OTelLogger, OTelSetTracer, OTelTracer } from "../../OTelContext";
 import { ProcessorsFetchSourceItems, ProcessorsInit } from "../Processors";
+import { ProcessorsFetchFailureLogMessage } from "../Processors";
 
 const SQL_DIR = path.join(__dirname, "..", "..", "..", "sql");
 const PROCESSORS_SYSTEM_DIR = path.join(__dirname, "..", "..", "..", "processors-system");
@@ -435,5 +436,36 @@ describe("ProcessorsFetchSourceItems item identity and tolerance", () => {
     const infoAfter = (await reloadSource("src-bad-date")).info;
     expect(infoAfter.fetchErrorCount).toBe(0);
     expect(infoAfter.autoDisabled).toBeUndefined();
+  });
+});
+
+describe("ProcessorsFetchFailureLogMessage (L6)", () => {
+  function newSource(): Source {
+    const source = new Source();
+    source.id = "src-1";
+    source.name = "Source One";
+    source.info = {};
+    return source;
+  }
+
+  test("logs the stored fetch error instead of a missing processor", () => {
+    const source = newSource();
+    source.info.lastFetchError = "HTTP 500";
+
+    const message = ProcessorsFetchFailureLogMessage(
+      source,
+      new Error("HTTP 500"),
+    );
+
+    expect(message).toContain("HTTP 500");
+    expect(message).not.toContain("No processor found");
+  });
+
+  test("keeps the no-processor wording when no processor matched", () => {
+    const source = newSource();
+
+    expect(ProcessorsFetchFailureLogMessage(source, null)).toBe(
+      "No processor found for src-1 (Source One)",
+    );
   });
 });

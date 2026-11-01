@@ -1,7 +1,9 @@
 import { Span } from "@opentelemetry/sdk-trace";
+import * as https from "https";
 import * as webpush from "web-push";
 import { Config } from "../Config";
 import { OTelLogger, OTelTracer } from "../OTelContext";
+import { UrlSafetyPinnedHttpsAgent } from "../utils-std-ts/UrlSafety";
 import {
   DbUtilsExecSQL,
   DbUtilsQuerySQL,
@@ -124,10 +126,24 @@ export async function PushSenderSendToUser(
   try {
     const subscriptions = await PushSubscriptionsDataListForUser(span, userId);
     for (const subscription of subscriptions) {
+      let agent: https.Agent;
+      try {
+        agent = await UrlSafetyPinnedHttpsAgent(subscription.endpoint, {
+          allowPrivateNetwork: false,
+        });
+      } catch (err: any) {
+        // Legacy rows with a private target stay inert instead of being
+        // deleted: a transient DNS failure must not destroy user data.
+        logger.warn(
+          `Skipping push subscription with unsafe endpoint for user ${userId}: ${err.message}`
+        );
+        continue;
+      }
       try {
         await webpush.sendNotification(
           subscription as any,
-          JSON.stringify(payload)
+          JSON.stringify(payload),
+          { agent }
         );
         sent++;
       } catch (err: any) {
@@ -137,6 +153,8 @@ export async function PushSenderSendToUser(
         } else {
           logger.warn(`Push send failed for user ${userId}: ${err.message}`);
         }
+      } finally {
+        agent.destroy();
       }
     }
   } catch (err) {
