@@ -89,12 +89,69 @@ function send(res: http.ServerResponse, status: number, headers: any, body = "")
   res.end(body);
 }
 
+// A user processor fixture that never performs HTTP requests: it exercises
+// per-item identity, same-timestamp items and invalid dates end-to-end.
+const FIXTURE_PROCESSOR = `
+module.exports = {
+  getInfo: () => ({
+    title: "Same URL Fixture",
+    description: "Test fixture",
+    icon: "gear",
+  }),
+  test: async (source) => {
+    const url = (source.info && source.info.url) || "";
+    if (
+      url.includes("/same-url") ||
+      url.includes("/same-timestamp") ||
+      url.includes("/bad-date")
+    ) {
+      return { name: "Fixture Source", icon: "gear" };
+    }
+    return null;
+  },
+  fetchLatest: async (source, lastSourceItemSaved) => {
+    const url = source.info.url;
+    if (url.includes("/same-url")) {
+      return [
+        { url, title: "Same A", content: "", datePublished: new Date("2025-01-01T00:00:00Z"), info: { itemId: "a" } },
+        { url, title: "Same B", content: "", datePublished: new Date("2025-01-02T00:00:00Z"), info: { itemId: "b" } },
+        { url, title: "Same C", content: "", datePublished: new Date("2025-01-03T00:00:00Z"), info: { itemId: "c" } },
+      ];
+    }
+    if (url.includes("/same-timestamp")) {
+      const date = new Date("2025-02-01T00:00:00Z");
+      const items = [
+        { url, title: "Timestamp A", content: "", datePublished: date, info: { itemId: "a" } },
+      ];
+      if (lastSourceItemSaved) {
+        items.push({ url, title: "Timestamp C", content: "", datePublished: date, info: { itemId: "c" } });
+      }
+      return items;
+    }
+    if (url.includes("/bad-date")) {
+      return [
+        { url, title: "Bad Date Good 1", content: "", datePublished: new Date("2025-03-01T00:00:00Z"), info: { itemId: "good-1" } },
+        { url, title: "Bad Date Invalid", content: "", datePublished: "not a date", info: { itemId: "bad" } },
+        { url, title: "Bad Date Good 2", content: "", datePublished: "2025-03-02T00:00:00.000Z", info: { itemId: "good-2" } },
+      ];
+    }
+    return [];
+  },
+};
+`;
+
 beforeAll(async () => {
   processorsUserDir = fs.mkdtempSync(path.join(os.tmpdir(), "fw-fetch-user-"));
+  // The fixture must exist before ProcessorsInit scans the user directory.
+  fs.writeFileSync(
+    path.join(processorsUserDir, "001-SameUrlFixture.js"),
+    FIXTURE_PROCESSOR,
+  );
   const config = new Config();
   config.PROCESSORS_USER = processorsUserDir;
   config.PROCESSORS_SYSTEM = PROCESSORS_SYSTEM_DIR;
   config.SOURCE_ALLOW_PRIVATE_NETWORK = true;
+  config.SOURCE_DISABLE_THRESHOLD = 2;
   await ProcessorsInit(undefined, config);
 });
 
@@ -307,5 +364,76 @@ describe("ProcessorsFetchSourceItems request amplification", () => {
     expect((await reloadSource("src-atom")).info.processorPath).toContain(
       "800-RssProcessor",
     );
+  });
+});
+
+describe("ProcessorsFetchSourceItems item identity and tolerance", () => {
+  async function getTitles(sourceId: string): Promise<string[]> {
+    const rows = await DbUtilsQuerySQL(
+      span,
+      "SELECT title FROM sources_items WHERE sourceId = ? ORDER BY title",
+      [sourceId],
+    );
+    return rows.map((row: any) => row.title);
+  }
+
+  test("stores every item of a processor that reuses the source URL", async () => {
+    const source = await createSource("src-same-url", `${baseUrl}/same-url`);
+    await ProcessorsFetchSourceItems(span, source);
+    expect(await countItems("src-same-url")).toBe(3);
+
+    await ProcessorsFetchSourceItems(span, await reloadSource("src-same-url"));
+
+    expect(await countItems("src-same-url")).toBe(3);
+    expect(await getTitles("src-same-url")).toEqual([
+      "Same A",
+      "Same B",
+      "Same C",
+    ]);
+  });
+
+  test("keeps items that share the latest timestamp", async () => {
+    const source = await createSource(
+      "src-same-timestamp",
+      `${baseUrl}/same-timestamp`,
+    );
+    await ProcessorsFetchSourceItems(span, source);
+    expect(await getTitles("src-same-timestamp")).toEqual(["Timestamp A"]);
+
+    await ProcessorsFetchSourceItems(
+      span,
+      await reloadSource("src-same-timestamp"),
+    );
+
+    expect(await countItems("src-same-timestamp")).toBe(2);
+    expect(await getTitles("src-same-timestamp")).toEqual([
+      "Timestamp A",
+      "Timestamp C",
+    ]);
+  });
+
+  test("skips an invalid item, accepts ISO strings and does not disable the source", async () => {
+    const source = await createSource("src-bad-date", `${baseUrl}/bad-date`);
+
+    await ProcessorsFetchSourceItems(span, source);
+    expect(await getTitles("src-bad-date")).toEqual([
+      "Bad Date Good 1",
+      "Bad Date Good 2",
+    ]);
+    const info = (await reloadSource("src-bad-date")).info;
+    expect(info.fetchErrorCount).toBe(0);
+    expect(info.autoDisabled).toBeUndefined();
+
+    for (let cycle = 0; cycle < 2; cycle++) {
+      await ProcessorsFetchSourceItems(
+        span,
+        await reloadSource("src-bad-date"),
+      );
+    }
+
+    expect(await countItems("src-bad-date")).toBe(2);
+    const infoAfter = (await reloadSource("src-bad-date")).info;
+    expect(infoAfter.fetchErrorCount).toBe(0);
+    expect(infoAfter.autoDisabled).toBeUndefined();
   });
 });

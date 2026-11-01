@@ -36,18 +36,21 @@ module.exports = {
 
     // RETURN THE FOLLOWING ARRAY:
     const sourceItems = [
-        {
-            url = "<URL OF THE ITEM>",
-            title = "TITLE OF THE ITEM",
-            content = "TEXT OF THE ITEM",
-            datePublished = new Date("<DATE OF THE ITEM>");
-        },
-        ...
+      {
+        url: "<URL OF THE ITEM>",
+        title: "TITLE OF THE ITEM",
+        content: "TEXT OF THE ITEM",
+        datePublished: new Date("<DATE OF THE ITEM>"),
+      },
     ];
     return sourceItems;
   },
 };
 ```
+
+`datePublished` accepts either a `Date` or an ISO date string (for example `"2026-01-01T00:00:00.000Z"`). An item whose date cannot be parsed is skipped and logged; it does not fail the whole fetch.
+
+Each item may also carry an optional `info.itemId`: a stable identifier for that item (feed guid, revision id, credit id, ...). When a processor emits several items that share the same `url` (for example a page whose revisions are the items), set a distinct `info.itemId` per item; otherwise the duplicate `url` makes the later items look like re-fetched copies and they are not stored. Without `info.itemId`, items are deduplicated by `url`, and items without a `url` are never deduplicated.
 
 It is recommenede to have a look at the existing [System Processors](../../feedwatcher-server/processors-system/).
 

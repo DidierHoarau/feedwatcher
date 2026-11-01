@@ -22,6 +22,34 @@ const PODCAST_FEED_XML = `<?xml version="1.0" encoding="UTF-8"?>
   </channel>
 </rss>`;
 
+const NO_PUBDATE_FEED_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Test Podcast</title>
+    <item>
+      <title>Episode Without Date</title>
+      <link>https://example.com/episode-no-date</link>
+      <guid>https://example.com/episode-no-date</guid>
+      <description>No date</description>
+      <enclosure url="https://example.com/episode-no-date.mp3" type="audio/mpeg" length="12345"/>
+    </item>
+  </channel>
+</rss>`;
+
+const GUID_ONLY_FEED_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Test Podcast</title>
+    <item>
+      <title>Guid Only Episode</title>
+      <guid>episode-guid</guid>
+      <pubDate>Wed, 01 Oct 2025 12:00:00 GMT</pubDate>
+      <description>Guid only</description>
+      <enclosure url="https://example.com/guid-only.mp3" type="audio/mpeg" length="12345"/>
+    </item>
+  </channel>
+</rss>`;
+
 describe("Podcast processor: shared fetch context", () => {
   const publicLookup = [{ address: "93.184.216.34", family: 4 }] as any;
 
@@ -80,6 +108,60 @@ describe("Podcast processor: shared fetch context", () => {
 
     getSpy.mockRestore();
     lookupSpy.mockRestore();
+  });
+});
+
+describe("Podcast processor: item dates and identity", () => {
+  const publicLookup = [{ address: "93.184.216.34", family: 4 }] as any;
+  let getSpy: jest.SpyInstance;
+  let lookupSpy: jest.SpyInstance;
+
+  afterEach(() => {
+    getSpy?.mockRestore();
+    lookupSpy?.mockRestore();
+    jest.restoreAllMocks();
+  });
+
+  test("an episode without pubDate gets the fetch time instead of 1970", async () => {
+    lookupSpy = jest
+      .spyOn(dns.promises, "lookup")
+      .mockResolvedValue(publicLookup);
+    getSpy = jest.spyOn(axios, "get").mockResolvedValue({
+      status: 200,
+      headers: { "content-type": "application/rss+xml" },
+      data: NO_PUBDATE_FEED_XML,
+    } as any);
+    const source = new Source();
+    source.info = { url: "https://example.com/podcast.xml" };
+
+    const before = Date.now();
+    const sourceItems = await processor.fetchLatest(source, null);
+    const after = Date.now();
+
+    expect(sourceItems).toHaveLength(1);
+    const published = sourceItems[0].datePublished.getTime();
+    expect(published).toBeGreaterThanOrEqual(before);
+    expect(published).toBeLessThanOrEqual(after);
+    expect(new Date(published).getUTCFullYear()).not.toBe(1970);
+  });
+
+  test("an episode without a link dedupes on its guid", async () => {
+    lookupSpy = jest
+      .spyOn(dns.promises, "lookup")
+      .mockResolvedValue(publicLookup);
+    getSpy = jest.spyOn(axios, "get").mockResolvedValue({
+      status: 200,
+      headers: { "content-type": "application/rss+xml" },
+      data: GUID_ONLY_FEED_XML,
+    } as any);
+    const source = new Source();
+    source.info = { url: "https://example.com/podcast.xml" };
+
+    const sourceItems = await processor.fetchLatest(source, null);
+
+    expect(sourceItems).toHaveLength(1);
+    expect(sourceItems[0].url).toBe("");
+    expect(sourceItems[0].info.itemId).toBe("episode-guid");
   });
 });
 

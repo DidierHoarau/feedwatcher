@@ -38,6 +38,8 @@ module.exports = {
       sourceItem.content =
         `Image: ${repoUser}/${repoImage}<br />` + `Tag: ${item.name}<br />` + `Size: ${item.full_size}<br />`;
       sourceItem.datePublished = new Date(item.tag_last_pushed);
+      // Items share the source URL, so they need a stable per-item identity.
+      sourceItem.info = { itemId: item.name };
       sourceItems.push(sourceItem);
     }
     return sourceItems;

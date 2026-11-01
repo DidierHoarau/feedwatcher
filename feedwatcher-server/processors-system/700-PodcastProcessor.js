@@ -121,6 +121,7 @@ module.exports = {
 
   fetchLatest: async (source, lastSourceItemSaved, context) => {
     const feed = await loadFeed(source, context);
+    const fetchTime = new Date();
     const feedArtwork =
       getItunesImageUrl(feed.element) || (feed.image && feed.image.url) || null;
     const feedAuthor = getItunesValue(feed.element, "author");
@@ -141,7 +142,11 @@ module.exports = {
       }
       sourceItem.title = item.title || "Untitled Episode";
       sourceItem.content = item.content || item.description || "";
-      sourceItem.datePublished = new Date(item.published);
+      // A missing pubDate parses to null: fall back to the fetch time instead
+      // of new Date(null) (epoch), which made the source permanently stale.
+      const published = item.published ? new Date(item.published) : null;
+      const hasValidDate = published && !isNaN(published.getTime());
+      sourceItem.datePublished = hasValidDate ? published : fetchTime;
       sourceItem.thumbnail =
         (item.image && item.image.url) ||
         getItunesImageUrl(item.element) ||
@@ -165,6 +170,11 @@ module.exports = {
         subtitle: itemSubtitle,
         summary: itemSummary,
       };
+
+      // URL-less episodes dedupe on their guid (or audio URL) instead.
+      if (!sourceItem.url) {
+        sourceItem.info.itemId = item.id || audioUrl;
+      }
 
       sourceItems.push(sourceItem);
     });

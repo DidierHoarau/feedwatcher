@@ -79,6 +79,8 @@ module.exports = {
           knownItems,
           type: "cast",
           castId: cast.id,
+          // Credit rows share the source URL: dedupe on a stable per-item id.
+          itemId: `cast:${cast.id}`,
         };
         sourceItems.push(sourceItem);
       }
@@ -100,6 +102,8 @@ module.exports = {
           knownItems,
           type: "crew",
           crewId: crew.id,
+          // Credit rows share the source URL: dedupe on a stable per-item id.
+          itemId: `crew:${crew.id}`,
         };
         sourceItems.push(sourceItem);
       }
