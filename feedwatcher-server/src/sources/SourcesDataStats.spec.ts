@@ -88,24 +88,28 @@ async function insertItem(
   );
 }
 
-async function insertListItem(id: string, itemId: string): Promise<void> {
+async function insertListItem(
+  id: string,
+  itemId: string,
+  userId: string,
+): Promise<void> {
   await DbUtilsExecSQL(
     span,
     "INSERT INTO lists_items (id,itemId,userId,name,info) VALUES (?,?,?,?,?)",
-    [id, itemId, "list-owner", "saved", "{}"],
+    [id, itemId, userId, "saved", "{}"],
   );
 }
 
 describe("SourcesDataWarmItemCounts", () => {
-  test("sums read/unread and counts an item saved in two lists once", async () => {
+  test("sums read/unread and counts an item saved by two users once", async () => {
     await insertSource("src-1", "user-1");
     await insertSource("src-2", "user-2");
     await insertItem("item-1", "src-1", "unread");
     await insertItem("item-2", "src-1", "read");
     await insertItem("item-3", "src-2", "unread");
     await insertItem("item-4", "src-2", "unread");
-    await insertListItem("li-1", "item-1");
-    await insertListItem("li-2", "item-1");
+    await insertListItem("li-1", "item-1", "list-owner-a");
+    await insertListItem("li-2", "item-1", "list-owner-b");
 
     await SourcesDataWarmItemCounts(span);
 
@@ -145,7 +149,7 @@ describe("SourcesDataInvalidateUserCache counts", () => {
     await DbUtilsExecSQL(span, "UPDATE sources_items SET status = 'read' WHERE id = ?", [
       "item-1",
     ]);
-    await insertListItem("li-1", "item-2");
+    await insertListItem("li-1", "item-2", "list-owner");
     await SourcesDataInvalidateUserCache(span, "user-1");
 
     expect(SourcesDataGetGlobalItemCounts()).toEqual({

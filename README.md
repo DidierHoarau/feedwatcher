@@ -116,6 +116,69 @@ FeedWatcher supports **SQLite only** (`DATABASE_TYPE=sqlite`, the default). The 
 
 The scheduler gauges are served from in-memory counters: they are updated as items change, reconciled at startup and after the orphan cleanup, and the orphan cleanup runs at most once every 24 hours (it used to run every cycle).
 
+### Data export (JSON)
+
+Besides the OPML import/export, the server can export the caller's sources and items as JSON. The `Settings → Import / Export` page offers two JSON buttons, and the endpoint can also be called directly:
+
+```bash
+curl -H "Authorization: Bearer <token>" \
+  '<server>/api/sources/import/export/json?includeItems=true'
+```
+
+- `GET /api/sources/import/export/json` — sources only.
+- `GET /api/sources/import/export/json?includeItems=true` (or `1`) — sources and their items.
+- Ownership is enforced: only the authenticated user's sources and items are exported.
+- The response is streamed in batches (500 items per query), so memory stays bounded; an interrupted download yields truncated, invalid JSON. The settings-page download buffers the whole response in the browser, so use the `curl` call above for very large libraries.
+- No importer is provided for the JSON format.
+
+Schema:
+
+```json
+{
+  "format": "feedwatcher-sources",
+  "version": 1,
+  "exportedAt": "2026-01-01T00:00:00.000Z",
+  "sources": [
+    {
+      "id": "…",
+      "name": "…",
+      "info": { "url": "…", "processorPath": "…", "provider": "…" },
+      "labels": ["…"]
+    }
+  ],
+  "items": [
+    {
+      "id": "…", "sourceId": "…", "title": "…", "content": "…",
+      "url": "…", "status": "read|unread", "datePublished": "ISO",
+      "thumbnail": null, "info": {}
+    }
+  ]
+}
+```
+
+`items` is absent unless requested. `info` is the stored source/item metadata (`info.processorPath` is environment-specific). The export is a logical snapshot, not a database backup: it omits users, passwords, settings, bookmarks, tags, push subscriptions and HTTP fetch validators. Export files contain private feed URLs and tokens and must be handled as sensitive data.
+
+### Backup and restore
+
+The maintenance command takes a consistent snapshot of the live SQLite database with `VACUUM INTO` and writes it to `$DATA_DIR/backups`; it never runs automatically and never deletes data. In the container image:
+
+```bash
+docker exec <container> node dist/Backup.js
+kubectl -n <namespace> exec deploy/feedwatcher -- node dist/Backup.js
+```
+
+See [docs/deployments/backup-restore.md](docs/deployments/backup-restore.md) for what is persistent, how to restore and the security notes.
+
+## Bookmarks
+
+Bookmarks are stored per user and item. Each user can bookmark an item once: bookmarks have a unique `(itemId, userId)` constraint, and repeated requests are idempotent (adding an existing bookmark succeeds without creating a duplicate).
+
+- `PUT /api/lists/items` with `{ "itemId": "…" }` — add a bookmark (owner-only; returns `200 {}`).
+- `DELETE /api/lists/items/:itemId` — remove the caller's bookmark (`204`).
+- `GET /api/lists/items/:itemId` — return the bookmarked item.
+
+`listName` is **not** part of this contract: it was removed in 1.78.0 and is ignored when sent. Named lists are not supported.
+
 ## General
 
 | Variable                 | Description                                     | Default             |
@@ -257,7 +320,7 @@ Notes:
 Gauges:
 
 - `feeds.items.queue{item}` and `feeds.items.total{item}` are **process-wide** (all users), not per user.
-- `bookmarked` counts **distinct** items saved in any list: an item in two lists counts once.
+- `bookmarked` counts **distinct** items saved by at least one user: bookmark rows are unique per user and item, so an item bookmarked by two users counts once.
 - Values are eventually consistent: per-mutation updates appear within the 2 s coalescing window, and a full reconciliation runs at startup and after the daily orphan cleanup.
 - `feeds.fetch.queue{status}` reflects the shared processor pool used by scheduled fetches and manual "refresh all".
 

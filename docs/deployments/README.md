@@ -8,3 +8,7 @@ Examples of deployments are provided for
 
 - [docker-compose](docker-compose)
 - [kubernetes](kubernetes)
+
+Operational procedures:
+
+- [Backup and restore](backup-restore.md) — consistent SQLite snapshot, restore steps and the JSON export scope.
