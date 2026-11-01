@@ -6,6 +6,10 @@ import { SourceLabelsDataListForUser } from "./SourceLabelsData";
 import { AuthGetUserSession } from "../users/Auth";
 import { ConfigGet } from "../Config";
 import { SourcesDataListForUser } from "./SourcesData";
+import {
+  SourcesExportDataItemsForUser,
+  SourcesExportDataListForUser,
+} from "./SourcesExportData";
 import { NewsletterResolveProviderForUrl } from "./NewsletterProvider";
 
 jest.mock("../OTelContext", () => ({
@@ -33,6 +37,11 @@ jest.mock("../Config", () => ({
 
 jest.mock("./SourcesData", () => ({
   SourcesDataListForUser: jest.fn(),
+}));
+
+jest.mock("./SourcesExportData", () => ({
+  SourcesExportDataListForUser: jest.fn(),
+  SourcesExportDataItemsForUser: jest.fn(),
 }));
 
 jest.mock("./NewsletterProvider", () => ({
@@ -68,6 +77,8 @@ describe("SourcesImportRoutes", () => {
     });
     jest.mocked(ConfigGet).mockReturnValue({ NEWSLETTER_URL: "" } as any);
     jest.mocked(SourcesDataListForUser).mockResolvedValue([]);
+    jest.mocked(SourcesExportDataListForUser).mockResolvedValue([]);
+    jest.mocked(SourcesExportDataItemsForUser).mockResolvedValue([]);
     jest.mocked(NewsletterResolveProviderForUrl).mockResolvedValue(null);
   });
 
@@ -270,6 +281,118 @@ describe("SourcesImportRoutes", () => {
     ).toBe(true);
     expect(NewsletterResolveProviderForUrl).not.toHaveBeenCalled();
     expect(SourcesDataListForUser).not.toHaveBeenCalled();
+    await fastify.close();
+  });
+
+  test("returns 403 for the JSON export when unauthenticated", async () => {
+    jest.mocked(AuthGetUserSession).mockResolvedValue({
+      isAuthenticated: false,
+    });
+    const fastify = await buildFastify();
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/export/json",
+    });
+    expect(response.statusCode).toBe(403);
+    expect(SourcesExportDataListForUser).not.toHaveBeenCalled();
+    await fastify.close();
+  });
+
+  test("exports the caller's sources as a JSON attachment without items", async () => {
+    jest.mocked(SourcesExportDataListForUser).mockResolvedValue([
+      {
+        id: "source-1",
+        name: "Feed A",
+        info: { url: "https://a.example/feed.xml", processorPath: "p.js" },
+        labels: ["Tech"],
+      },
+    ]);
+    const fastify = await buildFastify();
+
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/export/json",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("application/json");
+    expect(response.headers["content-disposition"]).toBe(
+      'attachment; filename="feedwatcher.json"'
+    );
+    const body = JSON.parse(response.body);
+    expect(body.format).toBe("feedwatcher-sources");
+    expect(body.version).toBe(1);
+    expect(typeof body.exportedAt).toBe("string");
+    expect(body.sources).toEqual([
+      {
+        id: "source-1",
+        name: "Feed A",
+        info: { url: "https://a.example/feed.xml", processorPath: "p.js" },
+        labels: ["Tech"],
+      },
+    ]);
+    expect(body.items).toBeUndefined();
+    expect(SourcesExportDataItemsForUser).not.toHaveBeenCalled();
+    await fastify.close();
+  });
+
+  test("streams every item page when includeItems is set", async () => {
+    jest.mocked(SourcesExportDataListForUser).mockResolvedValue([]);
+    const firstPage = Array.from({ length: 500 }, (_, index) => ({
+      id: `item-${String(index).padStart(4, "0")}`,
+      sourceId: "source-1",
+      title: `Item ${index}`,
+      content: "content",
+      url: "https://example.com/item",
+      status: "unread",
+      datePublished: "2026-01-01T00:00:00.000Z",
+      thumbnail: null,
+      info: {},
+    }));
+    const secondPage = [
+      {
+        id: "item-9999",
+        sourceId: "source-1",
+        title: "Last",
+        content: "content",
+        url: "https://example.com/last",
+        status: "read",
+        datePublished: "2026-01-02T00:00:00.000Z",
+        thumbnail: null,
+        info: { author: "Someone" },
+      },
+    ];
+    jest
+      .mocked(SourcesExportDataItemsForUser)
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce(secondPage);
+    const fastify = await buildFastify();
+
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/export/json?includeItems=true",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.items).toHaveLength(501);
+    expect(body.items[0].id).toBe("item-0000");
+    expect(body.items[500].id).toBe("item-9999");
+    expect(body.items[500].info).toEqual({ author: "Someone" });
+    expect(SourcesExportDataItemsForUser).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      "user-1",
+      "",
+      500
+    );
+    expect(SourcesExportDataItemsForUser).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      "user-1",
+      "item-0499",
+      500
+    );
     await fastify.close();
   });
 });

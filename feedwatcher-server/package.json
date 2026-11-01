@@ -8,6 +8,7 @@
     "build": "tsc && tsc -p tsconfig.spec.json --noEmit",
     "lint": "oxlint src",
     "test": "jest --coverage",
+    "backup": "node dist/Backup.js",
     "////": "-----------------------------------------------------------------",
     "dev": "tsx watch ./src/App.ts",
     "dev:test": "NODE_ENV=dev jest --watch --config='jest.config.js'"

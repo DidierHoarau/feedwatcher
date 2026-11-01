@@ -384,10 +384,9 @@ function getSavedFromQuery(searchOptions: SearchItemsOptions): string {
   return "";
 }
 
-// EXISTS (no row duplication — lists_items has no unique (itemId, userId)
-// constraint) correlated on sources.userId, which every query above already
-// constrains to the requesting user. Batched bookmark state replaces the
-// per-card bookmark lookups.
+// EXISTS (no row duplication for the item listing) correlated on
+// sources.userId, which every query above already constrains to the requesting
+// user. Batched bookmark state replaces the per-card bookmark lookups.
 function getSavedStateQuery(): string {
   return (
     ", EXISTS (SELECT 1 FROM lists_items " +

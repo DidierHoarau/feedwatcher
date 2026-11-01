@@ -15,7 +15,8 @@ export async function ListsItemsDataAdd(
   const span = OTelTracer().startSpan("ListsItemsDataAdd", context);
   await DbUtilsExecSQL(
     span,
-    "INSERT INTO lists_items (id, itemId, userId, name, info) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO lists_items (id, itemId, userId, name, info) VALUES (?, ?, ?, ?, ?) " +
+      "ON CONFLICT(itemId, userId) DO NOTHING",
     [
       listItem.id,
       listItem.itemId,

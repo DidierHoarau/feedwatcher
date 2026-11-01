@@ -31,16 +31,12 @@ export class ListsItemsRoutes {
       return res.status(200).send(sourceItem || {});
     });
 
-    interface PutListNameItemsRequest extends RequestGenericInterface {
-      Params: {
-        itemId: string;
-      };
+    interface PutListItemRequest extends RequestGenericInterface {
       Body: {
         itemId: string;
-        listName: string;
       };
     }
-    fastify.put<PutListNameItemsRequest>("/items", async (req, res) => {
+    fastify.put<PutListItemRequest>("/items", async (req, res) => {
       const userSession = await AuthGetUserSession(req);
       if (!userSession.isAuthenticated) {
         return res.status(403).send({ error: "Access Denied" });

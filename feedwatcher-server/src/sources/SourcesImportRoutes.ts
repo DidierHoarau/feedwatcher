@@ -1,9 +1,17 @@
-import { FastifyInstance } from "fastify";
+import {
+  FastifyInstance,
+  RequestGenericInterface,
+} from "fastify";
 import { XMLBuilder, XMLParser } from "fast-xml-parser";
 import { find } from "lodash";
+import { Readable } from "stream";
 import { Source } from "../model/Source";
 import { Span } from "@opentelemetry/sdk-trace";
 import { SourceLabelsDataListForUser } from "./SourceLabelsData";
+import {
+  SourcesExportDataItemsForUser,
+  SourcesExportDataListForUser,
+} from "./SourcesExportData";
 import { SourcesDataListForUser } from "./SourcesData";
 import { ConfigGet } from "../Config";
 import {
@@ -14,6 +22,8 @@ import { AuthGetUserSession } from "../users/Auth";
 import { OTelLogger, OTelRequestSpan } from "../OTelContext";
 
 const logger = OTelLogger().createModuleLogger("SourcesImportRoutes");
+
+const EXPORT_ITEMS_BATCH_SIZE = 500;
 
 const opmlParser = new XMLParser({
   ignoreAttributes: false,
@@ -111,6 +121,63 @@ export class SourcesImportRoutes {
         'attachment; filename="feedwatcher.opml"'
       );
       res.send(opmlBuilder.build(sourcesOutlines));
+    });
+
+    interface GetExportJsonRequest extends RequestGenericInterface {
+      Querystring: {
+        includeItems?: string;
+      };
+    }
+    fastify.get<GetExportJsonRequest>("/export/json", async (req, res) => {
+      const userSession = await AuthGetUserSession(req);
+      if (!userSession.isAuthenticated) {
+        return res.status(403).send({ error: "Access Denied" });
+      }
+      const span = OTelRequestSpan(req);
+      const includeItems = ["true", "1"].includes(
+        String(req.query.includeItems ?? "").toLowerCase(),
+      );
+      const sources = await SourcesExportDataListForUser(
+        span,
+        userSession.userId
+      );
+      const exportedAt = new Date().toISOString();
+      async function* generateExport(): AsyncGenerator<string> {
+        yield (
+          '{"format":"feedwatcher-sources","version":1,' +
+          `"exportedAt":${JSON.stringify(exportedAt)},` +
+          `"sources":${JSON.stringify(sources)}`
+        );
+        if (includeItems) {
+          yield ',"items":[';
+          let afterId = "";
+          let isFirstItem = true;
+          while (true) {
+            const batch = await SourcesExportDataItemsForUser(
+              span,
+              userSession.userId,
+              afterId,
+              EXPORT_ITEMS_BATCH_SIZE
+            );
+            for (const item of batch) {
+              yield `${isFirstItem ? "" : ","}${JSON.stringify(item)}`;
+              isFirstItem = false;
+            }
+            if (batch.length < EXPORT_ITEMS_BATCH_SIZE) {
+              break;
+            }
+            afterId = batch[batch.length - 1].id;
+          }
+          yield "]";
+        }
+        yield "}";
+      }
+      res.header("Content-Type", "application/json; charset=utf-8");
+      res.header(
+        "Content-Disposition",
+        'attachment; filename="feedwatcher.json"'
+      );
+      return res.send(Readable.from(generateExport()));
     });
   }
 }
