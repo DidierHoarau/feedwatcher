@@ -20,7 +20,10 @@ function mountRow(filterStatus = "unread", storeSetup = {}) {
   const store = SourceItemsStore();
   store.sourceItems = [{ id: "item-1", status: "unread" }] as any;
   Object.assign(store, storeSetup);
+  // attachTo is required for isVisible(): jsdom only resolves computed styles
+  // for elements inside the document, like a browser does.
   return mount(SourceItemsActionsRow, {
+    attachTo: document.body,
     props: { filterPlaceholder: "Filter items", filterStatus },
     global: {
       stubs: { NuxtLink: NuxtLinkStub, ConfirmPopover: ConfirmPopoverStub },
