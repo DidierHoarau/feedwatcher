@@ -1,4 +1,4 @@
-import { watchFile } from "fs-extra";
+import { readFileSync, watchFile } from "fs-extra";
 import { Config } from "./Config";
 import { OTelLogger } from "./OTelContext";
 
@@ -7,7 +7,35 @@ const logger = OTelLogger().createModuleLogger("ConfigWatcher");
 let reloadTimer: NodeJS.Timeout = null;
 let reloadChain: Promise<void> = Promise.resolve();
 
+// ConfigBase.reload resets every field to its registered default before
+// applying the config file, so a file that cannot be parsed would drop the
+// values the server is running on: check the file first and keep the current
+// configuration when it is present but invalid. Synchronous on purpose: an
+// extra I/O await before config.reload() would not resolve while the debounced
+// reload runs under fake timers.
+function isConfigFileUsable(configFile: string): boolean {
+  let content: string;
+  try {
+    content = readFileSync(configFile, "utf8");
+  } catch (err) {
+    return (err as { code?: string }).code === "ENOENT";
+  }
+  try {
+    JSON.parse(content);
+    return true;
+  } catch (err) {
+    logger.warn(
+      `Config file ${configFile} cannot be parsed, keeping the current configuration`,
+      err,
+    );
+    return false;
+  }
+}
+
 export async function ConfigReloadSafely(config: Config): Promise<void> {
+  if (!isConfigFileUsable(config.CONFIG_FILE)) {
+    return;
+  }
   try {
     await config.reload((msg) => logger.info(msg));
   } catch (err) {
