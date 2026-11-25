@@ -189,7 +189,9 @@ Bookmarks are stored per user and item. Each user can bookmark an item once: boo
 | `PROCESSOR_CONCURRENCY`        | Number of concurrent source fetches             | `2`                 |
 | `SOURCE_ALLOW_PRIVATE_NETWORK` | Allow source URLs and URL previews to resolve private/special-use IP ranges (self-hosted/home-lab). Disables SSRF protection; keep `false` on shared or public instances | `false` |
 
-Sessions slide: the web client renews its token on startup, when the tab becomes visible or the window is focused, and once less than 20% of the token lifetime remains. The whole session is capped at `JWT_SESSION_MAX_DURATION` (90 days) from the first login.
+Sessions slide: the web client renews its token on startup, when the tab becomes visible or the window is focused, and once less than 20% of the token lifetime remains. The whole session is capped at `JWT_SESSION_MAX_DURATION` (90 days) from the first login. This is the standard policy documented in [`common-utils`](https://github.com/devopsplaybook-io/common-utils/blob/main/docs/auth-session-policy.md); both fields are declared with `addConfigField`, so a `config.json` or environment value survives a reload, and the server validates them with `AuthSessionPolicyLog(config, { app: "feedwatcher", ... })` at startup.
+
+> **Pitfall:** on `@devopsplaybook.io/common-utils` <= 2.9.2, a subclass field override is silently discarded on `reload()` unless the field is also declared with `this.addConfigField({ field: "..." })`. This app requires `^2.11.0`.
 
 ### Source Health
 
