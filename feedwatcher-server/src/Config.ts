@@ -37,6 +37,13 @@ export class Config extends ConfigBase {
   public VAPID_PUBLIC_KEY = "";
   public VAPID_PRIVATE_KEY = "";
   public VAPID_SUBJECT = "";
+  // Session policy: a token lives 30 days and the absolute session (from the
+  // first login) is capped at 90 days. Both fields are inherited from
+  // ConfigBase; they are re-declared here and re-registered below so the
+  // values also survive a common-utils downgrade (whose ConfigBase captured
+  // its 1-hour default in the base constructor).
+  public JWT_VALIDITY_DURATION = 2592000;
+  public JWT_SESSION_MAX_DURATION = 7776000;
 
   constructor() {
     super("feedwatcher-server");
@@ -62,5 +69,7 @@ export class Config extends ConfigBase {
     this.addConfigField({ field: "VAPID_PUBLIC_KEY" });
     this.addConfigField({ field: "VAPID_PRIVATE_KEY", sensitive: true });
     this.addConfigField({ field: "VAPID_SUBJECT" });
+    this.addConfigField({ field: "JWT_VALIDITY_DURATION" });
+    this.addConfigField({ field: "JWT_SESSION_MAX_DURATION" });
   }
 }

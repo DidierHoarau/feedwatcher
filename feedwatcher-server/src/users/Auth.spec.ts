@@ -249,3 +249,64 @@ test("repeated boots without a configured key keep the same key", async () => {
   expect(secondConfig.JWT_KEY).toBe(generatedKey);
   expect(await storedAuthKey(secondSpan)).toBe(generatedKey);
 });
+
+test("issues a 30-day token on a fresh login", async () => {
+  const config = newConfig(newTempDir(), "policy-key");
+  const span = await initDb(config);
+  await AuthInit(span, config);
+
+  const user = new User();
+  user.name = "alice";
+  await insertUser(span, user);
+
+  const token = await AuthGenerateJWT(user);
+  const payload = jwt.decode(token) as jwt.JwtPayload;
+
+  expect(payload.exp - payload.sessionStartedAt).toBe(2592000);
+});
+
+test("caps reissued tokens at the absolute session lifetime", async () => {
+  const config = newConfig(newTempDir(), "policy-key");
+  const span = await initDb(config);
+  await AuthInit(span, config);
+
+  const user = new User();
+  user.name = "alice";
+  await insertUser(span, user);
+
+  const now = Math.floor(Date.now() / 1000);
+  const sessionStartedAt = now - 85 * 24 * 60 * 60;
+  const token = await AuthGenerateJWT(user, sessionStartedAt);
+  const payload = jwt.decode(token) as jwt.JwtPayload;
+
+  expect(payload.sessionStartedAt).toBe(sessionStartedAt);
+  expect(payload.exp).toBe(sessionStartedAt + 7776000);
+  expect(payload.exp).toBeLessThan(now + 2592000);
+});
+
+test("rejects sessions past the absolute session lifetime", async () => {
+  const config = newConfig(newTempDir(), "policy-key");
+  const span = await initDb(config);
+  await AuthInit(span, config);
+
+  const user = new User();
+  user.name = "alice";
+  await insertUser(span, user);
+
+  const sessionStartedAt = Math.floor(Date.now() / 1000) - 91 * 24 * 60 * 60;
+  const staleToken = jwt.sign(
+    {
+      exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60,
+      sessionStartedAt,
+      userId: user.id,
+      userName: user.name,
+    },
+    config.JWT_KEY,
+  );
+
+  const session = await AuthGetUserSession({
+    headers: { authorization: `Bearer ${staleToken}` },
+  });
+
+  expect(session.isAuthenticated).toBe(false);
+});

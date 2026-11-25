@@ -183,10 +183,13 @@ Bookmarks are stored per user and item. Each user can bookmark an item once: boo
 
 | Variable                 | Description                                     | Default             |
 | ------------------------ | ----------------------------------------------- | ------------------- |
-| `JWT_VALIDITY_DURATION`        | JWT token validity duration in seconds          | `8035200` (93 days) |
+| `JWT_VALIDITY_DURATION`        | JWT token validity duration in seconds          | `2592000` (30 days) |
+| `JWT_SESSION_MAX_DURATION`     | Absolute session lifetime in seconds from the first login; `0` disables the cap | `7776000` (90 days) |
 | `SOURCE_FETCH_FREQUENCY`       | Interval between source fetches in milliseconds | `1800000` (30 min)  |
 | `PROCESSOR_CONCURRENCY`        | Number of concurrent source fetches             | `2`                 |
 | `SOURCE_ALLOW_PRIVATE_NETWORK` | Allow source URLs and URL previews to resolve private/special-use IP ranges (self-hosted/home-lab). Disables SSRF protection; keep `false` on shared or public instances | `false` |
+
+Sessions slide: the web client renews its token on startup, when the tab becomes visible or the window is focused, and once less than 20% of the token lifetime remains. The whole session is capped at `JWT_SESSION_MAX_DURATION` (90 days) from the first login.
 
 ### Source Health
 
