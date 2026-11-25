@@ -20,6 +20,7 @@ jest.mock("../OTelContext", () => ({
 
 jest.mock("./Auth", () => ({
   AuthGetUserSession: jest.fn(),
+  AuthGetSessionStartedAt: jest.fn(() => undefined),
   AuthGenerateJWT: jest.fn(async () => "jwt-token"),
 }));
 

@@ -4,7 +4,11 @@ import { DbUtilsWithLock } from "@devopsplaybook.io/common-utils";
 import { User } from "../model/User";
 import { OTelRequestSpan } from "../OTelContext";
 import { UserSettingsFromJson } from "./UserSettings";
-import { AuthGenerateJWT, AuthGetUserSession } from "./Auth";
+import {
+  AuthGenerateJWT,
+  AuthGetSessionStartedAt,
+  AuthGetUserSession,
+} from "./Auth";
 import {
   UserPasswordCheckPassword,
   UserPasswordSetPassword,
@@ -86,9 +90,10 @@ export class UsersRoutes {
           if (!user) {
             return res.status(401).send({ error: "Authentication Failed" });
           }
-          return res
-            .status(201)
-            .send({ success: true, token: await AuthGenerateJWT(user) });
+          return res.status(201).send({
+            success: true,
+            token: await AuthGenerateJWT(user, AuthGetSessionStartedAt(req)),
+          });
         }
 
         // From User/Pass
@@ -198,7 +203,9 @@ export class UsersRoutes {
       await UsersDataUpdate(OTelRequestSpan(req), user);
       // Every previously issued token is now revoked; hand the acting browser
       // a fresh one so it is not logged out of the current session.
-      res.status(201).send({ token: await AuthGenerateJWT(user) });
+      res.status(201).send({
+        token: await AuthGenerateJWT(user, AuthGetSessionStartedAt(req)),
+      });
     });
 
     fastify.get("/settings", async (req, res) => {

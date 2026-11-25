@@ -83,7 +83,6 @@
 </template>
 
 <script setup>
-import { AuthService } from "~~/services/AuthService";
 import { PreferencesService } from "~/services/PreferencesService";
 import { BadgeService } from "~~/services/BadgeService";
 const authenticationStore = AuthenticationStore();
@@ -101,8 +100,7 @@ watch(
 </script>
 
 <script>
-import axios from "axios";
-import Config from "~~/services/Config.ts";
+import { SessionRenewalStart } from "~~/services/SessionRenewal";
 import { EventBus, EventTypes } from "~~/services/EventBus";
 
 // Counts refresh cadences (ms): all triggers funnel into the throttled
@@ -123,6 +121,7 @@ export default {
     return {
       activeRoute: "",
       countsTimer: null,
+      stopSessionRenewal: null,
     };
   },
   async created() {
@@ -131,20 +130,11 @@ export default {
     document.addEventListener("visibilitychange", this.visibilityChanged);
     window.addEventListener("focus", this.windowFocused);
     this.countsTimer = setInterval(this.countsTick, COUNTS_TICK_MS);
+    // Sliding session: renew on start, on focus/visibilitychange and when
+    // less than 20% of the token lifetime remains.
+    this.stopSessionRenewal = SessionRenewalStart();
     if (await AuthenticationStore().ensureAuthenticated()) {
       this.refreshCounts();
-      setTimeout(async () => {
-        // Renew session tocken
-        axios
-          .post(
-            `${(await Config.get()).SERVER_URL}/users/session`,
-            {},
-            await AuthService.getAuthHeader(),
-          )
-          .then((res) => {
-            AuthService.saveToken(res.data.token);
-          });
-      }, 10000);
     }
     UserProcessorInfoStore().check();
     PreferencesService.applyTheme();
@@ -154,6 +144,10 @@ export default {
     document.removeEventListener("visibilitychange", this.visibilityChanged);
     window.removeEventListener("focus", this.windowFocused);
     clearInterval(this.countsTimer);
+    if (this.stopSessionRenewal) {
+      this.stopSessionRenewal();
+      this.stopSessionRenewal = null;
+    }
   },
   methods: {
     routeUpdated(newRoute) {
