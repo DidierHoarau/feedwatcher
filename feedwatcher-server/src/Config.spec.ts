@@ -1,6 +1,10 @@
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
+import {
+  AuthSessionPolicyCheck,
+  AuthSessionPolicyLog,
+} from "@devopsplaybook.io/common-utils";
 import { Config } from "./Config";
 
 describe("session configuration", () => {
@@ -58,5 +62,49 @@ describe("session configuration", () => {
 
     expect(config.JWT_VALIDITY_DURATION).toBe(3600);
     expect(config.JWT_SESSION_MAX_DURATION).toBe(7200);
+  });
+
+  test("matches the documented session policy", async () => {
+    const config = newConfig();
+    await config.reload();
+
+    const result = AuthSessionPolicyCheck(config, { app: "feedwatcher" });
+    expect(result.errors).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  test("logs the effective session values and the policy line at startup", async () => {
+    const config = newConfig();
+    const lines: string[] = [];
+    await config.reload((message: string) => lines.push(message));
+    AuthSessionPolicyLog(config, {
+      app: "feedwatcher",
+      logger: (message: string) => lines.push(message),
+    });
+
+    expect(lines).toContain(
+      "Configuration Value: JWT_VALIDITY_DURATION: 2592000 (from defaults)",
+    );
+    expect(lines).toContain(
+      "Configuration Value: JWT_SESSION_MAX_DURATION: 7776000 (from defaults)",
+    );
+    expect(lines).toContain(
+      "Auth session policy: app=feedwatcher validity=2592000s cap=7776000s renewal=sliding status=ok",
+    );
+  });
+
+  test("reports an error line when the validity is below the minimum", async () => {
+    process.env.JWT_VALIDITY_DURATION = "60";
+    const config = newConfig();
+    const lines: string[] = [];
+    await config.reload((message: string) => lines.push(message));
+    AuthSessionPolicyLog(config, {
+      app: "feedwatcher",
+      logger: (message: string) => lines.push(message),
+    });
+
+    expect(lines).toContain(
+      "Auth session policy error: JWT_VALIDITY_DURATION 60s is below the 3600s minimum; declare an explicit exception for a deliberately short session",
+    );
   });
 });

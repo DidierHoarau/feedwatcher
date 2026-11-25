@@ -1,5 +1,9 @@
 import { StandardMeter, StandardTracer } from "@devopsplaybook.io/otel-utils";
-import { DbUtilsSetOTel, DbUtilsInit } from "@devopsplaybook.io/common-utils";
+import {
+  AuthSessionPolicyLog,
+  DbUtilsSetOTel,
+  DbUtilsInit,
+} from "@devopsplaybook.io/common-utils";
 import { StandardTracerFastifyRegisterHooks } from "@devopsplaybook.io/otel-utils-fastify";
 import cors from "@fastify/cors";
 import fastifyMultipart from "@fastify/multipart";
@@ -55,6 +59,10 @@ Promise.resolve().then(async () => {
   //
   const config = ConfigGet();
   await config.reload((msg) => logger.info(msg));
+  AuthSessionPolicyLog(config, {
+    app: "feedwatcher",
+    logger: (message: string) => logger.info(message),
+  });
   ConfigWatcherStart(config);
 
   OTelSetTracer(new StandardTracer(config));
