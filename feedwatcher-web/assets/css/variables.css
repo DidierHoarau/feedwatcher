@@ -17,6 +17,8 @@
   --color-text-muted: #78909c;
   --color-text-placeholder: #b0bec5;
   --color-text-inverse: #fff;
+  /* Aliases read by the shared login-code cards (common-web). */
+  --color-on-primary: var(--color-text-inverse);
 
   /* ---------- Colors: Border ---------- */
   --color-border: #cfd8dc;
@@ -28,6 +30,7 @@
   --color-bg-secondary: #f5f7f8;
   --color-bg-hover: #eceff1;
   --color-bg-subtle: rgba(0, 0, 0, 0.04);
+  --color-surface: var(--color-bg);
 
   /* ---------- Colors: Status ---------- */
   --color-success: #43a047;
