@@ -1,10 +1,28 @@
+import { fileURLToPath } from "node:url";
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   ssr: false,
+  // common-web is consumed as raw .vue/.ts sources (not as a Nuxt layer, so its
+  // global CSS does not leak here). Map the package to its installed directory
+  // so both Vite and the generated tsconfig resolve the raw subpath imports.
+  alias: {
+    "@devopsplaybook.io/common-web": fileURLToPath(
+      new URL("./node_modules/@devopsplaybook.io/common-web", import.meta.url),
+    ),
+  },
+  // Raw sources must go through Vite's transform pipeline and stay out of
+  // pre-bundling.
+  build: {
+    transpile: ["@devopsplaybook.io/common-web"],
+  },
   vite: {
     build: {
       // lightningcss minifier fails on bootstrap-icons CSS
       cssMinify: "esbuild",
+    },
+    optimizeDeps: {
+      exclude: ["@devopsplaybook.io/common-web"],
     },
   },
   app: {

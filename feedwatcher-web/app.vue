@@ -21,9 +21,11 @@ onMounted(() => {
 
   // Register service worker (only in production)
   if (!import.meta.dev && "serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js").catch((err) => {
-      console.warn("SW registration failed:", err);
-    });
+    navigator.serviceWorker
+      .register("/sw.js", { updateViaCache: "none" })
+      .catch((err) => {
+        console.warn("SW registration failed:", err);
+      });
   }
 
   // Listen for open item events
@@ -75,6 +77,7 @@ function stopMiniPlayer() {
     />
     <ItemTagsDialog />
     <KeyboardShortcutsHelp />
+    <AppUpdatePrompt />
 
     <!-- Mini Player Bar -->
     <div
@@ -160,12 +163,16 @@ main {
     grid-row: 1;
     grid-column: 1;
   }
-  #page-layout > .mini-player {
+  #page-layout > .app-update-notice {
     grid-row: 2;
     grid-column: 1;
   }
-  #page-layout > header {
+  #page-layout > .mini-player {
     grid-row: 3;
+    grid-column: 1;
+  }
+  #page-layout > header {
+    grid-row: 4;
     grid-column: 1;
     padding: 0;
   }
