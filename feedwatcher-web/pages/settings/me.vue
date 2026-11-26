@@ -46,6 +46,15 @@
     <!-- Notifications -->
     <NotificationsSettings />
 
+    <!-- Authorize another device (cross-device login with a code) -->
+    <article v-if="loginCodeAvailable" class="settings-card">
+      <AuthorizeDeviceCard
+        :service="loginCodeService"
+        variant="plain"
+        :heading-level="3"
+      />
+    </article>
+
     <!-- Preferences -->
     <article class="settings-card">
       <header>
@@ -148,10 +157,16 @@ import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 import { PreferencesService } from "~~/services/PreferencesService";
 import NotificationsSettings from "~~/components/NotificationsSettings.vue";
+import AuthorizeDeviceCard from "@devopsplaybook.io/common-web/components/AuthorizeDeviceCard.vue";
+import {
+  LoginCodesServiceCreate,
+  LoginCodesIsAvailable,
+} from "~~/services/LoginCodes";
 
 export default {
   components: {
     NotificationsSettings,
+    AuthorizeDeviceCard,
   },
   data() {
     let isDark = false;
@@ -171,7 +186,14 @@ export default {
       openDetailsMode: PreferencesService.getOpenDetailsMode(),
       openLinksMode: PreferencesService.getOpenLinksMode(),
       uiScale: PreferencesService.getUiScale(),
+      loginCodeService: LoginCodesServiceCreate(),
+      loginCodeAvailable: false,
     };
+  },
+  async created() {
+    this.loginCodeAvailable = await LoginCodesIsAvailable(
+      this.loginCodeService,
+    );
   },
   methods: {
     async changePassword() {

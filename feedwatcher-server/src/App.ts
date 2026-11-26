@@ -3,6 +3,7 @@ import {
   AuthSessionPolicyLog,
   DbUtilsSetOTel,
   DbUtilsInit,
+  LoginCodesRoutes,
 } from "@devopsplaybook.io/common-utils";
 import { StandardTracerFastifyRegisterHooks } from "@devopsplaybook.io/otel-utils-fastify";
 import cors from "@fastify/cors";
@@ -40,6 +41,7 @@ import { SourcesRoutes } from "./sources/SourcesRoutes";
 import { SummaryInit } from "./summary/Summary";
 import { SummaryRoutes } from "./summary/SummaryRoutes";
 import { AuthInit } from "./users/Auth";
+import { LoginCodesBuildRoutesOptions } from "./users/LoginCodes";
 import { UsersRoutes } from "./users/UsersRoutes";
 
 const logger = OTelLogger().createModuleLogger("app");
@@ -119,6 +121,16 @@ Promise.resolve().then(async () => {
   fastify.register(new UsersRoutes().getRoutes, {
     prefix: "/api/users",
   });
+  // Cross-device "login with a code". Read at boot: enabling/disabling needs a
+  // restart; when off the routes do not exist at all.
+  if (config.LOGIN_CODE_ENABLED) {
+    fastify.register(
+      async (instance) => {
+        await LoginCodesRoutes(instance, LoginCodesBuildRoutesOptions(config));
+      },
+      { prefix: "/api/users/login-codes" },
+    );
+  }
   fastify.register(new SourcesRoutes().getRoutes, {
     prefix: "/api/sources",
   });

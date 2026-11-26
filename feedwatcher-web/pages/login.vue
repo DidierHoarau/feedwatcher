@@ -28,6 +28,14 @@
         </button>
       </footer>
     </article>
+    <article v-if="isInitialized && loginCodeAvailable" class="settings-card">
+      <LoginWithCodeCard
+        :service="loginCodeService"
+        variant="plain"
+        :heading-level="3"
+        @approved="onLoginCodeApproved"
+      />
+    </article>
   </div>
 </template>
 
@@ -37,16 +45,29 @@ import Config from "~~/services/Config.ts";
 import { AuthService } from "~~/services/AuthService";
 import { handleError, EventBus, EventTypes } from "~~/services/EventBus";
 import { UserService } from "~~/services/UserService";
+import LoginWithCodeCard from "@devopsplaybook.io/common-web/components/LoginWithCodeCard.vue";
+import {
+  LoginCodesServiceCreate,
+  LoginCodesIsAvailable,
+} from "~~/services/LoginCodes";
 
 export default {
+  components: {
+    LoginWithCodeCard,
+  },
   data() {
     return {
       user: {},
       isInitialized: true,
+      loginCodeService: LoginCodesServiceCreate(),
+      loginCodeAvailable: false,
     };
   },
   async created() {
     this.isInitialized = await UserService.isInitialized();
+    this.loginCodeAvailable = await LoginCodesIsAvailable(
+      this.loginCodeService,
+    );
   },
   methods: {
     async saveNew() {
@@ -99,6 +120,16 @@ export default {
         });
       }
     },
+    onLoginCodeApproved() {
+      // The login-code service already persisted the token via onSession.
+      AuthenticationStore().isAuthenticated = true;
+      EventBus.emit(EventTypes.ALERT_MESSAGE, {
+        type: "info",
+        text: "User Logged In",
+      });
+      UserProcessorInfoStore().check();
+      useRouter().push({ path: "/sources" });
+    },
   },
 };
 </script>
@@ -106,5 +137,8 @@ export default {
 <style scoped>
 #login-page {
   height: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xl, 1.5em);
 }
 </style>
