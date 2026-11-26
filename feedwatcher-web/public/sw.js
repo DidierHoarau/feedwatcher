@@ -68,6 +68,13 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // The Nuxt build manifest is the update signal: fetch it from the network
+  // and never store it, so a probe can never read a stale build id.
+  if (url.pathname.startsWith("/_nuxt/builds/")) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   // Static assets (JS, CSS, fonts, images): Cache-first
   if (isStaticAsset(url)) {
     event.respondWith(cacheFirst(request, STATIC_CACHE));
@@ -95,6 +102,8 @@ self.addEventListener("fetch", (event) => {
 });
 
 function isStaticAsset(url) {
+  // The build manifest must never be treated as a static asset
+  if (url.pathname.startsWith("/_nuxt/builds/")) return false;
   return (
     /\.(js|css|png|jpg|jpeg|svg|ico|woff2?|ttf|eot)(\?.*)?$/.test(
       url.pathname,

@@ -18,5 +18,12 @@ export default defineConfig({
     environment: "jsdom",
     include: ["tests/**/*.spec.ts"],
     setupFiles: ["./tests/setup.ts"],
+    // common-web ships raw .vue/.ts sources that must go through Vite's
+    // transform pipeline in tests too.
+    server: {
+      deps: {
+        inline: ["@devopsplaybook.io/common-web"],
+      },
+    },
   },
 });
